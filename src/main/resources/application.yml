@@ -1,0 +1,8 @@
+spring:
+  application:
+    name: oven-platform
+  liquibase:
+    change-log: classpath:/db/changelog/db.changelog-master.xml
+  sql:
+    init:
+      mode: always
