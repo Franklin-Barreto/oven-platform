@@ -1,24 +1,26 @@
+/* (C)2026 */
 package br.com.f2e.ovenplatform.shared.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.EntityListeners;
 import jakarta.persistence.Id;
 import jakarta.persistence.MappedSuperclass;
+import java.time.Instant;
+import java.util.UUID;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @MappedSuperclass
 @EntityListeners(AuditingEntityListener.class)
 public abstract class BaseEntity {
 
   @Id private UUID id = UUID.randomUUID();
+
   @CreatedDate
   @Column(nullable = false, updatable = false)
   private Instant createAt;
+
   @LastModifiedDate
   @Column(nullable = false)
   private Instant updatedAt;
