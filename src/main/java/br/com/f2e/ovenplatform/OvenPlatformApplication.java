@@ -1,3 +1,4 @@
+/* (C)2026 */
 package br.com.f2e.ovenplatform;
 
 import org.springframework.boot.SpringApplication;
@@ -9,5 +10,4 @@ public class OvenPlatformApplication {
   public static void main(String[] args) {
     SpringApplication.run(OvenPlatformApplication.class, args);
   }
-
 }
