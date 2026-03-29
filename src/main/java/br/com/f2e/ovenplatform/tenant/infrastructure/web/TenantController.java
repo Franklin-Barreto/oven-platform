@@ -25,8 +25,7 @@ public class TenantController {
   }
 
   @PostMapping
-  public ResponseEntity<TenantResponse> create(
-      @Valid @RequestBody CreateTenantRequest request) {
+  public ResponseEntity<TenantResponse> create(@Valid @RequestBody CreateTenantRequest request) {
     var response = TenantResponse.from(tenantService.create(request.name(), request.plan()));
     var uri = UriComponentsBuilder.fromPath("/tenants/{id}").buildAndExpand(response.id()).toUri();
     return ResponseEntity.created(uri).body(response);
