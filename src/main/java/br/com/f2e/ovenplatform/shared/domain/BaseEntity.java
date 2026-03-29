@@ -19,7 +19,7 @@ public abstract class BaseEntity {
 
   @CreatedDate
   @Column(nullable = false, updatable = false)
-  private Instant createAt;
+  private Instant createdAt;
 
   @LastModifiedDate
   @Column(nullable = false)
@@ -29,8 +29,8 @@ public abstract class BaseEntity {
     return id;
   }
 
-  public Instant getCreateAt() {
-    return createAt;
+  public Instant getCreatedAt() {
+    return createdAt;
   }
 
   public Instant getUpdatedAt() {
