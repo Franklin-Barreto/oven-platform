@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.tenant.application.TenantService;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.CreateTenantRequest;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.TenantResponse;
 import jakarta.validation.Valid;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -36,6 +37,6 @@ public class TenantController {
     return tenantService
         .findById(id)
         .map(tenant -> ResponseEntity.ok(TenantResponse.from(tenant)))
-        .orElseGet(() -> ResponseEntity.notFound().build());
+        .orElseThrow(() -> new NoSuchElementException("Tenant not found"));
   }
 }

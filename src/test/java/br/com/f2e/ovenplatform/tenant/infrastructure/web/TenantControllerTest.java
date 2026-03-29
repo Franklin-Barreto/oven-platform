@@ -19,6 +19,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -38,7 +39,7 @@ class TenantControllerTest {
     mockMvc
         .perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(content))
         .andExpect(status().isCreated())
-        .andExpect(header().string("Location", containsString("/tenants/")))
+        .andExpect(header().string("Location", containsString(URL)))
         .andExpect(jsonPath("$.status").value(Status.ACTIVE.name()))
         .andExpect(jsonPath("$.name").value(TENANT_NAME))
         .andExpect(jsonPath("$.plan").value(Plan.MVP.name()))
@@ -50,7 +51,12 @@ class TenantControllerTest {
     var content = JsonUtils.toJson(new CreateTenantRequest("", Plan.MVP));
     mockMvc
         .perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(content))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.path").value(URL))
+        .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].message").value("must not be blank"))
+        .andExpect(jsonPath("$.errors[0].field").value("name"))
+        .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
     verifyNoInteractions(tenantService);
   }
 
@@ -70,9 +76,13 @@ class TenantControllerTest {
   @Test
   void shouldReturn404WhenTenantDoesNotExist() throws Exception {
     when(tenantService.findById(getTenant().getId())).thenReturn(Optional.empty());
+    var getUrl = URL + "/" + getTenant().getId();
     mockMvc
-        .perform(get(URL + "/" + getTenant().getId()).contentType(MediaType.APPLICATION_JSON))
-        .andExpect(status().isNotFound());
+        .perform(get(getUrl).contentType(MediaType.APPLICATION_JSON))
+        .andExpect(status().isNotFound())
+        .andExpect(jsonPath("$.path").value(getUrl))
+        .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
+        .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()));
   }
 
   private Tenant getTenant() {
