@@ -7,6 +7,8 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -49,7 +51,7 @@ public class User extends BaseEntity {
     requireNotBlank(passwordHash, "passwordHash");
     requireNotNull(role, "role");
 
-    var normalizedEmail = email.trim().toLowerCase();
+    var normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
     if (!EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
       throw new IllegalArgumentException("Invalid email format");
     }
