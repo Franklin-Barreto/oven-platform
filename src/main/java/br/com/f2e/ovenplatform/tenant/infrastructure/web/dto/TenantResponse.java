@@ -6,11 +6,11 @@ import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import java.time.Instant;
 import java.util.UUID;
 
-public record CreateTenantResponse(
+public record TenantResponse(
     UUID id, String name, Plan plan, Status status, Instant createdAt, Instant updatedAt) {
 
-  public static CreateTenantResponse from(Tenant tenant) {
-    return new CreateTenantResponse(
+  public static TenantResponse from(Tenant tenant) {
+    return new TenantResponse(
         tenant.getId(),
         tenant.getName(),
         tenant.getPlan(),
