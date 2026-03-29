@@ -41,6 +41,12 @@
                 <constraints nullable="false"/>
             </column>
         </createTable>
+        <addForeignKeyConstraint
+                baseTableName="users"
+                baseColumnNames="tenant_id"
+                constraintName="fk_users_tenant_id"
+                referencedTableName="tenants"
+                referencedColumnNames="id"/>
 
         <addUniqueConstraint
                 tableName="users"
