@@ -8,7 +8,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
-import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
@@ -20,7 +19,6 @@ public class GlobalExceptionHandler {
     this.messageSource = messageSource;
   }
 
-  @ResponseStatus(HttpStatus.BAD_REQUEST)
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ApiErrorResponse> illegalArgumentHandler(
       IllegalArgumentException exception, HttpServletRequest request) {
@@ -30,7 +28,6 @@ public class GlobalExceptionHandler {
                 HttpStatus.BAD_REQUEST, exception.getMessage(), request.getRequestURI()));
   }
 
-  @ResponseStatus(code = HttpStatus.BAD_REQUEST)
   @ExceptionHandler(MethodArgumentNotValidException.class)
   public ResponseEntity<ApiErrorResponse> badRequestHandler(
       MethodArgumentNotValidException exception, HttpServletRequest request) {
@@ -46,7 +43,6 @@ public class GlobalExceptionHandler {
         .body(ApiErrorResponse.of(HttpStatus.BAD_REQUEST, errors, request.getRequestURI()));
   }
 
-  @ResponseStatus(code = HttpStatus.NOT_FOUND)
   @ExceptionHandler(NoSuchElementException.class)
   public ResponseEntity<ApiErrorResponse> notFoundHandler(
       NoSuchElementException exception, HttpServletRequest request) {

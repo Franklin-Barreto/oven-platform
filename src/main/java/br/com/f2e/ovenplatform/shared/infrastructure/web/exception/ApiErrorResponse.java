@@ -5,14 +5,19 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 
 public record ApiErrorResponse(
-    Instant timestamp, int status, List<ApiErrorItem> errors, String path) {
+    Instant timestamp, int status, String error, List<ApiErrorItem> errors, String path) {
 
   public static ApiErrorResponse of(HttpStatus status, List<ApiErrorItem> errors, String path) {
-    return new ApiErrorResponse(Instant.now(), status.value(), errors, path);
+    return new ApiErrorResponse(
+        Instant.now(), status.value(), status.getReasonPhrase(), errors, path);
   }
 
   public static ApiErrorResponse of(HttpStatus status, String message, String path) {
     return new ApiErrorResponse(
-        Instant.now(), status.value(), List.of(ApiErrorItem.messageOnly(message)), path);
+        Instant.now(),
+        status.value(),
+        status.getReasonPhrase(),
+        java.util.List.of(ApiErrorItem.messageOnly(message)),
+        path);
   }
 }
