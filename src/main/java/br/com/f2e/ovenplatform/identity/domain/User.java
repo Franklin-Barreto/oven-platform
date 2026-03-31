@@ -8,9 +8,11 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
 
-import java.util.Locale;
 import java.util.UUID;
-import java.util.regex.Pattern;
+
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
 
 @Table(
     name = "users",
@@ -21,8 +23,6 @@ import java.util.regex.Pattern;
     })
 @Entity
 public class User extends BaseEntity {
-  private static final Pattern EMAIL_PATTERN =
-      Pattern.compile("^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$");
 
   @Column(nullable = false)
   private UUID tenantId;
@@ -39,7 +39,7 @@ public class User extends BaseEntity {
 
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
-  private Status status;
+  private UserStatus status;
 
   @SuppressWarnings("unused")
   protected User() {}
@@ -47,20 +47,14 @@ public class User extends BaseEntity {
   public User(UUID tenantId, String email, String passwordHash, UserRole role) {
 
     requireNotNull(tenantId, "tenantId");
-    requireNotBlank(email, "email");
     requireNotBlank(passwordHash, "passwordHash");
     requireNotNull(role, "role");
 
-    var normalizedEmail = email.trim().toLowerCase(Locale.ROOT);
-    if (!EMAIL_PATTERN.matcher(normalizedEmail).matches()) {
-      throw new IllegalArgumentException("Invalid email format");
-    }
-
     this.tenantId = tenantId;
-    this.email = normalizedEmail;
+    this.email = normalizeEmail(email);
     this.passwordHash = passwordHash;
     this.role = role;
-    this.status = Status.ACTIVE;
+    this.status = UserStatus.ACTIVE;
   }
 
   public String getEmail() {
@@ -79,18 +73,7 @@ public class User extends BaseEntity {
     return role;
   }
 
-  public Status getStatus() {
+  public UserStatus getStatus() {
     return status;
-  }
-
-  private static void requireNotNull(Object field, String fieldName) {
-    if (field == null)
-      throw new IllegalArgumentException("%s must not be null".formatted(fieldName));
-  }
-
-  private static void requireNotBlank(String field, String fieldName) {
-    requireNotNull(field, fieldName);
-    if (field.isBlank())
-      throw new IllegalArgumentException("%s must not be blank".formatted(fieldName));
   }
 }
