@@ -5,6 +5,10 @@ import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
+
 @Service
 public class IdentityService {
   private final UserRepository userRepository;
@@ -16,10 +20,11 @@ public class IdentityService {
   }
 
   public User create(UUID tenantId, String email, String rawPassword, UserRole role) {
-    if (rawPassword == null || rawPassword.isBlank()) {
-      throw new IllegalArgumentException("password must not be blank");
-    }
+    requireNotNull(tenantId, "tenantId");
+    requireNotBlank(rawPassword, "rawPassword");
+    requireNotNull(role, "role");
+
     var passwordHash = passwordHasher.hash(rawPassword);
-    return userRepository.save(new User(tenantId, email, passwordHash, role));
+    return userRepository.save(new User(tenantId, normalizeEmail(email), passwordHash, role));
   }
 }
