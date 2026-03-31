@@ -7,7 +7,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
 import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
@@ -39,7 +38,7 @@ public class User extends BaseEntity {
 
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
-  private Status status;
+  private UserStatus status;
 
   @SuppressWarnings("unused")
   protected User() {}
@@ -60,7 +59,7 @@ public class User extends BaseEntity {
     this.email = normalizedEmail;
     this.passwordHash = passwordHash;
     this.role = role;
-    this.status = Status.ACTIVE;
+    this.status = UserStatus.ACTIVE;
   }
 
   public String getEmail() {
@@ -79,7 +78,7 @@ public class User extends BaseEntity {
     return role;
   }
 
-  public Status getStatus() {
+  public UserStatus getStatus() {
     return status;
   }
 
