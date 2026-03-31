@@ -17,3 +17,9 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
       connection-timeout: 30000
+  mvc:
+    apiversion:
+      default: 1.0
+      supported: 1.0, 2.0
+      use:
+        header: X-API-Version

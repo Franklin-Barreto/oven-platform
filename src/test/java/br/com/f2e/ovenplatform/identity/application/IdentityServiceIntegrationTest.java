@@ -9,19 +9,31 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import br.com.f2e.ovenplatform.identity.domain.UserStatus;
+import br.com.f2e.ovenplatform.identity.infrastructure.persistence.JpaUserRepositoryAdapter;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataUserRepository;
+import br.com.f2e.ovenplatform.identity.infrastructure.security.BCryptPasswordHasher;
+import br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityConfig;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
+import org.springframework.test.context.ActiveProfiles;
 
-@SpringBootTest
-@Transactional
+@DataJpaTest
+@ActiveProfiles("test")
+@Import({
+        IdentityService.class,
+        BCryptPasswordHasher.class,
+        JpaUserRepositoryAdapter.class,
+        SecurityConfig.class
+})
+@EnableJpaAuditing
 class IdentityServiceIntegrationTest {
 
   private static final String EMAIL = "contact@email.com";
@@ -89,13 +101,13 @@ class IdentityServiceIntegrationTest {
 
   @Test
   void shouldThrowExceptionWhenEmailIsInvalid() {
-    var tenant = createTenant();
+    var tenantId = createTenant().getId();
 
     assertThrows(
         IllegalArgumentException.class,
         () ->
             identityService.create(
-                tenant.getId(), "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+                    tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
   }
 
   private Tenant createTenant() {
