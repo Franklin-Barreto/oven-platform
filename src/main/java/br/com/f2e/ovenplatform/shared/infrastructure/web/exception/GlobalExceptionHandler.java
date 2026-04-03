@@ -73,7 +73,7 @@ public class GlobalExceptionHandler {
 
   @ExceptionHandler(NotAcceptableApiVersionException.class)
   public ResponseEntity<ApiErrorResponse> notAcceptableApiVersionHandler(
-          NotAcceptableApiVersionException exception, HttpServletRequest request) {
+      NotAcceptableApiVersionException exception, HttpServletRequest request) {
     return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
   }
 

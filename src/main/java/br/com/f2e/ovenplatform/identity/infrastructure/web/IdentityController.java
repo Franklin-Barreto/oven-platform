@@ -7,6 +7,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -38,5 +40,12 @@ public class IdentityController {
             .buildAndExpand(userResponse.id())
             .toUri();
     return ResponseEntity.created(uri).body(userResponse);
+  }
+
+  @GetMapping("/{id}")
+  public ResponseEntity<UserResponse> findByIdAndTenantId(
+      @RequestHeader("X-Tenant-Id") UUID tenantId, @PathVariable UUID id) {
+    return ResponseEntity.ok(
+        UserResponse.fromEntity(identityService.findByIdAndTenantId(id, tenantId)));
   }
 }

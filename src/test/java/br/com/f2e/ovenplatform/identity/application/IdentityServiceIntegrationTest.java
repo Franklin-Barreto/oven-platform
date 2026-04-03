@@ -28,10 +28,10 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @Import({
-        IdentityService.class,
-        BCryptPasswordHasher.class,
-        JpaUserRepositoryAdapter.class,
-        SecurityConfig.class
+  IdentityService.class,
+  BCryptPasswordHasher.class,
+  JpaUserRepositoryAdapter.class,
+  SecurityConfig.class
 })
 @EnableJpaAuditing
 class IdentityServiceIntegrationTest {
@@ -107,7 +107,7 @@ class IdentityServiceIntegrationTest {
         IllegalArgumentException.class,
         () ->
             identityService.create(
-                    tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+                tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
   }
 
   private Tenant createTenant() {

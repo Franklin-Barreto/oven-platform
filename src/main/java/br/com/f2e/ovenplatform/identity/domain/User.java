@@ -1,5 +1,9 @@
 package br.com.f2e.ovenplatform.identity.domain;
 
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
+
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -7,12 +11,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
-
 import java.util.UUID;
-
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
 
 @Table(
     name = "users",
