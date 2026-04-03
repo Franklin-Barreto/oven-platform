@@ -12,5 +12,4 @@ class ModularityTests {
   void verifiesModularStructure() {
     modules.verify();
   }
-
 }
