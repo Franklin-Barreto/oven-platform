@@ -29,10 +29,10 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @Import({
-        IdentityService.class,
-        BCryptPasswordHasher.class,
-        JpaUserRepositoryAdapter.class,
-        SecurityConfig.class
+  IdentityService.class,
+  BCryptPasswordHasher.class,
+  JpaUserRepositoryAdapter.class,
+  SecurityConfig.class
 })
 @EnableJpaAuditing
 class IdentityServiceIntegrationTest {
@@ -104,10 +104,10 @@ class IdentityServiceIntegrationTest {
     var tenantId = createTenant().getId();
 
     assertThrows(
-            IllegalArgumentException.class,
-            () ->
-                    identityService.create(
-                            tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+        IllegalArgumentException.class,
+        () ->
+            identityService.create(
+                tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
   }
 
   @Test
@@ -126,9 +126,9 @@ class IdentityServiceIntegrationTest {
     UUID userId = UUID.randomUUID();
 
     var exception =
-            assertThrows(
-                    NoSuchElementException.class,
-                    () -> identityService.findByIdAndTenantId(userId, tenantId));
+        assertThrows(
+            NoSuchElementException.class,
+            () -> identityService.findByIdAndTenantId(userId, tenantId));
 
     assertEquals("User", exception.getMessage());
   }
@@ -140,9 +140,9 @@ class IdentityServiceIntegrationTest {
     var userId = createUserAndFlush(tenantA.getId(), EMAIL, UserRole.ADMIN).getId();
 
     var exception =
-            assertThrows(
-                    NoSuchElementException.class,
-                    () -> identityService.findByIdAndTenantId(userId, tenantBId));
+        assertThrows(
+            NoSuchElementException.class,
+            () -> identityService.findByIdAndTenantId(userId, tenantBId));
 
     assertEquals("User", exception.getMessage());
   }
@@ -153,7 +153,7 @@ class IdentityServiceIntegrationTest {
 
   private User createUserAndFlush(UUID tenantId, String email, UserRole role) {
     var user =
-            identityService.create(tenantId, email, IdentityServiceIntegrationTest.RAW_PASSWORD, role);
+        identityService.create(tenantId, email, IdentityServiceIntegrationTest.RAW_PASSWORD, role);
     userRepository.flush();
     return user;
   }

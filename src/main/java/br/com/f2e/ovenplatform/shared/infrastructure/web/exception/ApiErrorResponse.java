@@ -12,12 +12,12 @@ public record ApiErrorResponse(
         Instant.now(), status.value(), status.getReasonPhrase(), errors, path);
   }
 
-  public static ApiErrorResponse of(HttpStatus status, String message, String path) {
+  public static ApiErrorResponse of(HttpStatus status, String code, String message, String path) {
     return new ApiErrorResponse(
         Instant.now(),
         status.value(),
         status.getReasonPhrase(),
-        List.of(ApiErrorItem.messageOnly(message)),
+        List.of(ApiErrorItem.messageOnly(code, message)),
         path);
   }
 }

@@ -29,7 +29,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ApiErrorResponse> illegalArgumentHandler(
       IllegalArgumentException exception, HttpServletRequest request) {
-    return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    return error(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_ARGUMENT, exception.getMessage(), request);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -40,7 +41,7 @@ public class GlobalExceptionHandler {
             .map(
                 error -> {
                   String message = messageSource.getMessage(error, LocaleContextHolder.getLocale());
-                  return ApiErrorItem.of(error.getField(), message);
+                  return ApiErrorItem.of(ApiErrorCodes.VALIDATION_ERROR, error.getField(), message);
                 })
             .toList();
     return error(HttpStatus.BAD_REQUEST, errors, request);
@@ -49,7 +50,8 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoSuchElementException.class)
   public ResponseEntity<ApiErrorResponse> notFoundHandler(
       NoSuchElementException exception, HttpServletRequest request) {
-    return error(HttpStatus.NOT_FOUND, exception.getMessage(), request);
+    return error(
+        HttpStatus.NOT_FOUND, ApiErrorCodes.RESOURCE_NOT_FOUND, exception.getMessage(), request);
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
@@ -57,24 +59,39 @@ public class GlobalExceptionHandler {
       DataIntegrityViolationException exception, HttpServletRequest request) {
     return switch (getConstraintName(exception)) {
       case "uk_users_tenant_id_email" ->
-          error(HttpStatus.CONFLICT, "A user with this email already exists.", request);
+          error(
+              HttpStatus.CONFLICT,
+              ApiErrorCodes.DUPLICATE_USER_EMAIL,
+              "A user with this email already exists.",
+              request);
 
-      case "fk_users_tenant_id" -> error(HttpStatus.NOT_FOUND, "Tenant not found.", request);
+      case "fk_users_tenant_id" ->
+          error(HttpStatus.NOT_FOUND, ApiErrorCodes.TENANT_NOT_FOUND, "Tenant not found.", request);
 
-      case null, default -> error(HttpStatus.CONFLICT, "Data integrity violation.", request);
+      case null, default ->
+          error(
+              HttpStatus.CONFLICT,
+              ApiErrorCodes.DATA_INTEGRITY_VIOLATION,
+              "Data integrity violation.",
+              request);
     };
   }
 
   @ExceptionHandler(MissingRequestHeaderException.class)
   public ResponseEntity<ApiErrorResponse> missingHeaderHandler(
       MissingRequestHeaderException exception, HttpServletRequest request) {
-    return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    return error(
+        HttpStatus.BAD_REQUEST,
+        ApiErrorCodes.MISSING_REQUEST_HEADER,
+        exception.getMessage(),
+        request);
   }
 
   @ExceptionHandler(NotAcceptableApiVersionException.class)
   public ResponseEntity<ApiErrorResponse> notAcceptableApiVersionHandler(
       NotAcceptableApiVersionException exception, HttpServletRequest request) {
-    return error(HttpStatus.BAD_REQUEST, exception.getMessage(), request);
+    return error(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_API_VERSION, exception.getMessage(), request);
   }
 
   private String getConstraintName(Throwable ex) {
@@ -91,9 +108,9 @@ public class GlobalExceptionHandler {
   }
 
   private ResponseEntity<ApiErrorResponse> error(
-      HttpStatus status, String message, HttpServletRequest request) {
+      HttpStatus status, String code, String message, HttpServletRequest request) {
     return ResponseEntity.status(status)
-        .body(ApiErrorResponse.of(status, message, request.getRequestURI()));
+        .body(ApiErrorResponse.of(status, code, message, request.getRequestURI()));
   }
 
   private ResponseEntity<ApiErrorResponse> error(
