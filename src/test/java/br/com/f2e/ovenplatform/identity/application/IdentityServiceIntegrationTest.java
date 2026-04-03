@@ -16,6 +16,7 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityC
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
+import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,7 +41,6 @@ class IdentityServiceIntegrationTest {
   private static final String RAW_PASSWORD = "my-secret-password";
 
   @Autowired private IdentityService identityService;
-  @Autowired private UserRepository repository;
   @Autowired private SpringDataTenantRepository tenantRepository;
   @Autowired private SpringDataUserRepository userRepository;
 
@@ -91,8 +91,7 @@ class IdentityServiceIntegrationTest {
   void shouldNormalizeEmailBeforePersisting() {
     var tenant = createTenant();
 
-    var user =
-            createUserAndFlush(tenant.getId(), " Contact@email.com", UserRole.ADMIN);
+    var user = createUserAndFlush(tenant.getId(), " Contact@email.com", UserRole.ADMIN);
 
     assertEquals(EMAIL, user.getEmail());
     assertEquals(tenant.getId(), user.getTenantId());
@@ -112,35 +111,40 @@ class IdentityServiceIntegrationTest {
   }
 
   @Test
-  void shouldFindUserByIdAndTenantId() {
+  void shouldFindUserByIdAndTenantIdThroughService() {
     var tenant = createTenant();
     var user = createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
 
-    var result = repository.findByIdAndTenantId(user.getId(), tenant.getId());
+    var result = identityService.findByIdAndTenantId(user.getId(), tenant.getId());
 
-    assertTrue(result.isPresent());
-    assertUser(result.get(), tenant, UserRole.ADMIN);
+    assertUser(result, tenant, UserRole.ADMIN);
   }
 
   @Test
-  void shouldReturnEmptyWhenUserDoesNotExist() {
-    var tenant = createTenant();
+  void shouldThrowWhenUserDoesNotExistThroughService() {
+    var tenantId = createTenant().getId();
+    UUID userId = UUID.randomUUID();
 
-    var result = repository.findByIdAndTenantId(UUID.randomUUID(), tenant.getId());
+    var exception =
+            assertThrows(
+                    NoSuchElementException.class,
+                    () -> identityService.findByIdAndTenantId(userId, tenantId));
 
-    assertTrue(result.isEmpty());
+    assertEquals("User", exception.getMessage());
   }
 
   @Test
-  void shouldReturnEmptyWhenUserBelongsToAnotherTenant() {
+  void shouldThrowWhenUserBelongsToAnotherTenantThroughService() {
     var tenantA = createTenant();
-    var tenantB = createTenant();
+    var tenantBId = createTenant().getId();
+    var userId = createUserAndFlush(tenantA.getId(), EMAIL, UserRole.ADMIN).getId();
 
-    var user = createUserAndFlush(tenantA.getId(), EMAIL, UserRole.ADMIN);
+    var exception =
+            assertThrows(
+                    NoSuchElementException.class,
+                    () -> identityService.findByIdAndTenantId(userId, tenantBId));
 
-    var result = repository.findByIdAndTenantId(user.getId(), tenantB.getId());
-
-    assertTrue(result.isEmpty());
+    assertEquals("User", exception.getMessage());
   }
 
   private Tenant createTenant() {
@@ -148,7 +152,8 @@ class IdentityServiceIntegrationTest {
   }
 
   private User createUserAndFlush(UUID tenantId, String email, UserRole role) {
-    var user = identityService.create(tenantId, email, IdentityServiceIntegrationTest.RAW_PASSWORD, role);
+    var user =
+            identityService.create(tenantId, email, IdentityServiceIntegrationTest.RAW_PASSWORD, role);
     userRepository.flush();
     return user;
   }
