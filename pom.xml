@@ -18,17 +18,12 @@
         <spring-modulith.version>2.0.3</spring-modulith.version>
         <spotless.version>3.4.0</spotless.version>
         <jacoco.version>0.8.13</jacoco.version>
-        <sonar.coverage.jacoco.xmlReportPaths>
-            ${project.build.directory}/site/jacoco/jacoco.xml
-        </sonar.coverage.jacoco.xmlReportPaths>
+
         <sonar.projectKey>Franklin-Barreto_oven-platform</sonar.projectKey>
         <sonar.organization>franklin-barreto</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.java.binaries>${project.build.outputDirectory}</sonar.java.binaries>
-        <sonar.projectVersion>1.0</sonar.projectVersion>
-        <sonar.sourceEncoding>UTF-8</sonar.sourceEncoding>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
-        </sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>**/*OvenPlatformApplication.java,**/*Config.java,**/*Properties.java,**/*Request.java,**/*Response.java,**/ApiErrorResponse.java,**/ApiErrorItem.java</sonar.coverage.exclusions>
     </properties>
     <dependencies>
         <dependency>
@@ -74,6 +69,12 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.tngtech.archunit</groupId>
+            <artifactId>archunit-junit5</artifactId>
+            <version>1.4.1</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
