@@ -1,13 +1,14 @@
 package br.com.f2e.ovenplatform.identity.application;
 
-import br.com.f2e.ovenplatform.identity.domain.User;
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
-import java.util.UUID;
-import org.springframework.stereotype.Service;
-
 import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
 import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
 import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
+
+import br.com.f2e.ovenplatform.identity.domain.User;
+import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import java.util.NoSuchElementException;
+import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 @Service
 public class IdentityService {
@@ -26,5 +27,11 @@ public class IdentityService {
 
     var passwordHash = passwordHasher.hash(rawPassword);
     return userRepository.save(new User(tenantId, normalizeEmail(email), passwordHash, role));
+  }
+
+  public User findByIdAndTenantId(UUID id, UUID tenantId) {
+    return userRepository
+        .findByIdAndTenantId(id, tenantId)
+        .orElseThrow(() -> new NoSuchElementException("User"));
   }
 }
