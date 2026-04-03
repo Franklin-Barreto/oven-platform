@@ -17,7 +17,7 @@ public record ApiErrorResponse(
         Instant.now(),
         status.value(),
         status.getReasonPhrase(),
-        java.util.List.of(ApiErrorItem.messageOnly(message)),
+        List.of(ApiErrorItem.messageOnly(message)),
         path);
   }
 }
