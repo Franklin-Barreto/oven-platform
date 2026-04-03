@@ -28,10 +28,10 @@ import org.springframework.test.context.ActiveProfiles;
 @DataJpaTest
 @ActiveProfiles("test")
 @Import({
-  IdentityService.class,
-  BCryptPasswordHasher.class,
-  JpaUserRepositoryAdapter.class,
-  SecurityConfig.class
+        IdentityService.class,
+        BCryptPasswordHasher.class,
+        JpaUserRepositoryAdapter.class,
+        SecurityConfig.class
 })
 @EnableJpaAuditing
 class IdentityServiceIntegrationTest {
@@ -40,6 +40,7 @@ class IdentityServiceIntegrationTest {
   private static final String RAW_PASSWORD = "my-secret-password";
 
   @Autowired private IdentityService identityService;
+  @Autowired private UserRepository repository;
   @Autowired private SpringDataTenantRepository tenantRepository;
   @Autowired private SpringDataUserRepository userRepository;
 
@@ -47,7 +48,7 @@ class IdentityServiceIntegrationTest {
   void shouldCreateUserSuccessfully() {
     var tenant = createTenant();
 
-    var user = createUserAndFlush(tenant.getId(), EMAIL, RAW_PASSWORD, UserRole.ADMIN);
+    var user = createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
 
     assertUser(user, tenant, UserRole.ADMIN);
   }
@@ -56,7 +57,7 @@ class IdentityServiceIntegrationTest {
   void shouldHashPasswordBeforePersistingUser() {
     var tenant = createTenant();
 
-    var user = createUserAndFlush(tenant.getId(), EMAIL, RAW_PASSWORD, UserRole.ADMIN);
+    var user = createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
 
     assertNotEquals(RAW_PASSWORD, user.getPasswordHash());
     assertFalse(user.getPasswordHash().isBlank());
@@ -67,7 +68,7 @@ class IdentityServiceIntegrationTest {
   void shouldThrowExceptionForDuplicateEmailWithinSameTenant() {
     var tenant = createTenant();
 
-    createUserAndFlush(tenant.getId(), EMAIL, RAW_PASSWORD, UserRole.ADMIN);
+    createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
 
     identityService.create(tenant.getId(), EMAIL, UUID.randomUUID().toString(), UserRole.OWNER);
 
@@ -79,8 +80,8 @@ class IdentityServiceIntegrationTest {
     var tenantA = createTenant();
     var tenantB = createTenant();
 
-    var user = createUserAndFlush(tenantA.getId(), EMAIL, RAW_PASSWORD, UserRole.ADMIN);
-    var user2 = createUserAndFlush(tenantB.getId(), EMAIL, RAW_PASSWORD, UserRole.OWNER);
+    var user = createUserAndFlush(tenantA.getId(), EMAIL, UserRole.ADMIN);
+    var user2 = createUserAndFlush(tenantB.getId(), EMAIL, UserRole.OWNER);
 
     assertUser(user, tenantA, UserRole.ADMIN);
     assertUser(user2, tenantB, UserRole.OWNER);
@@ -91,7 +92,7 @@ class IdentityServiceIntegrationTest {
     var tenant = createTenant();
 
     var user =
-        createUserAndFlush(tenant.getId(), " Contact@email.com", RAW_PASSWORD, UserRole.ADMIN);
+            createUserAndFlush(tenant.getId(), " Contact@email.com", UserRole.ADMIN);
 
     assertEquals(EMAIL, user.getEmail());
     assertEquals(tenant.getId(), user.getTenantId());
@@ -104,18 +105,50 @@ class IdentityServiceIntegrationTest {
     var tenantId = createTenant().getId();
 
     assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            identityService.create(
-                tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+            IllegalArgumentException.class,
+            () ->
+                    identityService.create(
+                            tenantId, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+  }
+
+  @Test
+  void shouldFindUserByIdAndTenantId() {
+    var tenant = createTenant();
+    var user = createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
+
+    var result = repository.findByIdAndTenantId(user.getId(), tenant.getId());
+
+    assertTrue(result.isPresent());
+    assertUser(result.get(), tenant, UserRole.ADMIN);
+  }
+
+  @Test
+  void shouldReturnEmptyWhenUserDoesNotExist() {
+    var tenant = createTenant();
+
+    var result = repository.findByIdAndTenantId(UUID.randomUUID(), tenant.getId());
+
+    assertTrue(result.isEmpty());
+  }
+
+  @Test
+  void shouldReturnEmptyWhenUserBelongsToAnotherTenant() {
+    var tenantA = createTenant();
+    var tenantB = createTenant();
+
+    var user = createUserAndFlush(tenantA.getId(), EMAIL, UserRole.ADMIN);
+
+    var result = repository.findByIdAndTenantId(user.getId(), tenantB.getId());
+
+    assertTrue(result.isEmpty());
   }
 
   private Tenant createTenant() {
     return tenantRepository.save(new Tenant("Don Corleone Pizzeria", Plan.MVP));
   }
 
-  private User createUserAndFlush(UUID tenantId, String email, String rawPassword, UserRole role) {
-    var user = identityService.create(tenantId, email, rawPassword, role);
+  private User createUserAndFlush(UUID tenantId, String email, UserRole role) {
+    var user = identityService.create(tenantId, email, IdentityServiceIntegrationTest.RAW_PASSWORD, role);
     userRepository.flush();
     return user;
   }
