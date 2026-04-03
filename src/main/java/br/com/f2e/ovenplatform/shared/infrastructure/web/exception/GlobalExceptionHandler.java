@@ -9,6 +9,7 @@ import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.accept.InvalidApiVersionException;
 import org.springframework.web.accept.NotAcceptableApiVersionException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
@@ -66,6 +67,13 @@ public class GlobalExceptionHandler {
         ApiErrorCodes.MISSING_REQUEST_HEADER,
         exception.getMessage(),
         request);
+  }
+
+  @ExceptionHandler(InvalidApiVersionException.class)
+  public ResponseEntity<ApiErrorResponse> invalidApiVersionHandler(
+      InvalidApiVersionException exception, HttpServletRequest request) {
+    return error(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_API_VERSION, exception.getMessage(), request);
   }
 
   @ExceptionHandler(NotAcceptableApiVersionException.class)

@@ -42,7 +42,7 @@ public class IdentityController {
     return ResponseEntity.created(uri).body(userResponse);
   }
 
-  @GetMapping("/{id}")
+  @GetMapping(value = "/{id}", version = "1.0")
   public ResponseEntity<UserResponse> findByIdAndTenantId(
       @RequestHeader("X-Tenant-Id") UUID tenantId, @PathVariable UUID id) {
     return ResponseEntity.ok(
