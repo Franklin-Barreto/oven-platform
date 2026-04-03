@@ -14,16 +14,19 @@ import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import br.com.f2e.ovenplatform.identity.domain.UserStatus;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Stream;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -79,6 +82,7 @@ class IdentityControllerTest {
                 HttpStatus.BAD_REQUEST,
                 URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.VALIDATION_ERROR,
                 message,
                 field,
                 HttpStatus.BAD_REQUEST.value()));
@@ -101,6 +105,7 @@ class IdentityControllerTest {
                 HttpStatus.BAD_REQUEST,
                 URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.INVALID_ARGUMENT,
                 "Invalid UUID string: invalid-uuid",
                 null,
                 HttpStatus.BAD_REQUEST.value()));
@@ -117,7 +122,11 @@ class IdentityControllerTest {
             post(URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest)))
-        .andExpect(status().isBadRequest());
+        .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.path").value(URL))
+        .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.MISSING_REQUEST_HEADER))
+        .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
   }
@@ -153,17 +162,20 @@ class IdentityControllerTest {
         .andExpect(status().isNotFound())
         .andExpect(jsonPath("$.path").value(getUrl))
         .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.RESOURCE_NOT_FOUND))
         .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()));
   }
 
   @Test
   void shouldReturn400WhenGetTenantIdHeaderIsMissing() throws Exception {
-
     var getUrl = URL + "/" + USER_ID;
+
     mockMvc
         .perform(get(getUrl).accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.path").value(getUrl))
         .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.MISSING_REQUEST_HEADER))
         .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
@@ -172,11 +184,14 @@ class IdentityControllerTest {
   @Test
   void shouldReturn400WhenGetTenantIdHeaderIsInvalid() throws Exception {
     var getUrl = URL + "/" + USER_ID;
+
     mockMvc
         .perform(
             get(getUrl).accept(MediaType.APPLICATION_JSON).header("X-Tenant-Id", "invalid tenant"))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.path").value(getUrl))
         .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.INVALID_ARGUMENT))
         .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
@@ -185,19 +200,67 @@ class IdentityControllerTest {
   @Test
   void shouldReturn400WhenUserIdIsInvalid() throws Exception {
     var getUrl = URL + "/" + "invalidUserId";
+
     mockMvc
         .perform(get(getUrl).accept(MediaType.APPLICATION_JSON).header("X-Tenant-Id", TENANT_ID))
         .andExpect(status().isBadRequest())
+        .andExpect(jsonPath("$.path").value(getUrl))
         .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
+        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.INVALID_ARGUMENT))
         .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
+  }
+
+  @Test
+  void shouldReturn409WhenEmailAlreadyExists() throws Exception {
+    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER))
+            .thenThrow(dataIntegrityViolationException("uk_users_tenant_id_email"));
+
+    var userRequest = createUserRequest();
+
+    mockMvc
+            .perform(
+                    post(URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(JsonUtils.toJson(userRequest))
+                            .header("X-Tenant-Id", TENANT_ID)
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isConflict())
+            .andExpect(jsonPath("$.path").value(URL))
+            .andExpect(jsonPath("$.error").value(HttpStatus.CONFLICT.getReasonPhrase()))
+            .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.DUPLICATE_USER_EMAIL))
+            .andExpect(jsonPath("$.errors[0].message").value("A user with this email already exists."))
+            .andExpect(jsonPath("$.status").value(HttpStatus.CONFLICT.value()));
+  }
+
+  @Test
+  void shouldReturn404WhenTenantDoesNotExistDuringUserCreation() throws Exception {
+    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER))
+            .thenThrow(dataIntegrityViolationException("fk_users_tenant_id"));
+
+    var userRequest = createUserRequest();
+
+    mockMvc
+            .perform(
+                    post(URL)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(JsonUtils.toJson(userRequest))
+                            .header("X-Tenant-Id", TENANT_ID)
+                            .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isNotFound())
+            .andExpect(jsonPath("$.path").value(URL))
+            .andExpect(jsonPath("$.error").value(HttpStatus.NOT_FOUND.getReasonPhrase()))
+            .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.TENANT_NOT_FOUND))
+            .andExpect(jsonPath("$.errors[0].message").value("Tenant not found."))
+            .andExpect(jsonPath("$.status").value(HttpStatus.NOT_FOUND.value()));
   }
 
   private ResultMatcher[] validationErrors(
       HttpStatus httpStatus,
       String path,
       String error,
+      String code,
       String message,
       String field,
       int statusCode) {
@@ -205,6 +268,7 @@ class IdentityControllerTest {
       status().is(httpStatus.value()),
       jsonPath("$.path").value(path),
       jsonPath("$.error").value(error),
+      jsonPath("$.errors[0].code").value(code),
       jsonPath("$.errors[0].message").value(message),
       jsonPath("$.errors[0].field").value(field),
       jsonPath("$.status").value(statusCode)
@@ -230,5 +294,12 @@ class IdentityControllerTest {
 
   private static User getUserEntity() {
     return new User(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER);
+  }
+
+  private static DataIntegrityViolationException dataIntegrityViolationException(
+          String constraintName) {
+    return new DataIntegrityViolationException(
+            "data integrity violation",
+            new ConstraintViolationException("constraint violation", null, constraintName));
   }
 }

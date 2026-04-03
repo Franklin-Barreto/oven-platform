@@ -3,9 +3,7 @@ package br.com.f2e.ovenplatform.shared.infrastructure.web.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.Optional;
-import org.postgresql.util.PSQLException;
-import org.postgresql.util.ServerErrorMessage;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -57,24 +55,7 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(DataIntegrityViolationException.class)
   public ResponseEntity<ApiErrorResponse> dataIntegrityViolationHandler(
       DataIntegrityViolationException exception, HttpServletRequest request) {
-    return switch (getConstraintName(exception)) {
-      case "uk_users_tenant_id_email" ->
-          error(
-              HttpStatus.CONFLICT,
-              ApiErrorCodes.DUPLICATE_USER_EMAIL,
-              "A user with this email already exists.",
-              request);
-
-      case "fk_users_tenant_id" ->
-          error(HttpStatus.NOT_FOUND, ApiErrorCodes.TENANT_NOT_FOUND, "Tenant not found.", request);
-
-      case null, default ->
-          error(
-              HttpStatus.CONFLICT,
-              ApiErrorCodes.DATA_INTEGRITY_VIOLATION,
-              "Data integrity violation.",
-              request);
-    };
+    return handleConstraintViolation(getConstraintName(exception), request);
   }
 
   @ExceptionHandler(MissingRequestHeaderException.class)
@@ -94,16 +75,17 @@ public class GlobalExceptionHandler {
         HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_API_VERSION, exception.getMessage(), request);
   }
 
-  private String getConstraintName(Throwable ex) {
-    Throwable cause = ex;
-    while (cause != null) {
-      if (cause instanceof PSQLException psqlEx) {
-        return Optional.ofNullable(psqlEx.getServerErrorMessage())
-            .map(ServerErrorMessage::getConstraint)
-            .orElse(null);
-      }
-      cause = cause.getCause();
+  private String getConstraintName(DataIntegrityViolationException exception) {
+    var cause = exception.getCause();
+    if (cause instanceof ConstraintViolationException constraintViolationException) {
+      return constraintViolationException.getConstraintName();
     }
+
+    if (cause != null
+        && cause.getCause() instanceof ConstraintViolationException constraintViolationException) {
+      return constraintViolationException.getConstraintName();
+    }
+
     return null;
   }
 
@@ -117,5 +99,27 @@ public class GlobalExceptionHandler {
       HttpStatus status, List<ApiErrorItem> errors, HttpServletRequest request) {
     return ResponseEntity.status(status)
         .body(ApiErrorResponse.of(status, errors, request.getRequestURI()));
+  }
+
+  private ResponseEntity<ApiErrorResponse> handleConstraintViolation(
+      String constraintName, HttpServletRequest request) {
+    return switch (constraintName) {
+      case "uk_users_tenant_id_email" ->
+          error(
+              HttpStatus.CONFLICT,
+              ApiErrorCodes.DUPLICATE_USER_EMAIL,
+              "A user with this email already exists.",
+              request);
+
+      case "fk_users_tenant_id" ->
+          error(HttpStatus.NOT_FOUND, ApiErrorCodes.TENANT_NOT_FOUND, "Tenant not found.", request);
+
+      case null, default ->
+          error(
+              HttpStatus.CONFLICT,
+              ApiErrorCodes.DATA_INTEGRITY_VIOLATION,
+              "Data integrity violation.",
+              request);
+    };
   }
 }
