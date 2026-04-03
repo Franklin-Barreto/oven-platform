@@ -4,11 +4,8 @@ spring:
     driver-class-name: org.h2.Driver
     username: sa
     password:
-
   jpa:
     hibernate:
-      ddl-auto: none
-    show-sql: false
+      ddl-auto: create-drop
   liquibase:
-    change-log: classpath:/db/changelog/db.changelog-master.xml
-    enabled: true
+    enabled: false
