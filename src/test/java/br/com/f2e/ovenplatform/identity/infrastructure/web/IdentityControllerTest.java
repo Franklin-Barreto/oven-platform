@@ -1,5 +1,7 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -57,7 +59,7 @@ class IdentityControllerTest {
             post(URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
-                .header("X-Tenant-Id", TENANT_ID)
+                .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isCreated())
         .andExpect(header().string("Location", containsString(URL)))
@@ -75,7 +77,7 @@ class IdentityControllerTest {
             post(URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
-                .header("X-Tenant-Id", TENANT_ID)
+                .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             validationErrors(
@@ -99,7 +101,7 @@ class IdentityControllerTest {
             post(URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
-                .header("X-Tenant-Id", "invalid-uuid"))
+                .header(TENANT_ID_HEADER, "invalid-uuid"))
         .andExpectAll(
             validationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -142,7 +144,7 @@ class IdentityControllerTest {
     mockMvc
         .perform(
             get(URL + "/%s".formatted(USER_ID))
-                .header("X-Tenant-Id", TENANT_ID)
+                .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
@@ -161,7 +163,7 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .contentType(MediaType.APPLICATION_JSON)
-                .header("X-Tenant-Id", TENANT_ID)
+                .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             validationErrors(
@@ -199,7 +201,9 @@ class IdentityControllerTest {
 
     mockMvc
         .perform(
-            get(getUrl).accept(MediaType.APPLICATION_JSON).header("X-Tenant-Id", "invalid tenant"))
+            get(getUrl)
+                .accept(MediaType.APPLICATION_JSON)
+                .header(TENANT_ID_HEADER, "invalid tenant"))
         .andExpectAll(
             validationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -218,7 +222,7 @@ class IdentityControllerTest {
     var getUrl = URL + "/" + "invalidUserId";
 
     mockMvc
-        .perform(get(getUrl).accept(MediaType.APPLICATION_JSON).header("X-Tenant-Id", TENANT_ID))
+        .perform(get(getUrl).accept(MediaType.APPLICATION_JSON).header(TENANT_ID_HEADER, TENANT_ID))
         .andExpectAll(
             validationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -249,7 +253,7 @@ class IdentityControllerTest {
             post(URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
-                .header("X-Tenant-Id", TENANT_ID)
+                .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             validationErrors(
@@ -270,8 +274,8 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .header("X-Tenant-Id", TENANT_ID)
-                .header("X-API-Version", "3.0.0"))
+                .header(TENANT_ID_HEADER, TENANT_ID)
+                .header(API_VERSION_HEADER, "3.0.0"))
         .andExpectAll(
             validationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -293,8 +297,8 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .header("X-Tenant-Id", TENANT_ID)
-                .header("X-API-Version", "2.0.0"))
+                .header(TENANT_ID_HEADER, TENANT_ID)
+                .header(API_VERSION_HEADER, "2.0.0"))
         .andExpectAll(
             validationErrors(
                 HttpStatus.BAD_REQUEST,
