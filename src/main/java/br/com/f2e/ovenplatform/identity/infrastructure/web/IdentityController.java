@@ -1,5 +1,7 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
+
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserResponse;
@@ -28,7 +30,7 @@ public class IdentityController {
 
   @PostMapping(version = "1.0")
   public ResponseEntity<UserResponse> createUser(
-      @RequestHeader("X-Tenant-Id") UUID tenantId,
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId,
       @Valid @RequestBody UserRequest userRequest,
       HttpServletRequest request) {
     var userResponse =
@@ -44,7 +46,7 @@ public class IdentityController {
 
   @GetMapping(value = "/{id}", version = "1.0")
   public ResponseEntity<UserResponse> findByIdAndTenantId(
-      @RequestHeader("X-Tenant-Id") UUID tenantId, @PathVariable UUID id) {
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
     return ResponseEntity.ok(
         UserResponse.fromEntity(identityService.findByIdAndTenantId(id, tenantId)));
   }
