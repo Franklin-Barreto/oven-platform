@@ -77,8 +77,8 @@ public class GlobalExceptionHandler {
       MissingRequestHeaderException exception, HttpServletRequest request) {
     return error(
         HttpStatus.BAD_REQUEST,
-        resolveTraceIdForErrorResponse(traceContext),
         ApiErrorCodes.MISSING_REQUEST_HEADER,
+        resolveTraceIdForErrorResponse(traceContext),
         exception.getMessage(),
         request);
   }
