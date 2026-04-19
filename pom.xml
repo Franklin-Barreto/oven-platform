@@ -18,12 +18,16 @@
         <spring-modulith.version>2.0.3</spring-modulith.version>
         <spotless.version>3.4.0</spotless.version>
         <jacoco.version>0.8.13</jacoco.version>
+        <jjwt.version>0.13.0</jjwt.version>
 
         <sonar.projectKey>Franklin-Barreto_oven-platform</sonar.projectKey>
         <sonar.organization>franklin-barreto</sonar.organization>
         <sonar.host.url>https://sonarcloud.io</sonar.host.url>
-        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
-        <sonar.coverage.exclusions>**/*OvenPlatformApplication.java,**/*Config.java,**/*Properties.java,**/*Request.java,**/*Response.java,**/ApiErrorResponse.java,**/ApiErrorItem.java</sonar.coverage.exclusions>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
+        </sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.exclusions>
+            **/*OvenPlatformApplication.java,**/*Config.java,**/*Properties.java,**/*Request.java,**/*Response.java,**/ApiErrorResponse.java,**/ApiErrorItem.java
+        </sonar.coverage.exclusions>
     </properties>
     <dependencies>
         <dependency>
@@ -112,8 +116,30 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId> <!-- or jjwt-gson if Gson is preferred -->
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+        <dependency>
             <groupId>org.springframework.security</groupId>
-            <artifactId>spring-security-crypto</artifactId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
         </dependency>
     </dependencies>
     <dependencyManagement>
