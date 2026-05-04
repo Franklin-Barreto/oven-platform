@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.identity.application;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
@@ -21,7 +22,15 @@ public class AuthService {
     var user = UsernamePasswordAuthenticationToken.unauthenticated(email, password);
     var authenticated = authenticationManager.authenticate(user);
     SecurityContextHolder.getContext().setAuthentication(authenticated);
-    var loggedUser = (User) authenticated.getPrincipal();
+    var loggedUser = getLoggedUser(authenticated);
     return jwtService.generateToken(loggedUser.getId(), loggedUser.getRole().name());
+  }
+
+  private static User getLoggedUser(Authentication authenticated) {
+    if (authenticated.getPrincipal() instanceof User user) {
+      return user;
+    }
+
+    throw new IllegalStateException("Authenticated principal is not a User");
   }
 }
