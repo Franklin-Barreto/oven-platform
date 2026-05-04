@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security;
 
+import br.com.f2e.ovenplatform.identity.application.AccessTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
@@ -13,7 +14,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
-public class JwtService {
+public class JwtService implements AccessTokenService {
 
   private final SecretKey key;
   private final long expirationMinutes;
@@ -25,6 +26,7 @@ public class JwtService {
     this.expirationMinutes = expirationMinutes;
   }
 
+  @Override
   public String generateToken(UUID subject, String roleName) {
 
     Instant instant = Instant.now();
