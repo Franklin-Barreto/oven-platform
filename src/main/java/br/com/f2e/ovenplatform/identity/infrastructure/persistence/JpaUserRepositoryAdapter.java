@@ -24,4 +24,9 @@ public class JpaUserRepositoryAdapter implements UserRepository {
   public Optional<User> findByIdAndTenantId(UUID id, UUID tenantId) {
     return userRepository.findByIdAndTenantId(id, tenantId);
   }
+
+  @Override
+  public Optional<User> findByEmail(String email) {
+    return userRepository.findByEmail(email);
+  }
 }

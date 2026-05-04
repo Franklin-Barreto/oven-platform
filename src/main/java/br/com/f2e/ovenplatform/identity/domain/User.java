@@ -11,7 +11,14 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import jakarta.validation.constraints.NotNull;
+import java.util.Collection;
+import java.util.List;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 
 @Table(
     name = "users",
@@ -21,7 +28,7 @@ import java.util.UUID;
           columnNames = {"tenant_id", "email"})
     })
 @Entity
-public class User extends BaseEntity {
+public class User extends BaseEntity implements UserDetails {
 
   @Column(nullable = false)
   private UUID tenantId;
@@ -32,6 +39,7 @@ public class User extends BaseEntity {
   @Column(nullable = false)
   private String passwordHash;
 
+  @NotNull
   @Column(nullable = false)
   @Enumerated(EnumType.STRING)
   private UserRole role;
@@ -64,15 +72,26 @@ public class User extends BaseEntity {
     return tenantId;
   }
 
-  public String getPasswordHash() {
-    return passwordHash;
-  }
-
   public UserRole getRole() {
     return role;
   }
 
   public UserStatus getStatus() {
     return status;
+  }
+
+  @Override
+  public @NonNull Collection<? extends GrantedAuthority> getAuthorities() {
+    return List.of(new SimpleGrantedAuthority(role.name()));
+  }
+
+  @Override
+  public String getPassword() {
+    return passwordHash;
+  }
+
+  @Override
+  public @NonNull String getUsername() {
+    return getEmail();
   }
 }
