@@ -12,16 +12,17 @@ import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 @Service
 public class IdentityService implements UserDetailsService {
   private final UserRepository userRepository;
-  private final PasswordHasher passwordHasher;
+  private final PasswordEncoder passwordEncoder;
 
-  public IdentityService(UserRepository userRepository, PasswordHasher passwordHasher) {
+  public IdentityService(UserRepository userRepository, PasswordEncoder passwordEncoder) {
     this.userRepository = userRepository;
-    this.passwordHasher = passwordHasher;
+    this.passwordEncoder = passwordEncoder;
   }
 
   public User create(UUID tenantId, String email, String rawPassword, UserRole role) {
@@ -29,7 +30,7 @@ public class IdentityService implements UserDetailsService {
     requireNotBlank(rawPassword, "rawPassword");
     requireNotNull(role, "role");
 
-    var passwordHash = passwordHasher.hash(rawPassword);
+    var passwordHash = passwordEncoder.encode(rawPassword);
     return userRepository.save(new User(tenantId, normalizeEmail(email), passwordHash, role));
   }
 
