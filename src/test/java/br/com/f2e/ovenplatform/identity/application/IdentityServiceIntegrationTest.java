@@ -11,8 +11,7 @@ import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import br.com.f2e.ovenplatform.identity.domain.UserStatus;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.JpaUserRepositoryAdapter;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataUserRepository;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.BCryptPasswordHasher;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityConfig;
+import br.com.f2e.ovenplatform.identity.infrastructure.security.config.PasswordEncoderConfig;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
@@ -28,12 +27,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({
-  IdentityService.class,
-  BCryptPasswordHasher.class,
-  JpaUserRepositoryAdapter.class,
-  SecurityConfig.class
-})
+@Import({IdentityService.class, JpaUserRepositoryAdapter.class, PasswordEncoderConfig.class})
 @EnableJpaAuditing
 class IdentityServiceIntegrationTest {
 
@@ -59,9 +53,9 @@ class IdentityServiceIntegrationTest {
 
     var user = createUserAndFlush(tenant.getId(), EMAIL, UserRole.ADMIN);
 
-    assertNotEquals(RAW_PASSWORD, user.getPasswordHash());
-    assertFalse(user.getPasswordHash().isBlank());
-    assertTrue(user.getPasswordHash().startsWith("$2"));
+    assertNotEquals(RAW_PASSWORD, user.getPassword());
+    assertFalse(user.getPassword().isBlank());
+    assertTrue(user.getPassword().startsWith("$2"));
   }
 
   @Test
