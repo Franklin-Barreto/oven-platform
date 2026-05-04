@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
@@ -38,6 +39,7 @@ class TenantControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private TenantService tenantService;
+  @MockitoBean private JwtService jwtService;
 
   @Test
   void shouldCreateTenantAndReturn201WithLocationAndBody() throws Exception {

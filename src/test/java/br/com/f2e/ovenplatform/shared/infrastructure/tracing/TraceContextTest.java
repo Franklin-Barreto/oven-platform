@@ -1,13 +1,12 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.tracing;
 
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-
-import java.util.concurrent.Executors;
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+
+import java.util.concurrent.Executors;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 
 class TraceContextTest {
 
@@ -28,7 +27,8 @@ class TraceContextTest {
   @Test
   void shouldFailWhenTraceIdIsNotAvailable() {
     var exception = assertThrows(MissingTraceIdException.class, () -> traceContext.getTraceId());
-    assertEquals("Trace ID is not available in the current request context.",exception.getMessage());
+    assertEquals(
+        "Trace ID is not available in the current request context.", exception.getMessage());
   }
 
   @Test
