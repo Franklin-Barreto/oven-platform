@@ -9,4 +9,6 @@ public interface UserRepository {
   User save(User user);
 
   Optional<User> findByIdAndTenantId(UUID tenantId, UUID id);
+
+  Optional<User> findByEmail(String email);
 }

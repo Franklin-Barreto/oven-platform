@@ -8,10 +8,14 @@ import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import java.util.NoSuchElementException;
 import java.util.UUID;
+import org.jspecify.annotations.NonNull;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
 @Service
-public class IdentityService {
+public class IdentityService implements UserDetailsService {
   private final UserRepository userRepository;
   private final PasswordHasher passwordHasher;
 
@@ -33,5 +37,13 @@ public class IdentityService {
     return userRepository
         .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new NoSuchElementException("User"));
+  }
+
+  @Override
+  public @NonNull UserDetails loadUserByUsername(@NonNull String username)
+      throws UsernameNotFoundException {
+    return userRepository
+        .findByEmail(username)
+        .orElseThrow(() -> new UsernameNotFoundException("User not found"));
   }
 }
