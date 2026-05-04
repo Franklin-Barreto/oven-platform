@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.identity.infrastructure.web.dto;
+package br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user;
 
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;

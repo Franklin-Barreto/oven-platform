@@ -4,7 +4,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENAN
 
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
-import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserResponse;
+import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.UserResponse;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import java.util.UUID;

@@ -16,6 +16,7 @@ import br.com.f2e.ovenplatform.identity.application.IdentityService;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import br.com.f2e.ovenplatform.identity.domain.UserStatus;
+import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
@@ -51,6 +52,7 @@ class IdentityControllerTest {
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private IdentityService identityService;
+  @MockitoBean private JwtService jwtService;
 
   @Test
   void shouldCreateUserSuccessfully() throws Exception {
@@ -185,17 +187,18 @@ class IdentityControllerTest {
   void shouldReturn400WhenGetTenantIdHeaderIsMissing() throws Exception {
     var getUrl = URL + "/" + USER_ID;
 
-    ResultActions result = mockMvc
+    ResultActions result =
+        mockMvc
             .perform(get(getUrl).accept(MediaType.APPLICATION_JSON))
             .andExpectAll(
-                    validationErrors(
-                            HttpStatus.BAD_REQUEST,
-                            getUrl,
-                            HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                            ApiErrorCodes.MISSING_REQUEST_HEADER,
-                            "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
-                            null,
-                            HttpStatus.BAD_REQUEST.value()));
+                validationErrors(
+                    HttpStatus.BAD_REQUEST,
+                    getUrl,
+                    HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                    ApiErrorCodes.MISSING_REQUEST_HEADER,
+                    "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
+                    null,
+                    HttpStatus.BAD_REQUEST.value()));
     assertNotNull(result);
     verifyNoInteractions(identityService);
   }

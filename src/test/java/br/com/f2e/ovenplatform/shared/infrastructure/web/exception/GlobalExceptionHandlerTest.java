@@ -57,8 +57,7 @@ class GlobalExceptionHandlerTest {
   @Test
   void shouldBuildErrorResponseWithExpectedFields() {
 
-    when(messageSource.getMessage(any(FieldError.class), any()))
-            .thenReturn("invalid field");
+    when(messageSource.getMessage(any(FieldError.class), any())).thenReturn("invalid field");
 
     var target = new Object();
     var objectName = "request";
