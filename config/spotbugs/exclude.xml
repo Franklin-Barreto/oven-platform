@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<FindBugsFilter>
+    <Match>
+        <Bug pattern="CT_CONSTRUCTOR_THROW"/>
+        <Class name="br.com.f2e.ovenplatform.tenant.domain.Tenant"/>
+    </Match>
+
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityConfig"/>
+    </Match>
+
+    <Match>
+        <Bug pattern="EI_EXPOSE_REP2"/>
+        <Class name="br.com.f2e.ovenplatform.shared.infrastructure.web.exception.GlobalExceptionHandler"/>
+    </Match>
+</FindBugsFilter>
