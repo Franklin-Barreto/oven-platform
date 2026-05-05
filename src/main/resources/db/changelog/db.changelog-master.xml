@@ -8,5 +8,6 @@
 
     <include file="db/changelog/changes/db.changelog-001-create-tenants.xml"/>
     <include file="db/changelog/changes/db.changelog-002create-users.xml"/>
+    <include file="db/changelog/changes/db.changelog-003create-products.xml"/>
 
 </databaseChangeLog>
