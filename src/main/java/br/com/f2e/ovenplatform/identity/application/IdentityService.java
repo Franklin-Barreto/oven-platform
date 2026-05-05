@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.identity.application;
 
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
+import static br.com.f2e.ovenplatform.identity.domain.validation.EmailNormalizer.normalize;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
@@ -31,7 +31,7 @@ public class IdentityService implements UserDetailsService {
     requireNotNull(role, "role");
 
     var passwordHash = passwordEncoder.encode(rawPassword);
-    return userRepository.save(new User(tenantId, normalizeEmail(email), passwordHash, role));
+    return userRepository.save(new User(tenantId, normalize(email), passwordHash, role));
   }
 
   public User findByIdAndTenantId(UUID id, UUID tenantId) {

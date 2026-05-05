@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.identity.domain;
 
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.normalizeEmail;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotBlank;
-import static br.com.f2e.ovenplatform.identity.domain.validation.Preconditions.requireNotNull;
+import static br.com.f2e.ovenplatform.identity.domain.validation.EmailNormalizer.normalize;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
@@ -53,14 +53,10 @@ public class User extends BaseEntity implements UserDetails {
 
   public User(UUID tenantId, String email, String passwordHash, UserRole role) {
 
-    requireNotNull(tenantId, "tenantId");
-    requireNotBlank(passwordHash, "passwordHash");
-    requireNotNull(role, "role");
-
-    this.tenantId = tenantId;
-    this.email = normalizeEmail(email);
-    this.passwordHash = passwordHash;
-    this.role = role;
+    this.tenantId = requireNotNull(tenantId, "tenantId");
+    this.email = normalize(email);
+    this.passwordHash = requireNotBlank(passwordHash, "passwordHash");
+    this.role = requireNotNull(role, "role");
     this.status = UserStatus.ACTIVE;
   }
 
