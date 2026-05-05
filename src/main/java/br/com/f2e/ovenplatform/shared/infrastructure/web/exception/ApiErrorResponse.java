@@ -12,6 +12,10 @@ public record ApiErrorResponse(
     List<ApiErrorItem> errors,
     String path) {
 
+  public ApiErrorResponse {
+    errors = List.copyOf(errors);
+  }
+
   public static ApiErrorResponse of(
       HttpStatus status, String traceId, List<ApiErrorItem> errors, String path) {
     return new ApiErrorResponse(
