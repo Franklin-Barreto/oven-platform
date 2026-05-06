@@ -34,4 +34,14 @@ public final class Preconditions {
 
     return field;
   }
+
+  public static String requireMinimumSize(String field, String fieldName, int minimumSize) {
+    var trimmed = requireNotBlank(field, fieldName);
+
+    if (trimmed.length() < minimumSize) {
+      throw new IllegalArgumentException(
+          "%s must have at least %d characters".formatted(fieldName, minimumSize));
+    }
+    return trimmed;
+  }
 }
