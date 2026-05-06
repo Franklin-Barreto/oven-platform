@@ -5,8 +5,10 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENAN
 import br.com.f2e.ovenplatform.catalog.application.CatalogService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -37,5 +39,14 @@ public class ProductController {
             .buildAndExpand(productResponse.id())
             .toUri();
     return ResponseEntity.created(uri).body(productResponse);
+  }
+
+  @GetMapping(version = "1.0")
+  public ResponseEntity<List<ProductResponse>> list(
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId) {
+    var products =
+        service.listActiveProducts(tenantId).stream().map(ProductResponse::from).toList();
+
+    return ResponseEntity.ok(products);
   }
 }
