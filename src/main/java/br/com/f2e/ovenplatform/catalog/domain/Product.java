@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.domain;
 
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireMinimumSize;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
@@ -33,7 +33,7 @@ public class Product extends BaseEntity {
   public Product(UUID tenantId, String name, BigDecimal price) {
 
     this.tenantId = requireNotNull(tenantId, "tenantId");
-    this.name = requireNotBlank(name, "name");
+    this.name = requireMinimumSize(name, "name", 5);
     this.price = requirePositive(price, "price");
     this.active = true;
   }
@@ -47,7 +47,7 @@ public class Product extends BaseEntity {
   }
 
   public void rename(String name) {
-    this.name = requireNotBlank(name, "name");
+    this.name = requireMinimumSize(name, "name", 5);
   }
 
   public BigDecimal getPrice() {
