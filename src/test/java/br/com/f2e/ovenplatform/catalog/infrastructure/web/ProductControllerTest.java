@@ -5,6 +5,7 @@ import static org.hamcrest.Matchers.containsString;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +18,7 @@ import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -116,6 +118,76 @@ class ProductControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(createProductRequest()))
+                .header(TENANT_ID_HEADER, "invalid-uuid"))
+        .andExpectAll(
+            validationErrors(
+                HttpStatus.BAD_REQUEST,
+                BASE_URL,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.INVALID_ARGUMENT,
+                "Invalid UUID string: invalid-uuid",
+                null,
+                HttpStatus.BAD_REQUEST.value()));
+
+    verifyNoInteractions(catalogService);
+  }
+
+  @Test
+  void shouldListActiveProducts() throws Exception {
+    var product = new Product(TENANT_ID, VALID_PRODUCT, VALID_PRICE);
+
+    when(catalogService.listActiveProducts(TENANT_ID)).thenReturn(List.of(product));
+
+    mockMvc
+        .perform(
+            get(BASE_URL).header(TENANT_ID_HEADER, TENANT_ID).accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$[0].tenantId").value(TENANT_ID.toString()))
+        .andExpect(jsonPath("$[0].name").value(VALID_PRODUCT))
+        .andExpect(jsonPath("$[0].price").value(10.5))
+        .andExpect(jsonPath("$[0].active").value(true));
+
+    verify(catalogService).listActiveProducts(TENANT_ID);
+  }
+
+  @Test
+  void shouldReturnEmptyListWhenNoActiveProductsExist() throws Exception {
+    when(catalogService.listActiveProducts(TENANT_ID)).thenReturn(List.of());
+
+    mockMvc
+        .perform(
+            get(BASE_URL).header(TENANT_ID_HEADER, TENANT_ID).accept(MediaType.APPLICATION_JSON))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isArray())
+        .andExpect(jsonPath("$").isEmpty());
+
+    verify(catalogService).listActiveProducts(TENANT_ID);
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenListTenantHeaderIsMissing() throws Exception {
+    mockMvc
+        .perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON))
+        .andExpectAll(
+            validationErrors(
+                HttpStatus.BAD_REQUEST,
+                BASE_URL,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.MISSING_REQUEST_HEADER,
+                "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
+                null,
+                HttpStatus.BAD_REQUEST.value()));
+
+    verifyNoInteractions(catalogService);
+  }
+
+  @Test
+  void shouldReturnBadRequestWhenListTenantHeaderIsInvalid() throws Exception {
+    mockMvc
+        .perform(
+            get(BASE_URL)
+                .accept(MediaType.APPLICATION_JSON)
                 .header(TENANT_ID_HEADER, "invalid-uuid"))
         .andExpectAll(
             validationErrors(
