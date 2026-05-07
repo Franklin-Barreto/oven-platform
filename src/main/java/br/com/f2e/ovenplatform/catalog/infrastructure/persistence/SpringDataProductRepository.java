@@ -6,7 +6,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-interface SpringDataProductRepository extends JpaRepository<Product, UUID> {
+public interface SpringDataProductRepository extends JpaRepository<Product, UUID> {
   Optional<Product> findByIdAndTenantId(UUID id, UUID tenantId);
 
   List<Product> findByTenantIdAndActiveTrue(UUID tenantId);
