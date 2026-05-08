@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.catalog.application.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
@@ -29,5 +30,10 @@ public class JpaProductRepositoryAdapter implements ProductRepository {
   @Override
   public List<Product> findActiveByTenantId(UUID tenantId) {
     return repository.findByTenantIdAndActiveTrue(tenantId);
+  }
+
+  @Override
+  public List<Product> findActiveByTenantIdAndIdIn(UUID tenantId, Set<UUID> productIds) {
+    return repository.findByTenantIdAndIdInAndActiveTrue(tenantId, productIds);
   }
 }
