@@ -1,24 +1,27 @@
 package br.com.f2e.ovenplatform.orders.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.catalog.domain.Product;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.SpringDataProductRepository;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
-import br.com.f2e.ovenplatform.tenant.domain.Plan;
-import br.com.f2e.ovenplatform.tenant.domain.Tenant;
-import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @DataJpaTest
 @ActiveProfiles("test")
@@ -26,69 +29,78 @@ import org.springframework.test.context.ActiveProfiles;
 @EnableJpaAuditing
 class OrderServiceIntegrationTest {
 
-  private static final BigDecimal UNIT_PRICE = new BigDecimal("35.40");
+  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
+
+  private static final UUID ANOTHER_TENANT_ID =
+      UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
+
+  private record OrderItemFixture(
+      CreateOrderItemCommand command, OrderableProduct orderableProduct) {}
 
   @Autowired private OrderService orderService;
-  @Autowired private SpringDataTenantRepository tenantRepository;
-  @Autowired private SpringDataProductRepository productRepository;
   @Autowired private EntityManager entityManager;
 
+  @SuppressWarnings("unused")
+  @MockitoBean
+  private OrderableProductProvider orderableProductProvider;
+
   @Test
-  void shouldCreateOrder() {
+  void shouldCreateOrderWithItemsUsingOrderableProductPrices() {
+    var fixtures = createOrderItemFixtures();
+    var command = createOrderCommand(fixtures);
+    var orderableProducts = createOrderableProducts(fixtures);
+    var productIds = extractProductIds(command);
 
-    var tenant = createTenant();
-    var order = orderService.createOrder(tenant.getId());
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
+        .thenReturn(orderableProducts);
 
-    assertThat(order.getTenantId()).isEqualTo(tenant.getId());
+    var order = orderService.createOrder(TENANT_ID, command);
+
+    assertThat(order.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(order.getId()).isNotNull();
     assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
-    assertThat(order.getItems()).isEmpty();
+    assertThat(order.getItems()).hasSize(fixtures.size());
+
+    assertOrderItemsMatchFixtures(order, fixtures);
+
+    verify(orderableProductProvider).findOrderableProducts(TENANT_ID, productIds);
   }
 
   @Test
   void shouldSaveAndFindOrderWithItems() {
-    var tenant = createTenant();
-    var product = createProduct(tenant);
-
-    var order = new Order(tenant.getId());
-    var quantity = 2;
-
-    order.addItem(product.getId(), quantity, UNIT_PRICE);
+    var order = createOrderWithItems(TENANT_ID, 1);
 
     var savedOrder = orderService.save(order);
 
     entityManager.flush();
     entityManager.clear();
 
-    var foundOrder = orderService.findOrderWithItems(tenant.getId(), savedOrder.getId());
+    var foundOrder = orderService.findOrderWithItems(TENANT_ID, savedOrder.getId());
 
     assertThat(foundOrder).isPresent();
 
     var persistedOrder = foundOrder.get();
 
-    var expectedPrice = "70.80";
-
     assertThat(persistedOrder.getStatus()).isEqualTo(OrderStatus.CREATED);
-    assertThat(persistedOrder.getTotalAmount()).isEqualByComparingTo(expectedPrice);
+    assertThat(persistedOrder.getTotalAmount()).isEqualByComparingTo("1.00");
     assertThat(persistedOrder.getItems()).hasSize(1);
 
     var item = persistedOrder.getItems().getFirst();
 
-    assertThat(item.getProductId()).isEqualTo(product.getId());
-    assertThat(item.getQuantity()).isEqualTo(quantity);
-    assertThat(item.getUnitPrice()).isEqualByComparingTo(UNIT_PRICE);
-    assertThat(item.getSubtotal()).isEqualByComparingTo(expectedPrice);
+    assertThat(item.getProductId()).isEqualTo(order.getItems().getFirst().getProductId());
+    assertThat(item.getQuantity()).isEqualTo(1);
+    assertThat(item.getUnitPrice()).isEqualByComparingTo("1.00");
+    assertThat(item.getSubtotal()).isEqualByComparingTo("1.00");
   }
 
   @Test
   void shouldFindOrderByIdAndTenantId() {
-    var tenant = createTenant();
-    var savedOrder = orderService.createOrder(tenant.getId());
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
 
     entityManager.flush();
     entityManager.clear();
 
-    var foundOrder = orderService.findOrder(tenant.getId(), savedOrder.getId());
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
 
     assertThat(foundOrder)
         .isPresent()
@@ -96,70 +108,124 @@ class OrderServiceIntegrationTest {
         .satisfies(
             order -> {
               assertThat(order.getId()).isEqualTo(savedOrder.getId());
-              assertThat(order.getTenantId()).isEqualTo(tenant.getId());
+              assertThat(order.getTenantId()).isEqualTo(TENANT_ID);
               assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
-              assertThat(order.getTotalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
+              assertThat(order.getTotalAmount()).isEqualByComparingTo("1.00");
             });
   }
 
   @Test
   void shouldReturnEmptyWhenOrderDoesNotExist() {
-
-    var tenant = createTenant();
     var unknownOrderId = UUID.randomUUID();
 
-    var order = orderService.findOrder(tenant.getId(), unknownOrderId);
+    var order = orderService.findOrder(TENANT_ID, unknownOrderId);
 
     assertThat(order).isEmpty();
   }
 
   @Test
   void shouldReturnEmptyWhenOrderBelongsToAnotherTenant() {
-    var tenant = createTenant();
-    var anotherTenant = createTenant("Soprano Pizzeria");
-    var order = orderService.createOrder(tenant.getId());
+    var order = orderService.save(createOrderWithItems(TENANT_ID, 1));
 
     entityManager.flush();
     entityManager.clear();
 
-    assertThat(orderService.findOrder(anotherTenant.getId(), order.getId())).isEmpty();
+    assertThat(orderService.findOrder(ANOTHER_TENANT_ID, order.getId())).isEmpty();
   }
 
   @Test
   void shouldListOrdersByTenant() {
-
-    UUID tenantId = createTenant().getId();
-    orderService.createOrder(tenantId);
+    orderService.save(createOrderWithItems(TENANT_ID, 1));
+    orderService.save(createOrderWithItems(TENANT_ID, 2));
+    orderService.save(createOrderWithItems(ANOTHER_TENANT_ID, 1));
 
     entityManager.flush();
     entityManager.clear();
 
-    var orders = orderService.listOrders(tenantId);
+    var orders = orderService.listOrders(TENANT_ID);
 
-    assertThat(orders).hasSize(1).extracting(Order::getTenantId).containsOnly(tenantId);
+    assertThat(orders).hasSize(2).extracting(Order::getTenantId).containsOnly(TENANT_ID);
   }
 
   @Test
   void shouldNotListOrdersFromAnotherTenant() {
-
-    UUID tenantId = createTenant().getId();
-    orderService.createOrder(tenantId);
+    orderService.save(createOrderWithItems(TENANT_ID, 1));
 
     entityManager.flush();
     entityManager.clear();
 
-    assertThat(orderService.listOrders(createTenant("La mama").getId())).isEmpty();
+    assertThat(orderService.listOrders(ANOTHER_TENANT_ID)).isEmpty();
   }
 
-  private Tenant createTenant() {
-    return createTenant("Don Corleone Pizzeria");
+  @Test
+  void shouldThrowExceptionWhenCatalogReturnNullProduct() {
+    var productId = UUID.randomUUID();
+    CreateOrderCommand orderCommand =
+        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 1)));
+    assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, orderCommand))
+        .isInstanceOf(ProductNotAvailableForOrderingException.class)
+        .hasMessage("Product is not available for ordering: %s".formatted(productId));
   }
 
-  private Tenant createTenant(String name) {
-    return tenantRepository.save(new Tenant(name, Plan.MVP));
+  private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
+    var order = new Order(tenantId);
+    order.addItem(UUID.randomUUID(), itemQuantity, BigDecimal.ONE);
+    return order;
   }
 
-  private Product createProduct(Tenant tenant) {
-    return productRepository.save(new Product(tenant.getId(), "Pizza portuguesa", UNIT_PRICE));
+  private List<OrderItemFixture> createOrderItemFixtures() {
+    var itemCount = 3;
+    var fixtures = new ArrayList<OrderItemFixture>(itemCount);
+
+    for (int i = 1; i <= itemCount; i++) {
+      var productId = UUID.randomUUID();
+      var unitPrice = BigDecimal.valueOf(i);
+
+      fixtures.add(
+          new OrderItemFixture(
+              new CreateOrderItemCommand(productId, i),
+              new OrderableProduct(productId, unitPrice)));
+    }
+
+    return fixtures;
+  }
+
+  private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
+    return new CreateOrderCommand(fixtures.stream().map(OrderItemFixture::command).toList());
+  }
+
+  private List<OrderableProduct> createOrderableProducts(List<OrderItemFixture> fixtures) {
+    return fixtures.stream().map(OrderItemFixture::orderableProduct).toList();
+  }
+
+  private Set<UUID> extractProductIds(CreateOrderCommand command) {
+    return command.items().stream()
+        .map(CreateOrderItemCommand::productId)
+        .collect(Collectors.toSet());
+  }
+
+  private void assertOrderItemsMatchFixtures(Order order, List<OrderItemFixture> fixtures) {
+    var expectedItemsByProductId =
+        fixtures.stream()
+            .collect(
+                Collectors.toMap(fixture -> fixture.command().productId(), fixture -> fixture));
+
+    order
+        .getItems()
+        .forEach(
+            item -> {
+              var fixture = expectedItemsByProductId.get(item.getProductId());
+
+              assertThat(fixture).isNotNull();
+              assertThat(item.getQuantity()).isEqualTo(fixture.command().quantity());
+              assertThat(item.getUnitPrice())
+                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
+              assertThat(item.getSubtotal())
+                  .isEqualByComparingTo(
+                      fixture
+                          .orderableProduct()
+                          .unitPrice()
+                          .multiply(BigDecimal.valueOf(fixture.command().quantity())));
+            });
   }
 }
