@@ -17,6 +17,7 @@
         <java.version>25</java.version>
         <spring-modulith.version>2.0.3</spring-modulith.version>
         <spotless.version>3.4.0</spotless.version>
+        <spotbug.version>4.9.8</spotbug.version>
         <jacoco.version>0.8.13</jacoco.version>
         <jjwt.version>0.13.0</jjwt.version>
 
@@ -141,6 +142,12 @@
             <artifactId>spring-security-test</artifactId>
             <scope>test</scope>
         </dependency>
+        <dependency>
+            <groupId>com.github.spotbugs</groupId>
+            <artifactId>spotbugs-annotations</artifactId>
+            <version>${spotbug.version}</version>
+            <scope>provided</scope>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
@@ -251,8 +258,9 @@
                     <dependency>
                         <groupId>com.github.spotbugs</groupId>
                         <artifactId>spotbugs</artifactId>
-                        <version>4.9.8</version>
+                        <version>${spotbug.version}</version>
                     </dependency>
+
                 </dependencies>
                 <executions>
                     <execution>
