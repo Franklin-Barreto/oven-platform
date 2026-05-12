@@ -1,13 +1,13 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
-import static org.hamcrest.Matchers.containsString;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -32,7 +32,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultMatcher;
 
 @WebMvcTest(controllers = {ProductController.class})
 @Import(value = {TraceContext.class})
@@ -50,19 +49,22 @@ class ProductControllerTest {
   @Test
   void shouldCreateProduct() throws Exception {
 
-    when(catalogService.createProduct(TENANT_ID, VALID_PRODUCT, VALID_PRICE))
-        .thenReturn(new Product(TENANT_ID, VALID_PRODUCT, VALID_PRICE));
+    var product = new Product(TENANT_ID, VALID_PRODUCT, VALID_PRICE);
+    when(catalogService.createProduct(TENANT_ID, VALID_PRODUCT, VALID_PRICE)).thenReturn(product);
 
-    mockMvc
-        .perform(
-            post(BASE_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .header(TENANT_ID_HEADER, TENANT_ID)
-                .content(JsonUtils.toJson(createProductRequest()))
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isCreated())
-        .andExpect(header().string("Location", containsString(BASE_URL)))
-        .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()));
+    var result =
+        mockMvc
+            .perform(
+                post(BASE_URL)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .header(TENANT_ID_HEADER, TENANT_ID)
+                    .content(JsonUtils.toJson(createProductRequest()))
+                    .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
+            .andReturn();
+
+    assertLocationPath(result, BASE_URL + "/" + product.getId());
 
     verify(catalogService).createProduct(TENANT_ID, VALID_PRODUCT, VALID_PRICE);
   }
@@ -79,7 +81,7 @@ class ProductControllerTest {
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -99,7 +101,7 @@ class ProductControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(createProductRequest())))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -120,7 +122,7 @@ class ProductControllerTest {
                 .content(JsonUtils.toJson(createProductRequest()))
                 .header(TENANT_ID_HEADER, "invalid-uuid"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -170,7 +172,7 @@ class ProductControllerTest {
     mockMvc
         .perform(get(BASE_URL).accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -190,7 +192,7 @@ class ProductControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .header(TENANT_ID_HEADER, "invalid-uuid"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -218,26 +220,6 @@ class ProductControllerTest {
             "price",
             "must be greater than 0"),
         Arguments.of(new CreateProductRequest(VALID_PRODUCT, null), "price", "must not be null"));
-  }
-
-  private ResultMatcher[] validationErrors(
-      HttpStatus httpStatus,
-      String path,
-      String error,
-      String code,
-      String message,
-      String field,
-      int statusCode) {
-    return new ResultMatcher[] {
-      status().is(httpStatus.value()),
-      jsonPath("$.path").value(path),
-      jsonPath("$.error").value(error),
-      jsonPath("$.traceId").isNotEmpty(),
-      jsonPath("$.errors[0].code").value(code),
-      jsonPath("$.errors[0].message").value(message),
-      jsonPath("$.errors[0].field").value(field),
-      jsonPath("$.status").value(statusCode)
-    };
   }
 
   private static CreateProductRequest createProductRequest() {
