@@ -2,13 +2,13 @@ package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
-import static org.hamcrest.Matchers.containsString;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -38,7 +38,6 @@ import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultActions;
-import org.springframework.test.web.servlet.ResultMatcher;
 
 @WebMvcTest(IdentityController.class)
 @Import(value = {TraceContext.class})
@@ -48,7 +47,7 @@ class IdentityControllerTest {
   private static final String PASSWORD = "1234";
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID USER_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
-  private static final String URL = "/users";
+  private static final String BASE_URL = "/users";
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private IdentityService identityService;
@@ -56,23 +55,28 @@ class IdentityControllerTest {
 
   @Test
   void shouldCreateUserSuccessfully() throws Exception {
-    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER))
-        .thenReturn(getUserEntity());
+
+    var user = createUser();
+
+    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER)).thenReturn(user);
 
     var userRequest = createUserRequest();
 
-    mockMvc
-        .perform(
-            post(URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(JsonUtils.toJson(userRequest))
-                .header(TENANT_ID_HEADER, TENANT_ID)
-                .accept(MediaType.APPLICATION_JSON))
-        .andExpect(status().isCreated())
-        .andExpect(header().string("Location", containsString(URL)))
-        .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
-        .andExpect(jsonPath("$.email").value(EMAIL))
-        .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()));
+    var result =
+        mockMvc
+            .perform(
+                post(BASE_URL)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .content(JsonUtils.toJson(userRequest))
+                    .header(TENANT_ID_HEADER, TENANT_ID)
+                    .accept(MediaType.APPLICATION_JSON))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
+            .andExpect(jsonPath("$.email").value(EMAIL))
+            .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
+            .andReturn();
+
+    assertLocationPath(result, BASE_URL + "/" + user.getId());
   }
 
   @ParameterizedTest
@@ -81,15 +85,15 @@ class IdentityControllerTest {
       throws Exception {
     mockMvc
         .perform(
-            post(URL)
+            post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
-                URL,
+                BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ApiErrorCodes.VALIDATION_ERROR,
                 message,
@@ -105,14 +109,14 @@ class IdentityControllerTest {
 
     mockMvc
         .perform(
-            post(URL)
+            post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
                 .header(TENANT_ID_HEADER, "invalid-uuid"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
-                URL,
+                BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ApiErrorCodes.INVALID_ARGUMENT,
                 "Invalid UUID string: invalid-uuid",
@@ -128,13 +132,13 @@ class IdentityControllerTest {
 
     mockMvc
         .perform(
-            post(URL)
+            post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest)))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
-                URL,
+                BASE_URL,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
                 ApiErrorCodes.MISSING_REQUEST_HEADER,
                 "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
@@ -146,11 +150,11 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn200WhenUserExists() throws Exception {
-    when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID)).thenReturn(getUserEntity());
+    when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID)).thenReturn(createUser());
 
     mockMvc
         .perform(
-            get(URL + "/%s".formatted(USER_ID))
+            get(BASE_URL + "/%s".formatted(USER_ID))
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
@@ -161,7 +165,7 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn404WhenUserDoesNotExist() throws Exception {
-    var getUrl = URL + "/" + USER_ID;
+    var getUrl = BASE_URL + "/" + USER_ID;
 
     when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID))
         .thenThrow(new NoSuchElementException("User"));
@@ -173,7 +177,7 @@ class IdentityControllerTest {
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.NOT_FOUND,
                 getUrl,
                 HttpStatus.NOT_FOUND.getReasonPhrase(),
@@ -185,13 +189,13 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn400WhenGetTenantIdHeaderIsMissing() throws Exception {
-    var getUrl = URL + "/" + USER_ID;
+    var getUrl = BASE_URL + "/" + USER_ID;
 
     ResultActions result =
         mockMvc
             .perform(get(getUrl).accept(MediaType.APPLICATION_JSON))
             .andExpectAll(
-                validationErrors(
+                expectValidationErrors(
                     HttpStatus.BAD_REQUEST,
                     getUrl,
                     HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -205,7 +209,7 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn400WhenGetTenantIdHeaderIsInvalid() throws Exception {
-    var getUrl = URL + "/" + USER_ID;
+    var getUrl = BASE_URL + "/" + USER_ID;
 
     mockMvc
         .perform(
@@ -213,7 +217,7 @@ class IdentityControllerTest {
                 .accept(MediaType.APPLICATION_JSON)
                 .header(TENANT_ID_HEADER, "invalid tenant"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 getUrl,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -227,12 +231,12 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn400WhenUserIdIsInvalid() throws Exception {
-    var getUrl = URL + "/" + "invalidUserId";
+    var getUrl = BASE_URL + "/" + "invalidUserId";
 
     mockMvc
         .perform(get(getUrl).accept(MediaType.APPLICATION_JSON).header(TENANT_ID_HEADER, TENANT_ID))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 getUrl,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -258,15 +262,15 @@ class IdentityControllerTest {
 
     mockMvc
         .perform(
-            post(URL)
+            post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 expectedStatus,
-                URL,
+                BASE_URL,
                 expectedStatus.getReasonPhrase(),
                 expectedCode,
                 expectedMessage,
@@ -276,7 +280,7 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn400ForUnsupportedApiVersion() throws Exception {
-    var getUrl = URL + "/" + USER_ID;
+    var getUrl = BASE_URL + "/" + USER_ID;
 
     mockMvc
         .perform(
@@ -285,7 +289,7 @@ class IdentityControllerTest {
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .header(API_VERSION_HEADER, "3.0.0"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 getUrl,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -299,7 +303,7 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturnBadRequestWhenApiVersionIsSupportedButNotAcceptedByEndpoint() throws Exception {
-    var getUrl = URL + "/" + USER_ID;
+    var getUrl = BASE_URL + "/" + USER_ID;
 
     mockMvc
         .perform(
@@ -308,7 +312,7 @@ class IdentityControllerTest {
                 .header(TENANT_ID_HEADER, TENANT_ID)
                 .header(API_VERSION_HEADER, "2.0.0"))
         .andExpectAll(
-            validationErrors(
+            expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
                 getUrl,
                 HttpStatus.BAD_REQUEST.getReasonPhrase(),
@@ -318,26 +322,6 @@ class IdentityControllerTest {
                 HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
-  }
-
-  private ResultMatcher[] validationErrors(
-      HttpStatus httpStatus,
-      String path,
-      String error,
-      String code,
-      String message,
-      String field,
-      int statusCode) {
-    return new ResultMatcher[] {
-      status().is(httpStatus.value()),
-      jsonPath("$.path").value(path),
-      jsonPath("$.error").value(error),
-      jsonPath("$.traceId").isNotEmpty(),
-      jsonPath("$.errors[0].code").value(code),
-      jsonPath("$.errors[0].message").value(message),
-      jsonPath("$.errors[0].field").value(field),
-      jsonPath("$.status").value(statusCode)
-    };
   }
 
   private static Stream<Arguments> invalidRequestsCreate() {
@@ -376,7 +360,7 @@ class IdentityControllerTest {
     return new UserRequest(EMAIL, PASSWORD, UserRole.MEMBER);
   }
 
-  private static User getUserEntity() {
+  private static User createUser() {
     return new User(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER);
   }
 

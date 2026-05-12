@@ -1,11 +1,11 @@
 package br.com.f2e.ovenplatform.tenant.infrastructure.web;
 
-import static org.hamcrest.Matchers.containsString;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,7 +34,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import(value = {TraceContext.class})
 class TenantControllerTest {
 
-  private static final String URL = "/tenants";
+  private static final String BASE_URL = "/tenants";
   public static final String TENANT_NAME = "Pizarria bom de garfo";
 
   @Autowired private MockMvc mockMvc;
@@ -43,17 +43,23 @@ class TenantControllerTest {
 
   @Test
   void shouldCreateTenantAndReturn201WithLocationAndBody() throws Exception {
-    var content = JsonUtils.toJson(new CreateTenantRequest(TENANT_NAME, Plan.MVP));
-    when(tenantService.create(TENANT_NAME, Plan.MVP)).thenReturn(getTenant());
 
-    mockMvc
-        .perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(content))
-        .andExpect(status().isCreated())
-        .andExpect(header().string("Location", containsString(URL)))
-        .andExpect(jsonPath("$.status").value(Status.ACTIVE.name()))
-        .andExpect(jsonPath("$.name").value(TENANT_NAME))
-        .andExpect(jsonPath("$.plan").value(Plan.MVP.name()))
-        .andExpect(jsonPath("$.status").value(Status.ACTIVE.name()));
+    var content = JsonUtils.toJson(new CreateTenantRequest(TENANT_NAME, Plan.MVP));
+
+    var tenant = getTenant();
+    when(tenantService.create(TENANT_NAME, Plan.MVP)).thenReturn(tenant);
+
+    var result =
+        mockMvc
+            .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(content))
+            .andExpect(status().isCreated())
+            .andExpect(jsonPath("$.status").value(Status.ACTIVE.name()))
+            .andExpect(jsonPath("$.name").value(TENANT_NAME))
+            .andExpect(jsonPath("$.plan").value(Plan.MVP.name()))
+            .andExpect(jsonPath("$.status").value(Status.ACTIVE.name()))
+            .andReturn();
+
+    assertLocationPath(result, BASE_URL + "/" + tenant.getId());
   }
 
   @Test
@@ -61,14 +67,17 @@ class TenantControllerTest {
     var content = JsonUtils.toJson(new CreateTenantRequest("", Plan.MVP));
 
     mockMvc
-        .perform(post(URL).contentType(MediaType.APPLICATION_JSON).content(content))
+        .perform(post(BASE_URL).contentType(MediaType.APPLICATION_JSON).content(content))
         .andExpect(status().isBadRequest())
-        .andExpect(jsonPath("$.path").value(URL))
-        .andExpect(jsonPath("$.error").value(HttpStatus.BAD_REQUEST.getReasonPhrase()))
-        .andExpect(jsonPath("$.errors[0].code").value(ApiErrorCodes.VALIDATION_ERROR))
-        .andExpect(jsonPath("$.errors[0].message").value("must not be blank"))
-        .andExpect(jsonPath("$.errors[0].field").value("name"))
-        .andExpect(jsonPath("$.status").value(HttpStatus.BAD_REQUEST.value()));
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.BAD_REQUEST,
+                BASE_URL,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.VALIDATION_ERROR,
+                "must not be blank",
+                "name",
+                HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(tenantService);
   }
@@ -79,7 +88,7 @@ class TenantControllerTest {
     when(tenantService.findById(tenant.getId())).thenReturn(Optional.of(tenant));
 
     mockMvc
-        .perform(get(URL + "/" + tenant.getId()).contentType(MediaType.APPLICATION_JSON))
+        .perform(get(BASE_URL + "/" + tenant.getId()).contentType(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").exists())
         .andExpect(jsonPath("$.name").value(TENANT_NAME))
@@ -90,7 +99,7 @@ class TenantControllerTest {
   @Test
   void shouldReturn404WhenTenantDoesNotExist() throws Exception {
     when(tenantService.findById(getTenant().getId())).thenReturn(Optional.empty());
-    var getUrl = URL + "/" + getTenant().getId();
+    var getUrl = BASE_URL + "/" + getTenant().getId();
 
     mockMvc
         .perform(get(getUrl).contentType(MediaType.APPLICATION_JSON))
