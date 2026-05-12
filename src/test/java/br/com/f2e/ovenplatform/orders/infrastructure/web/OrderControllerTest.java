@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
@@ -54,7 +55,7 @@ class OrderControllerTest {
   void shouldCreateOrderWithItems() throws Exception {
     var orderRequest = new CreateOrderRequest(List.of(new OrderItemRequest(PRODUCT_ID, 3)));
 
-    var order = createOrder(TENANT_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
+    var order = withRandomId(createOrder(TENANT_ID, PRODUCT_ID, 3, new BigDecimal("35.40")));
 
     when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
 
