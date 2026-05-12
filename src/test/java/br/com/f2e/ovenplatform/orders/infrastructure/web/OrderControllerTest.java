@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.web;
 
-import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,11 +19,13 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -45,6 +48,7 @@ class OrderControllerTest {
   private static final String BASE_URL = "/orders";
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID ORDER_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecd");
 
   @Autowired private MockMvc mockMvc;
 
@@ -55,7 +59,7 @@ class OrderControllerTest {
   void shouldCreateOrderWithItems() throws Exception {
     var orderRequest = new CreateOrderRequest(List.of(new OrderItemRequest(PRODUCT_ID, 3)));
 
-    var order = withRandomId(createOrder(TENANT_ID, PRODUCT_ID, 3, new BigDecimal("35.40")));
+    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
 
     when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
 
@@ -69,7 +73,7 @@ class OrderControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(order.getId().toString()))
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
-            .andExpect(jsonPath("$.status").value("CREATED"))
+            .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
             .andExpect(jsonPath("$.totalAmount").value(106.20))
             .andExpect(jsonPath("$.items").isArray())
             .andExpect(jsonPath("$.items.length()").value(1))
@@ -161,8 +165,68 @@ class OrderControllerTest {
     verifyNoInteractions(orderService);
   }
 
-  private Order createOrder(UUID tenantId, UUID productId, int quantity, BigDecimal unitPrice) {
-    var order = new Order(tenantId);
+  @Test
+  void shouldReturnOrderResponseWhenFoundById() throws Exception {
+    var unitPrice = new BigDecimal("25.30");
+
+    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, unitPrice);
+
+    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
+
+    mockMvc
+        .perform(get(BASE_URL + "/" + ORDER_ID).header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.id").value(ORDER_ID.toString()))
+        .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
+        .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
+        .andExpect(jsonPath("$.totalAmount").value(75.90))
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.items.length()").value(1))
+        .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
+        .andExpect(jsonPath("$.items[0].quantity").value(3))
+        .andExpect(jsonPath("$.items[0].unitPrice").value(25.30))
+        .andExpect(jsonPath("$.items[0].subtotal").value(75.90));
+
+    verify(orderService).findOrder(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
+  void shouldReturn404WhenOrderIsNotFound() throws Exception {
+
+    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.empty());
+
+    mockMvc
+        .perform(get(BASE_URL + "/" + ORDER_ID).header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isNotFound());
+
+    verify(orderService).findOrder(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
+  void shouldReturn400WhenOrderIdIsInvalid() throws Exception {
+    var invalidOrderId = "invalid-uuid";
+
+    mockMvc
+        .perform(
+            get(BASE_URL + "/" + invalidOrderId)
+                .header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isBadRequest())
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.BAD_REQUEST,
+                BASE_URL + "/" + invalidOrderId,
+                HttpStatus.BAD_REQUEST.getReasonPhrase(),
+                ApiErrorCodes.INVALID_ARGUMENT,
+                "Invalid UUID string: invalid-uuid",
+                null,
+                HttpStatus.BAD_REQUEST.value()));
+
+    verifyNoInteractions(orderService);
+  }
+
+  private Order createOrder(
+      UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
+    var order = withId(new Order(tenantId), orderId);
     order.addItem(productId, quantity, unitPrice);
     return order;
   }
