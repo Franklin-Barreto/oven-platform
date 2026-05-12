@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
@@ -49,7 +50,7 @@ class ProductControllerTest {
   @Test
   void shouldCreateProduct() throws Exception {
 
-    var product = new Product(TENANT_ID, VALID_PRODUCT, VALID_PRICE);
+    var product = withRandomId(new Product(TENANT_ID, VALID_PRODUCT, VALID_PRICE));
     when(catalogService.createProduct(TENANT_ID, VALID_PRODUCT, VALID_PRICE)).thenReturn(product);
 
     var result =

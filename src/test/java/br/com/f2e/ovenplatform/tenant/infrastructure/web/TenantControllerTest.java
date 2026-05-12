@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.tenant.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -19,6 +20,7 @@ import br.com.f2e.ovenplatform.tenant.domain.Status;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.CreateTenantRequest;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -35,7 +37,8 @@ import org.springframework.test.web.servlet.MockMvc;
 class TenantControllerTest {
 
   private static final String BASE_URL = "/tenants";
-  public static final String TENANT_NAME = "Pizarria bom de garfo";
+  private static final String TENANT_NAME = "Pizarria bom de garfo";
+  private static final UUID TENANT_ID = UUID.randomUUID();
 
   @Autowired private MockMvc mockMvc;
   @MockitoBean private TenantService tenantService;
@@ -111,6 +114,6 @@ class TenantControllerTest {
   }
 
   private Tenant getTenant() {
-    return new Tenant(TENANT_NAME, Plan.MVP);
+    return withId(new Tenant(TENANT_NAME, Plan.MVP), TENANT_ID);
   }
 }

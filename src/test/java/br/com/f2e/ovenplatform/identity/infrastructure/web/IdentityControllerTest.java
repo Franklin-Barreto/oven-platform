@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
@@ -361,7 +362,7 @@ class IdentityControllerTest {
   }
 
   private static User createUser() {
-    return new User(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER);
+    return withRandomId(new User(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER));
   }
 
   private static DataIntegrityViolationException directConstraintViolation(String constraintName) {
