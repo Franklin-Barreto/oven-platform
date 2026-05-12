@@ -5,7 +5,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENAN
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.UserResponse;
-import jakarta.servlet.http.HttpServletRequest;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
@@ -16,7 +16,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/users")
@@ -30,17 +29,14 @@ public class IdentityController {
 
   @PostMapping(version = "1.0")
   public ResponseEntity<UserResponse> createUser(
-      @RequestHeader(TENANT_ID_HEADER) UUID tenantId,
-      @Valid @RequestBody UserRequest userRequest,
-      HttpServletRequest request) {
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @Valid @RequestBody UserRequest userRequest) {
+
     var userResponse =
         UserResponse.fromEntity(
             identityService.create(
                 tenantId, userRequest.email(), userRequest.password(), userRequest.role()));
-    var uri =
-        UriComponentsBuilder.fromPath(request.getRequestURI() + "/{id}")
-            .buildAndExpand(userResponse.id())
-            .toUri();
+    var uri = ResourceUriBuilder.buildLocation(userResponse.id());
+
     return ResponseEntity.created(uri).body(userResponse);
   }
 
