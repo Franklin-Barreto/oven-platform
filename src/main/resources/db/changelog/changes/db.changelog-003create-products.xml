@@ -37,13 +37,6 @@
             </column>
         </createTable>
 
-        <addForeignKeyConstraint
-                baseTableName="products"
-                baseColumnNames="tenant_id"
-                constraintName="fk_products_tenant_id"
-                referencedTableName="tenants"
-                referencedColumnNames="id"/>
-
         <createIndex indexName="idx_products_tenant_id" tableName="products">
             <column name="tenant_id"/>
         </createIndex>

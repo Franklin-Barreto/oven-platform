@@ -68,24 +68,10 @@
         </createTable>
 
         <addForeignKeyConstraint
-                baseTableName="orders"
-                baseColumnNames="tenant_id"
-                constraintName="fk_orders_tenant_id"
-                referencedTableName="tenants"
-                referencedColumnNames="id"/>
-
-        <addForeignKeyConstraint
                 baseTableName="order_items"
                 baseColumnNames="order_id"
                 constraintName="fk_order_items_order_id"
                 referencedTableName="orders"
-                referencedColumnNames="id"/>
-
-        <addForeignKeyConstraint
-                baseTableName="order_items"
-                baseColumnNames="product_id"
-                constraintName="fk_order_items_product_id"
-                referencedTableName="products"
                 referencedColumnNames="id"/>
 
         <createIndex indexName="idx_orders_tenant_id" tableName="orders">
