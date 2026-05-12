@@ -3,7 +3,7 @@ package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 
 import br.com.f2e.ovenplatform.catalog.application.CatalogService;
-import jakarta.servlet.http.HttpServletRequest;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @RequestMapping("/products")
 @RestController
@@ -29,15 +28,12 @@ public class ProductController {
   @PostMapping(version = "1.0")
   public ResponseEntity<ProductResponse> create(
       @RequestHeader(TENANT_ID_HEADER) UUID tenantId,
-      @Valid @RequestBody CreateProductRequest productRequest,
-      HttpServletRequest request) {
+      @Valid @RequestBody CreateProductRequest productRequest) {
+
     var productResponse =
         ProductResponse.from(
             service.createProduct(tenantId, productRequest.name(), productRequest.price()));
-    var uri =
-        UriComponentsBuilder.fromPath(request.getRequestURI() + "/{id}")
-            .buildAndExpand(productResponse.id())
-            .toUri();
+    var uri = ResourceUriBuilder.buildLocation(productResponse.id());
     return ResponseEntity.created(uri).body(productResponse);
   }
 

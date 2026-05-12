@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.orders.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.containsString;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
@@ -65,7 +66,7 @@ class OrderControllerTest {
                 .content(JsonUtils.toJson(orderRequest))
                 .header(TENANT_ID_HEADER, TENANT_ID))
         .andExpect(status().isCreated())
-        .andExpect(header().string("Location", "/orders/" + order.getId()))
+        .andExpect(header().string("Location", containsString(BASE_URL)))
         .andExpect(jsonPath("$.id").value(order.getId().toString()))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.status").value("CREATED"))

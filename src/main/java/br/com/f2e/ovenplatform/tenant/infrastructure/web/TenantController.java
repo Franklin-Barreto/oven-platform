@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.tenant.infrastructure.web;
 
+import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import br.com.f2e.ovenplatform.tenant.application.TenantService;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.CreateTenantRequest;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.TenantResponse;
@@ -13,7 +14,6 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.util.UriComponentsBuilder;
 
 @RestController
 @RequestMapping("/tenants")
@@ -27,8 +27,10 @@ public class TenantController {
 
   @PostMapping
   public ResponseEntity<TenantResponse> create(@Valid @RequestBody CreateTenantRequest request) {
+
     var response = TenantResponse.from(tenantService.create(request.name(), request.plan()));
-    var uri = UriComponentsBuilder.fromPath("/tenants/{id}").buildAndExpand(response.id()).toUri();
+    var uri = ResourceUriBuilder.buildLocation(response.id());
+
     return ResponseEntity.created(uri).body(response);
   }
 
