@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.orders.infrastructure.web;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 
@@ -11,6 +12,10 @@ public record OrderResponse(
     UUID tenantId,
     OrderStatus status,
     BigDecimal totalAmount,
+    Instant createdAt,
+    Instant readyAt,
+    Instant deliveredAt,
+    Instant cancelledAt,
     List<OrderItemResponse> items) {
 
   public OrderResponse {
@@ -23,6 +28,10 @@ public record OrderResponse(
         order.getTenantId(),
         order.getStatus(),
         order.getTotalAmount(),
+        order.getCreatedAt(),
+        order.getReadyAt(),
+        order.getDeliveredAt(),
+        order.getCancelledAt(),
         OrderItemResponse.from(order.getItems()));
   }
 }

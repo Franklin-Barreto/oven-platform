@@ -1,28 +1,39 @@
 package br.com.f2e.ovenplatform.orders.application;
 
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import java.time.Clock;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class OrderService {
 
+  private static final String RESOURCE = "Order";
+
   private final OrderRepository orderRepository;
   private final OrderableProductProvider orderableProductProvider;
+  private final Clock clock;
 
   public OrderService(
-      OrderRepository orderRepository, OrderableProductProvider orderableProductProvider) {
+      OrderRepository orderRepository,
+      OrderableProductProvider orderableProductProvider,
+      Clock clock) {
     this.orderRepository = orderRepository;
     this.orderableProductProvider = orderableProductProvider;
+    this.clock = clock;
   }
 
   public Order save(Order order) {
     return orderRepository.save(order);
   }
 
+  @Transactional
   public Order createOrder(UUID tenantId, CreateOrderCommand orderCommand) {
     var productIds =
         orderCommand.items().stream()
@@ -51,15 +62,42 @@ public class OrderService {
     return orderRepository.save(order);
   }
 
+  @Transactional(readOnly = true)
   public Optional<Order> findOrder(UUID tenantId, UUID orderId) {
     return orderRepository.findByIdAndTenantId(orderId, tenantId);
   }
 
+  @Transactional(readOnly = true)
   public Optional<Order> findOrderWithItems(UUID tenantId, UUID orderId) {
     return orderRepository.findByIdAndTenantIdWithItems(orderId, tenantId);
   }
 
+  @Transactional(readOnly = true)
   public List<Order> listOrders(UUID tenantId) {
     return orderRepository.findByTenantId(tenantId);
+  }
+
+  @Transactional
+  public void markAsReady(UUID tenantId, UUID orderId) {
+    updateOrder(tenantId, orderId, order -> order.markAsReady(clock.instant()));
+  }
+
+  @Transactional
+  public void markAsDelivered(UUID tenantId, UUID orderId) {
+    updateOrder(tenantId, orderId, order -> order.markAsDelivered(clock.instant()));
+  }
+
+  @Transactional
+  public void cancel(UUID tenantId, UUID orderId) {
+    updateOrder(tenantId, orderId, order -> order.cancel(clock.instant()));
+  }
+
+  private void updateOrder(UUID tenantId, UUID orderId, Consumer<Order> operation) {
+    var order =
+        orderRepository
+            .findByIdAndTenantId(orderId, tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, orderId));
+
+    operation.accept(order);
   }
 }

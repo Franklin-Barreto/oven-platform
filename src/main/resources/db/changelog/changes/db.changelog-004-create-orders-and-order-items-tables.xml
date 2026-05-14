@@ -31,6 +31,12 @@
             <column name="updated_at" type="timestamp">
                 <constraints nullable="false"/>
             </column>
+
+            <column name="ready_at" type="timestamp"/>
+
+            <column name="delivered_at" type="timestamp"/>
+
+            <column name="cancelled_at" type="timestamp"/>
         </createTable>
 
         <createTable tableName="order_items">

@@ -1,5 +1,5 @@
 /* (C)2026 */
-package br.com.f2e.ovenplatform.shared.config;
+package br.com.f2e.ovenplatform.shared.infrastructure.config;
 
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;

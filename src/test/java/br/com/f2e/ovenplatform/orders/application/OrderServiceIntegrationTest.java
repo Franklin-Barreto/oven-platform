@@ -3,13 +3,17 @@ package br.com.f2e.ovenplatform.orders.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
+import java.time.Clock;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -44,6 +48,8 @@ class OrderServiceIntegrationTest {
   @MockitoBean
   private OrderableProductProvider orderableProductProvider;
 
+  @MockitoBean private Clock clock;
+
   @Test
   void shouldCreateOrderWithItemsUsingOrderableProductPrices() {
     var fixtures = createOrderItemFixtures();
@@ -60,6 +66,8 @@ class OrderServiceIntegrationTest {
     assertThat(order.getId()).isNotNull();
     assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
     assertThat(order.getItems()).hasSize(fixtures.size());
+    assertThat(order.getCreatedAt()).isNotNull();
+    assertThat(order.getUpdatedAt()).isNotNull();
 
     assertOrderItemsMatchFixtures(order, fixtures);
 
@@ -72,8 +80,7 @@ class OrderServiceIntegrationTest {
 
     var savedOrder = orderService.save(order);
 
-    entityManager.flush();
-    entityManager.clear();
+    flushAndClear();
 
     var foundOrder = orderService.findOrderWithItems(TENANT_ID, savedOrder.getId());
 
@@ -97,8 +104,7 @@ class OrderServiceIntegrationTest {
   void shouldFindOrderByIdAndTenantId() {
     var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
 
-    entityManager.flush();
-    entityManager.clear();
+    flushAndClear();
 
     var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
 
@@ -127,8 +133,7 @@ class OrderServiceIntegrationTest {
   void shouldReturnEmptyWhenOrderBelongsToAnotherTenant() {
     var order = orderService.save(createOrderWithItems(TENANT_ID, 1));
 
-    entityManager.flush();
-    entityManager.clear();
+    flushAndClear();
 
     assertThat(orderService.findOrder(ANOTHER_TENANT_ID, order.getId())).isEmpty();
   }
@@ -139,8 +144,7 @@ class OrderServiceIntegrationTest {
     orderService.save(createOrderWithItems(TENANT_ID, 2));
     orderService.save(createOrderWithItems(ANOTHER_TENANT_ID, 1));
 
-    entityManager.flush();
-    entityManager.clear();
+    flushAndClear();
 
     var orders = orderService.listOrders(TENANT_ID);
 
@@ -151,8 +155,7 @@ class OrderServiceIntegrationTest {
   void shouldNotListOrdersFromAnotherTenant() {
     orderService.save(createOrderWithItems(TENANT_ID, 1));
 
-    entityManager.flush();
-    entityManager.clear();
+    flushAndClear();
 
     assertThat(orderService.listOrders(ANOTHER_TENANT_ID)).isEmpty();
   }
@@ -165,6 +168,107 @@ class OrderServiceIntegrationTest {
     assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, orderCommand))
         .isInstanceOf(ProductNotAvailableForOrderingException.class)
         .hasMessage("Product is not available for ordering: %s".formatted(productId));
+  }
+
+  @Test
+  void shouldMarkOrderAsReady() {
+    var occurredAt = Instant.parse("2026-05-12T20:18:00Z");
+    when(clock.instant()).thenReturn(occurredAt);
+
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+
+    flushAndClear();
+
+    orderService.markAsReady(TENANT_ID, savedOrder.getId());
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
+              assertThat(order.getReadyAt()).isEqualTo(occurredAt);
+              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCancelledAt()).isNull();
+            });
+  }
+
+  @Test
+  void shouldThrowResourceNotFoundWhenMarkingUnknownOrderAsReady() {
+    var orderId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> orderService.markAsReady(TENANT_ID, orderId))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Order id: %s not found".formatted(orderId));
+
+    verifyNoInteractions(clock);
+  }
+
+  @Test
+  void shouldMarkOrderAsDelivered() {
+
+    var readyAt = Instant.parse("2026-05-12T20:18:00Z");
+    var deliveredAt = Instant.parse("2026-05-12T20:30:00Z");
+
+    when(clock.instant()).thenReturn(readyAt, deliveredAt);
+
+    var savedOrder = createReadyOrder();
+
+    flushAndClear();
+
+    orderService.markAsDelivered(TENANT_ID, savedOrder.getId());
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+              assertThat(order.getReadyAt()).isEqualTo(readyAt);
+              assertThat(order.getDeliveredAt()).isEqualTo(deliveredAt);
+              assertThat(order.getCancelledAt()).isNull();
+            });
+  }
+
+  @Test
+  void shouldMarkOrderAsCancelled() {
+
+    var occurredAt = Instant.parse("2026-05-12T20:18:00Z");
+    when(clock.instant()).thenReturn(occurredAt);
+
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+
+    flushAndClear();
+
+    orderService.cancel(TENANT_ID, savedOrder.getId());
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
+              assertThat(order.getReadyAt()).isNull();
+              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCancelledAt()).isEqualTo(occurredAt);
+            });
+  }
+
+  private void flushAndClear() {
+    entityManager.flush();
+    entityManager.clear();
   }
 
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
@@ -202,6 +306,12 @@ class OrderServiceIntegrationTest {
     return command.items().stream()
         .map(CreateOrderItemCommand::productId)
         .collect(Collectors.toSet());
+  }
+
+  private Order createReadyOrder() {
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+    orderService.markAsReady(TENANT_ID, savedOrder.getId());
+    return savedOrder;
   }
 
   private void assertOrderItemsMatchFixtures(Order order, List<OrderItemFixture> fixtures) {

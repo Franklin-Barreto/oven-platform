@@ -27,7 +27,7 @@ public class OrderController {
   }
 
   @PostMapping(version = API_VERSION_VALUE)
-  ResponseEntity<OrderResponse> create(
+  public ResponseEntity<OrderResponse> create(
       @RequestHeader(TENANT_ID_HEADER) UUID tenantId,
       @Valid @RequestBody CreateOrderRequest orderRequest) {
 
@@ -39,12 +39,33 @@ public class OrderController {
   }
 
   @GetMapping(version = API_VERSION_VALUE, path = "/{id}")
-  ResponseEntity<OrderResponse> findById(
+  public ResponseEntity<OrderResponse> findById(
       @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
     return orderService
         .findOrder(tenantId, id)
         .map(OrderResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
+  }
+
+  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/mark-ready")
+  public ResponseEntity<Void> markAsReady(
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
+    orderService.markAsReady(tenantId, id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/mark-delivered")
+  public ResponseEntity<Void> markAsDelivered(
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
+    orderService.markAsDelivered(tenantId, id);
+    return ResponseEntity.noContent().build();
+  }
+
+  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/cancel")
+  public ResponseEntity<Void> cancel(
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
+    orderService.cancel(tenantId, id);
+    return ResponseEntity.noContent().build();
   }
 }
