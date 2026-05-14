@@ -1,17 +1,21 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -20,6 +24,8 @@ import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
+import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
@@ -27,6 +33,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -180,6 +187,10 @@ class OrderControllerTest {
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
         .andExpect(jsonPath("$.totalAmount").value(75.90))
+        .andExpect(jsonPath("$.createdAt").isEmpty())
+        .andExpect(jsonPath("$.readyAt").isEmpty())
+        .andExpect(jsonPath("$.deliveredAt").isEmpty())
+        .andExpect(jsonPath("$.cancelledAt").isEmpty())
         .andExpect(jsonPath("$.items").isArray())
         .andExpect(jsonPath("$.items.length()").value(1))
         .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
@@ -207,9 +218,7 @@ class OrderControllerTest {
     var invalidOrderId = "invalid-uuid";
 
     mockMvc
-        .perform(
-            get(BASE_URL + "/" + invalidOrderId)
-                .header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(get(BASE_URL + "/" + invalidOrderId).header(TENANT_ID_HEADER, TENANT_ID))
         .andExpect(status().isBadRequest())
         .andExpectAll(
             expectValidationErrors(
@@ -222,6 +231,70 @@ class OrderControllerTest {
                 HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(orderService);
+  }
+
+  @ParameterizedTest(name = "{0}")
+  @MethodSource("transitionEndpoints")
+  void shouldReturnNoContentForOrderTransitionEndpoints(
+      String endpoint, Consumer<OrderService> verification) throws Exception {
+    mockMvc
+        .perform(
+            post(BASE_URL + "/" + ORDER_ID + endpoint)
+                .header(TENANT_ID_HEADER, TENANT_ID)
+                .header(API_VERSION_HEADER, API_VERSION_VALUE))
+        .andExpect(status().isNoContent())
+        .andExpect(content().string(""));
+
+    verification.accept(verify(orderService));
+  }
+
+  @Test
+  void shouldReturn404WhenOrderDoesNotExistToBeMarkedAsReady() throws Exception {
+    var fullPath = BASE_URL + "/" + ORDER_ID + "/mark-ready";
+
+    doThrow(new ResourceNotFoundException("Order", ORDER_ID))
+        .when(orderService)
+        .markAsReady(TENANT_ID, ORDER_ID);
+
+    mockMvc
+        .perform(post(fullPath).header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isNotFound())
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.NOT_FOUND,
+                fullPath,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ApiErrorCodes.RESOURCE_NOT_FOUND,
+                "Order id: %s not found".formatted(ORDER_ID),
+                null,
+                HttpStatus.NOT_FOUND.value()));
+
+    verify(orderService).markAsReady(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
+  void shouldReturn409WhenCancellingReadyOrder() throws Exception {
+    var fullPath = BASE_URL + "/" + ORDER_ID + "/cancel";
+
+    doThrow(new InvalidOrderStatusTransitionException(OrderStatus.READY, OrderStatus.CANCELLED))
+        .when(orderService)
+        .cancel(TENANT_ID, ORDER_ID);
+
+    mockMvc
+        .perform(post(fullPath).header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isConflict())
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.CONFLICT,
+                fullPath,
+                HttpStatus.CONFLICT.getReasonPhrase(),
+                ApiErrorCodes.INVALID_ORDER_STATUS_TRANSITION,
+                "Cannot transition order from %s to %s."
+                    .formatted(OrderStatus.READY, OrderStatus.CANCELLED),
+                null,
+                HttpStatus.CONFLICT.value()));
+
+    verify(orderService).cancel(TENANT_ID, ORDER_ID);
   }
 
   private Order createOrder(
@@ -247,5 +320,17 @@ class OrderControllerTest {
             "items[0].quantity",
             "must be greater than 0",
             new CreateOrderRequest(List.of(new OrderItemRequest(UUID.randomUUID(), -1)))));
+  }
+
+  private static Stream<Arguments> transitionEndpoints() {
+    return Stream.of(
+        Arguments.of(
+            "/mark-ready",
+            (Consumer<OrderService>) service -> service.markAsReady(TENANT_ID, ORDER_ID)),
+        Arguments.of(
+            "/mark-delivered",
+            (Consumer<OrderService>) service -> service.markAsDelivered(TENANT_ID, ORDER_ID)),
+        Arguments.of(
+            "/cancel", (Consumer<OrderService>) service -> service.cancel(TENANT_ID, ORDER_ID)));
   }
 }

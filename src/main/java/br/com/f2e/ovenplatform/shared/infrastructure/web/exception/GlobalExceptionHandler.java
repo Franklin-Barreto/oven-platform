@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.web.exception;
 
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -58,6 +59,17 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(NoSuchElementException.class)
   public ResponseEntity<ApiErrorResponse> notFoundHandler(
       NoSuchElementException exception, HttpServletRequest request) {
+    return error(
+        HttpStatus.NOT_FOUND,
+        ApiErrorCodes.RESOURCE_NOT_FOUND,
+        resolveTraceIdForErrorResponse(traceContext),
+        exception.getMessage(),
+        request);
+  }
+
+  @ExceptionHandler(ResourceNotFoundException.class)
+  public ResponseEntity<ApiErrorResponse> notFoundResource(
+      ResourceNotFoundException exception, HttpServletRequest request) {
     return error(
         HttpStatus.NOT_FOUND,
         ApiErrorCodes.RESOURCE_NOT_FOUND,

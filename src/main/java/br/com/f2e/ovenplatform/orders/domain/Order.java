@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.orders.domain;
 
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 
+import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
@@ -11,6 +12,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -31,6 +33,15 @@ public class Order extends BaseEntity {
 
   @OneToMany(mappedBy = "order", cascade = CascadeType.ALL, orphanRemoval = true)
   private final List<OrderItem> items = new ArrayList<>();
+
+  @Column(name = "ready_at")
+  private Instant readyAt;
+
+  @Column(name = "delivered_at")
+  private Instant deliveredAt;
+
+  @Column(name = "cancelled_at")
+  private Instant cancelledAt;
 
   @SuppressWarnings("unused")
   protected Order() {}
@@ -66,5 +77,48 @@ public class Order extends BaseEntity {
 
   public OrderStatus getStatus() {
     return status;
+  }
+
+  public void markAsReady(Instant occurredAt) {
+    if (transitionTo(OrderStatus.READY)) {
+      readyAt = occurredAt;
+    }
+  }
+
+  public void markAsDelivered(Instant occurredAt) {
+    if (transitionTo(OrderStatus.DELIVERED)) {
+      deliveredAt = occurredAt;
+    }
+  }
+
+  public void cancel(Instant occurredAt) {
+    if (transitionTo(OrderStatus.CANCELLED)) {
+      cancelledAt = occurredAt;
+    }
+  }
+
+  public Instant getReadyAt() {
+    return readyAt;
+  }
+
+  public Instant getCancelledAt() {
+    return cancelledAt;
+  }
+
+  public Instant getDeliveredAt() {
+    return deliveredAt;
+  }
+
+  private boolean transitionTo(OrderStatus targetStatus) {
+    if (status == targetStatus) {
+      return false;
+    }
+
+    if (!status.canTransitionTo(targetStatus)) {
+      throw new InvalidOrderStatusTransitionException(status, targetStatus);
+    }
+
+    status = targetStatus;
+    return true;
   }
 }
