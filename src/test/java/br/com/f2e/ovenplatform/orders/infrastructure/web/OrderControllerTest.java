@@ -297,6 +297,43 @@ class OrderControllerTest {
     verify(orderService).cancel(TENANT_ID, ORDER_ID);
   }
 
+  @Test
+  void shouldListOrdersByTenant() throws Exception {
+    var unitPrice = new BigDecimal("25.30");
+    var secondOrderId = UUID.randomUUID();
+
+    var orders =
+        List.of(
+            createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, unitPrice),
+            createOrder(TENANT_ID, secondOrderId, PRODUCT_ID, 2, unitPrice));
+
+    when(orderService.listOrders(TENANT_ID)).thenReturn(orders);
+
+    var secondOrderJson = "$[1]";
+
+    mockMvc
+        .perform(get(BASE_URL).header(TENANT_ID_HEADER, TENANT_ID))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.length()").value(2))
+        .andExpect(jsonPath("$[0].id").value(ORDER_ID.toString()))
+        .andExpect(jsonPath(secondOrderJson + ".id").value(secondOrderId.toString()))
+        .andExpect(jsonPath(secondOrderJson + ".tenantId").value(TENANT_ID.toString()))
+        .andExpect(jsonPath(secondOrderJson + ".status").value(OrderStatus.CREATED.name()))
+        .andExpect(jsonPath(secondOrderJson + ".totalAmount").value(50.60))
+        .andExpect(jsonPath(secondOrderJson + ".createdAt").isEmpty())
+        .andExpect(jsonPath(secondOrderJson + ".readyAt").isEmpty())
+        .andExpect(jsonPath(secondOrderJson + ".deliveredAt").isEmpty())
+        .andExpect(jsonPath(secondOrderJson + ".cancelledAt").isEmpty())
+        .andExpect(jsonPath(secondOrderJson + ".items").isArray())
+        .andExpect(jsonPath(secondOrderJson + ".items.length()").value(1))
+        .andExpect(jsonPath(secondOrderJson + ".items[0].productId").value(PRODUCT_ID.toString()))
+        .andExpect(jsonPath(secondOrderJson + ".items[0].quantity").value(2))
+        .andExpect(jsonPath(secondOrderJson + ".items[0].unitPrice").value(25.30))
+        .andExpect(jsonPath(secondOrderJson + ".items[0].subtotal").value(50.60));
+
+    verify(orderService).listOrders(TENANT_ID);
+  }
+
   private Order createOrder(
       UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
     var order = withId(new Order(tenantId), orderId);
