@@ -6,6 +6,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENAN
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -67,5 +68,11 @@ public class OrderController {
       @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID id) {
     orderService.cancel(tenantId, id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping(version = API_VERSION_VALUE)
+  public ResponseEntity<List<OrderResponse>> list(@RequestHeader(TENANT_ID_HEADER) UUID tenantId) {
+    var orders = orderService.listOrders(tenantId).stream().map(OrderResponse::from).toList();
+    return ResponseEntity.ok(orders);
   }
 }
