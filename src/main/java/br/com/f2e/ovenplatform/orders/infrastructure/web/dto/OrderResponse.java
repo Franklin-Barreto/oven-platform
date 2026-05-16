@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.orders.infrastructure.web;
+package br.com.f2e.ovenplatform.orders.infrastructure.web.dto;
 
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;

@@ -21,15 +21,21 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
+import br.com.f2e.ovenplatform.orders.application.OrderPaymentMethod;
+import br.com.f2e.ovenplatform.orders.application.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
+import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
+import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
+import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +48,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -61,10 +68,11 @@ class OrderControllerTest {
 
   @MockitoBean private OrderService orderService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private ApplicationEventPublisher eventPublisher;
 
   @Test
   void shouldCreateOrderWithItems() throws Exception {
-    var orderRequest = new CreateOrderRequest(List.of(new OrderItemRequest(PRODUCT_ID, 3)));
+    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
 
     var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
 
@@ -101,11 +109,14 @@ class OrderControllerTest {
     assertThat(command.items()).hasSize(1);
     assertThat(command.items().getFirst().productId()).isEqualTo(PRODUCT_ID);
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
+    assertThat(command.paymentInfo()).isNotNull();
+    assertThat(command.paymentInfo().method()).isEqualTo(OrderPaymentMethod.CASH);
+    assertThat(command.paymentInfo().status()).isEqualTo(OrderPaymentStatus.PAID);
   }
 
   @Test
   void shouldReturnBadRequestWhenTenantHeaderIsMissing() throws Exception {
-    var orderRequest = new CreateOrderRequest(List.of(new OrderItemRequest(PRODUCT_ID, 3)));
+    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
     mockMvc
         .perform(
             post(BASE_URL)
@@ -127,7 +138,7 @@ class OrderControllerTest {
 
   @Test
   void shouldReturnBadRequestWhenTenantHeaderIsInvalid() throws Exception {
-    var orderRequest = new CreateOrderRequest(List.of(new OrderItemRequest(PRODUCT_ID, 3)));
+    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
     mockMvc
         .perform(
             post(BASE_URL)
@@ -343,20 +354,16 @@ class OrderControllerTest {
 
   private static Stream<Arguments> invalidCreateOrderRequests() {
     return Stream.of(
-        Arguments.of("items", "must not be null", new CreateOrderRequest(null)),
-        Arguments.of("items", "items must have at least 1 item", new CreateOrderRequest(List.of())),
+        Arguments.of("items", "must not be null", createOrderRequest(null)),
         Arguments.of(
-            "items[0].productId",
-            "must not be null",
-            new CreateOrderRequest(List.of(new OrderItemRequest(null, 1)))),
+            "items",
+            "items must have at least 1 item",
+            createOrderRequest(Collections.emptyList())),
+        Arguments.of("items[0].productId", "must not be null", createOrderRequest(null, 1)),
         Arguments.of(
-            "items[0].quantity",
-            "must be greater than 0",
-            new CreateOrderRequest(List.of(new OrderItemRequest(UUID.randomUUID(), 0)))),
+            "items[0].quantity", "must be greater than 0", createOrderRequest(PRODUCT_ID, 0)),
         Arguments.of(
-            "items[0].quantity",
-            "must be greater than 0",
-            new CreateOrderRequest(List.of(new OrderItemRequest(UUID.randomUUID(), -1)))));
+            "items[0].quantity", "must be greater than 0", createOrderRequest(PRODUCT_ID, -1)));
   }
 
   private static Stream<Arguments> transitionEndpoints() {
@@ -369,5 +376,16 @@ class OrderControllerTest {
             (Consumer<OrderService>) service -> service.markAsDelivered(TENANT_ID, ORDER_ID)),
         Arguments.of(
             "/cancel", (Consumer<OrderService>) service -> service.cancel(TENANT_ID, ORDER_ID)));
+  }
+
+  private static CreateOrderRequest createOrderRequest(UUID productId, int quantity) {
+    return new CreateOrderRequest(
+        List.of(new OrderItemRequest(productId, quantity)),
+        new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID));
+  }
+
+  private static CreateOrderRequest createOrderRequest(List<OrderItemRequest> items) {
+    return new CreateOrderRequest(
+        items, new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID));
   }
 }
