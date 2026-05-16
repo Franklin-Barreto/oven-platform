@@ -8,6 +8,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,14 +20,17 @@ public class OrderService {
   private final OrderRepository orderRepository;
   private final OrderableProductProvider orderableProductProvider;
   private final Clock clock;
+  private final ApplicationEventPublisher eventPublisher;
 
   public OrderService(
       OrderRepository orderRepository,
       OrderableProductProvider orderableProductProvider,
-      Clock clock) {
+      Clock clock,
+      ApplicationEventPublisher eventPublisher) {
     this.orderRepository = orderRepository;
     this.orderableProductProvider = orderableProductProvider;
     this.clock = clock;
+    this.eventPublisher = eventPublisher;
   }
 
   public Order save(Order order) {
@@ -59,7 +63,17 @@ public class OrderService {
               order.addItem(item.productId(), item.quantity(), unitPrice);
             });
 
-    return orderRepository.save(order);
+    var savedOrder = orderRepository.save(order);
+
+    eventPublisher.publishEvent(
+        new OrderPlacedEvent(
+            savedOrder.getTenantId(),
+            savedOrder.getId(),
+            orderCommand.paymentInfo().method(),
+            orderCommand.paymentInfo().status(),
+            savedOrder.getTotalAmount()));
+
+    return savedOrder;
   }
 
   @Transactional(readOnly = true)

@@ -26,11 +26,14 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.context.event.ApplicationEvents;
+import org.springframework.test.context.event.RecordApplicationEvents;
 
 @DataJpaTest
 @ActiveProfiles("test")
 @Import({OrderService.class, JpaOrderRepositoryAdapter.class})
 @EnableJpaAuditing
+@RecordApplicationEvents
 class OrderServiceIntegrationTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
@@ -48,7 +51,11 @@ class OrderServiceIntegrationTest {
   @MockitoBean
   private OrderableProductProvider orderableProductProvider;
 
-  @MockitoBean private Clock clock;
+  @SuppressWarnings("unused")
+  @MockitoBean
+  private Clock clock;
+
+  @Autowired private ApplicationEvents applicationEvents;
 
   @Test
   void shouldCreateOrderWithItemsUsingOrderableProductPrices() {
@@ -72,6 +79,17 @@ class OrderServiceIntegrationTest {
     assertOrderItemsMatchFixtures(order, fixtures);
 
     verify(orderableProductProvider).findOrderableProducts(TENANT_ID, productIds);
+
+    var orderPlacedEvents = applicationEvents.stream(OrderPlacedEvent.class).toList();
+
+    assertThat(orderPlacedEvents).hasSize(1);
+
+    var orderPlacedEvent = orderPlacedEvents.getFirst();
+
+    assertThat(orderPlacedEvent.orderId()).isEqualTo(order.getId());
+    assertThat(orderPlacedEvent.paymentMethod()).isEqualTo(OrderPaymentMethod.CASH);
+    assertThat(orderPlacedEvent.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
+    assertThat(orderPlacedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
   }
 
   @Test
@@ -163,8 +181,9 @@ class OrderServiceIntegrationTest {
   @Test
   void shouldThrowExceptionWhenCatalogReturnNullProduct() {
     var productId = UUID.randomUUID();
+    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
     CreateOrderCommand orderCommand =
-        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 1)));
+        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 1)), paymentInfo);
     assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, orderCommand))
         .isInstanceOf(ProductNotAvailableForOrderingException.class)
         .hasMessage("Product is not available for ordering: %s".formatted(productId));
@@ -295,7 +314,9 @@ class OrderServiceIntegrationTest {
   }
 
   private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
-    return new CreateOrderCommand(fixtures.stream().map(OrderItemFixture::command).toList());
+    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
+    return new CreateOrderCommand(
+        fixtures.stream().map(OrderItemFixture::command).toList(), paymentInfo);
   }
 
   private List<OrderableProduct> createOrderableProducts(List<OrderItemFixture> fixtures) {

@@ -4,6 +4,8 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_V
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 
 import br.com.f2e.ovenplatform.orders.application.OrderService;
+import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
+import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderResponse;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.List;
