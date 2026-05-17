@@ -6,6 +6,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;

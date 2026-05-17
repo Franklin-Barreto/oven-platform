@@ -21,10 +21,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
-import br.com.f2e.ovenplatform.orders.application.OrderPaymentMethod;
-import br.com.f2e.ovenplatform.orders.application.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;

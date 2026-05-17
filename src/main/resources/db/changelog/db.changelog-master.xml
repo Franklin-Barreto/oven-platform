@@ -10,5 +10,6 @@
     <include file="db/changelog/changes/db.changelog-002create-users.xml"/>
     <include file="db/changelog/changes/db.changelog-003create-products.xml"/>
     <include file="db/changelog/changes/db.changelog-004-create-orders-and-order-items-tables.xml"/>
+    <include file="db/changelog/changes/db.changelog-005-create-payments-table.xml" />
 
 </databaseChangeLog>

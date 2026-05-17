@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.orders.application;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
