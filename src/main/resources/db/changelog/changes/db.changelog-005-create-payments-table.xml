@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+            http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="005-create-payments-table" author="franklin">
+        <createTable tableName="payments">
+            <column name="id" type="UUID">
+                <constraints primaryKey="true" nullable="false"/>
+            </column>
+
+            <column name="tenant_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="order_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="amount" type="NUMERIC(19,2)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="payment_method" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="payment_status" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="paid_at" type="TIMESTAMP WITH TIME ZONE"/>
+
+            <column name="created_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="TIMESTAMP WITH TIME ZONE">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <createIndex indexName="idx_payments_tenant_id" tableName="payments">
+            <column name="tenant_id"/>
+        </createIndex>
+
+        <createIndex indexName="idx_payments_tenant_id_order_id" tableName="payments">
+            <column name="tenant_id"/>
+            <column name="order_id"/>
+        </createIndex>
+
+        <addUniqueConstraint
+                tableName="payments"
+                columnNames="tenant_id, order_id"
+                constraintName="uk_payments_tenant_id_order_id"/>
+    </changeSet>
+
+</databaseChangeLog>
