@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
+import br.com.f2e.ovenplatform.payment.infrastructure.event.OrderPaymentMarkedAsPaidEventListener;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import jakarta.persistence.EntityManager;
@@ -26,7 +27,11 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({PaymentService.class, JpaPaymentRepositoryAdapter.class})
+@Import({
+  PaymentService.class,
+  JpaPaymentRepositoryAdapter.class,
+  OrderPaymentMarkedAsPaidEventListener.class
+})
 @EnableJpaAuditing
 class PaymentServiceIntegrationTest {
 

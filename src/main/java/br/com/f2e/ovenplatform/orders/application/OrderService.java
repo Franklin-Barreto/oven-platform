@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.orders.application;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -105,6 +106,16 @@ public class OrderService {
   @Transactional
   public void cancel(UUID tenantId, UUID orderId) {
     updateOrder(tenantId, orderId, order -> order.cancel(clock.instant()));
+  }
+
+  @Transactional
+  public void markPaymentAsPaid(UUID tenantId, UUID orderId) {
+    var order =
+        orderRepository
+            .findByIdAndTenantId(orderId, tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, orderId));
+    eventPublisher.publishEvent(
+        new OrderPaymentMarkedAsPaidEvent(order.getTenantId(), order.getId()));
   }
 
   private void updateOrder(UUID tenantId, UUID orderId, Consumer<Order> operation) {

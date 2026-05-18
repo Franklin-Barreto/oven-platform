@@ -32,6 +32,7 @@ import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
@@ -343,6 +344,21 @@ class OrderControllerTest {
         .andExpect(jsonPath(secondOrderJson + ".items[0].subtotal").value(50.60));
 
     verify(orderService).listOrders(TENANT_ID);
+  }
+
+  @Test
+  void shouldMarkOrderPaymentAsPaid() throws Exception {
+    var orderId = UUID.randomUUID();
+
+    mockMvc
+        .perform(
+            post(BASE_URL + "/" + orderId + "/payment/mark-paid")
+                .accept(MediaType.APPLICATION_JSON)
+                .header(ApiHeaders.TENANT_ID_HEADER, TENANT_ID)
+                .header(ApiHeaders.API_VERSION_HEADER, ApiHeaders.API_VERSION_VALUE))
+        .andExpect(status().isNoContent());
+
+    verify(orderService).markPaymentAsPaid(TENANT_ID, orderId);
   }
 
   private Order createOrder(
