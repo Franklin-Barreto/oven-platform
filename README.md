@@ -11,9 +11,10 @@ The current MVP focuses on the foundations required for a SaaS platform:
 - JWT-based security
 - product catalog
 - order management
+- initial payment tracking
 - platform-level observability and API consistency
 
-Beyond the business domain, this project is also intended to demonstrate backend architecture decisions commonly required in product companies: modular design, ports and adapters, API contracts, persistence boundaries, automated quality checks, and future readiness for asynchronous processing.
+Beyond the business domain, this project is also intended to demonstrate backend architecture decisions commonly required in product companies: modular design, ports and adapters, API contracts, persistence boundaries, automated quality checks, event-driven module communication, and future readiness for asynchronous processing.
 
 ---
 
@@ -27,6 +28,7 @@ The main goals of this project are:
 - Avoid anemic domain models where business rules belong in the domain
 - Use a pragmatic ports-and-adapters architecture
 - Keep infrastructure details isolated from application use cases
+- Use events to reduce coupling between modules where it adds business value
 - Provide a strong foundation for future event-driven and distributed-system patterns
 - Maintain production-oriented quality through tests, static analysis, architecture rules, and CI
 
@@ -41,7 +43,7 @@ The project is not intended to be a dogmatic Clean Architecture implementation. 
 At a high level:
 
 ```text
-HTTP / Security / Persistence / External Tools
+HTTP / Security / Persistence / Events / External Tools
         ↓
 Infrastructure adapters
         ↓
@@ -69,9 +71,19 @@ br.com.f2e.ovenplatform
 │   ├── application
 │   └── infrastructure
 │
+├── orders
+│   ├── domain
+│   ├── application
+│   └── infrastructure
+│
+├── payment
+│   ├── domain
+│   ├── application
+│   └── infrastructure
+│
 └── shared
     ├── domain
-    ├── config
+    ├── application
     └── infrastructure
 ```
 
@@ -85,6 +97,8 @@ br.com.f2e.ovenplatform
 - Domain entities enforce core invariants and cannot be created in an invalid state.
 - Cross-module JPA relationships are avoided where they would increase coupling.
 - Tenant isolation is treated as a first-class concern.
+- Modules communicate through explicit contracts when direct coupling would make future evolution harder.
+- Event listeners act as infrastructure adapters and translate external module events into local application commands.
 
 ---
 
@@ -130,12 +144,57 @@ The catalog module currently includes:
   - change price
   - activate
   - deactivate
-- Liquibase migration for products
 - product persistence boundary
 - product repository port
 - JPA repository adapter
-- minimal `CatalogService`
+- catalog application service
+- product creation and lookup foundations
 - integration tests validating product persistence and tenant isolation
+
+### Orders
+
+The orders module currently includes:
+
+- rich `Order` aggregate
+- order item entity
+- tenant-scoped order creation
+- backend-calculated order totals using catalog prices
+- order items with price snapshots
+- order lookup by id
+- order listing by tenant
+- operational order lifecycle:
+  - `CREATED`
+  - `READY`
+  - `DELIVERED`
+  - `CANCELLED`
+- lifecycle timestamps:
+  - `readyAt`
+  - `deliveredAt`
+  - `cancelledAt`
+- idempotent status transitions
+- invalid transition protection
+- order creation with required initial payment information
+- `OrderPlacedEvent` publication after order creation
+- named event contract exposed for module consumers such as Payments
+
+### Payments
+
+The payment module currently includes:
+
+- `Payment` aggregate
+- tenant-scoped payment persistence
+- payment creation from `OrderPlacedEvent`
+- initial payment statuses:
+  - `PENDING`
+  - `PAID`
+- payment methods:
+  - `CASH`
+  - `CARD`
+  - `PIX`
+- `paidAt` handling through application time using `Clock`
+- one payment per order in the current MVP scope
+- event listener adapter that maps Orders events into Payments commands
+- payment repository port and JPA adapter
 
 ### Platform and Cross-Cutting Concerns
 
@@ -149,6 +208,7 @@ The shared platform layer includes:
 - trace ID included in API error responses
 - API header constants
 - reusable domain preconditions
+- shared resource not found exception
 - architecture guardrails
 - static analysis with SpotBugs
 - formatting with Spotless
@@ -169,6 +229,7 @@ The project uses different test levels depending on the concern:
 - WebMvc tests for HTTP contracts
 - integration tests for application flows
 - JPA-backed tests for persistence behavior through application services
+- event publication tests where module communication is part of the use case
 - architecture tests with ArchUnit and Spring Modulith
 
 ### Code Quality
@@ -231,7 +292,7 @@ This allows faster development and simpler operations while still enforcing modu
 
 ### Pragmatic Ports and Adapters
 
-The project uses ports where there is a meaningful boundary, such as persistence or token generation.
+The project uses ports where there is a meaningful boundary, such as persistence, token generation, messaging, or cross-module event consumption.
 
 It avoids creating interfaces for every service when there is only one implementation and no real volatility. This keeps the codebase simpler while preserving the most important architectural benefits.
 
@@ -239,7 +300,11 @@ It avoids creating interfaces for every service when there is only one implement
 
 Domain entities are responsible for protecting their own invariants.
 
-For example, `Product` validates tenant ownership, name, price, and active state transitions through domain behavior instead of relying only on external validation annotations.
+For example:
+
+- `Product` validates tenant ownership, name, price, and active state transitions.
+- `Order` controls valid lifecycle transitions and lifecycle timestamps.
+- `Payment` controls whether a payment can be created as paid or pending and protects paid timestamp invariants.
 
 ### Tenant Isolation
 
@@ -253,33 +318,37 @@ Authentication is based on JWT and stateless Spring Security configuration.
 
 The current token contract includes user identity and role. Tenant context is still handled separately and can evolve later depending on authorization requirements.
 
+### Event-Driven Module Communication
+
+Orders publishes `OrderPlacedEvent` after successful order creation.
+
+Payments consumes this event through an infrastructure listener and translates it into a local application command. This keeps Orders from directly calling Payments while still allowing the system to evolve toward asynchronous processing patterns.
+
 ---
 
 ## Roadmap
 
 The next planned steps are:
 
-### Catalog
-
-- Product creation API
-- Product listing API
-- Product update operations
-- Product activation/deactivation endpoints
-
 ### Orders
 
-- Order aggregate
-- Order item entity
-- Order repository
-- Create order flow
-- Add item to order
-- Change order status
-- List orders by tenant
-- Price snapshots for order items
+- Status filtering
+- Pagination
+- Kitchen queue views
+- Delivery queue views
+- Payment summary in order responses or operational read models
 
-### Distributed Systems Readiness
+### Payments
 
-After the order flow is in place, the project will be extended with patterns commonly used in distributed systems:
+- Mark pending payment as paid
+- Expose payment read operations
+- Payment summary for operational screens
+- Payment reconciliation foundations
+- External payment providers later
+
+### Platform / Distributed Systems Readiness
+
+The project will continue evolving toward patterns commonly used in distributed systems:
 
 - domain events
 - outbox pattern
@@ -305,6 +374,7 @@ It is a practical backend architecture project focused on the kinds of decisions
 - how to design API contracts
 - how to keep tests valuable
 - how to introduce quality gates
+- how to communicate between modules without unnecessary coupling
 - how to prepare a system for asynchronous and distributed workflows
 
 The project is intentionally built step by step, with small pull requests, clear issue scopes, and production-oriented engineering practices.
@@ -315,21 +385,28 @@ The project is intentionally built step by step, with small pull requests, clear
 
 This project is actively under development.
 
-Completed foundations:
+Implemented foundations:
 
 - tenant management
 - identity foundation
 - JWT authentication
+- catalog domain and persistence
+- order creation, lookup, listing, and operational lifecycle
+- order payment information capture
+- order event publication
+- initial payment registration from order events
 - API error contract
 - request tracing and logging
 - architecture guardrails
 - static analysis and formatting
-- product domain model
-- product persistence and catalog application service
+- code coverage gates
 
-In progress / planned:
+Planned / upcoming:
 
-- catalog APIs
-- order management MVP
-- asynchronous processing patterns
-- batch and idempotency flows
+- marking pending payments as paid
+- payment read operations
+- order payment summary
+- pagination and filtering
+- operational queue views
+- asynchronous reliability patterns
+- outbox and idempotency flows
