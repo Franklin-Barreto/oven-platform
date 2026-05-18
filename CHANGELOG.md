@@ -40,6 +40,7 @@ This project currently does not use formal versioned releases. Changes are group
 - Payment creation from `OrderPlacedEvent`.
 - Payment repository port and JPA adapter.
 - Tenant-scoped payment lookup by order.
+- Application use case to mark an order payment as paid by tenant and order.
 - Application-managed `paidAt` handling using `Clock`.
 - Liquibase migration for payments.
 - Global API error response contract.
@@ -70,6 +71,7 @@ This project currently does not use formal versioned releases. Changes are group
 - Prevented repeated status commands from overwriting lifecycle timestamps.
 - Prevented paid payments from being created without `paidAt`.
 - Prevented pending payments from receiving a paid timestamp during creation.
+- Prevented repeated paid-payment commands from overwriting the original `paidAt`.
 
 ---
 
