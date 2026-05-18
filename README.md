@@ -1,4 +1,4 @@
-# oven-platform
+# Oven Platform
 
 Oven Platform is a multi-tenant Java/Spring Boot backend platform for restaurant and pizzeria operations, built as a modular monolith using Spring Modulith.
 
