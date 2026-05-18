@@ -1,8 +1,19 @@
-# Oven Platform
+# oven-platform
 
-Oven Platform is a multi-tenant backend platform for restaurant and pizzeria operations.
+Oven Platform is a multi-tenant Java/Spring Boot backend platform for restaurant and pizzeria operations, built as a modular monolith using Spring Modulith.
 
-The project is being built as a modular monolith using Java and Spring Boot, with a strong focus on clean boundaries, tenant isolation, rich domain modeling, automated tests, and production-oriented engineering practices.
+## Project status
+
+This is a personal learning and portfolio project.
+
+I use this repository to practice backend architecture, Spring Boot, modular monolith design,
+domain modeling, testing, observability, and system design decisions.
+
+Issues are used to plan and document my own implementation work.
+
+I am not currently hiring paid contributors for issues in this repository.
+
+---
 
 The current MVP focuses on the foundations required for a SaaS platform:
 
