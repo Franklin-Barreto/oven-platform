@@ -77,4 +77,11 @@ public class OrderController {
     var orders = orderService.listOrders(tenantId).stream().map(OrderResponse::from).toList();
     return ResponseEntity.ok(orders);
   }
+
+  @PostMapping(version = API_VERSION_VALUE, path = "/{orderId}/payment/mark-paid")
+  public ResponseEntity<Void> markAsPaid(
+      @RequestHeader(TENANT_ID_HEADER) UUID tenantId, @PathVariable UUID orderId) {
+    orderService.markPaymentAsPaid(tenantId, orderId);
+    return ResponseEntity.noContent().build();
+  }
 }

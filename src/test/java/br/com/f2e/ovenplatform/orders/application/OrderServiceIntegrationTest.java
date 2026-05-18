@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
@@ -286,6 +287,39 @@ class OrderServiceIntegrationTest {
               assertThat(order.getDeliveredAt()).isNull();
               assertThat(order.getCancelledAt()).isEqualTo(occurredAt);
             });
+  }
+
+  @Test
+  void shouldPublishEventWhenMarkingOrderPaymentAsPaid() {
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+
+    flushAndClear();
+
+    orderService.markPaymentAsPaid(savedOrder.getTenantId(), savedOrder.getId());
+
+    flushAndClear();
+
+    var markedAsPaidEvents = applicationEvents.stream(OrderPaymentMarkedAsPaidEvent.class).toList();
+
+    assertThat(markedAsPaidEvents).hasSize(1);
+
+    var paidEvent = markedAsPaidEvents.getFirst();
+
+    assertThat(paidEvent.orderId()).isEqualTo(savedOrder.getId());
+    assertThat(paidEvent.tenantId()).isEqualTo(savedOrder.getTenantId());
+  }
+
+  @Test
+  void shouldNotPublishEventWhenOrderDoesNotExist() {
+    var orderId = UUID.randomUUID();
+
+    assertThatThrownBy(() -> orderService.markPaymentAsPaid(TENANT_ID, orderId))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Order id: %s not found".formatted(orderId));
+
+    var events = applicationEvents.stream(OrderPaymentMarkedAsPaidEvent.class).toList();
+
+    assertThat(events).isEmpty();
   }
 
   private void flushAndClear() {
