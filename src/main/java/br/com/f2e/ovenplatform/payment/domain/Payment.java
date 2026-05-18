@@ -28,11 +28,11 @@ public class Payment extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
   @Column(name = "method", nullable = false)
-  private PaymentMethod paymentMethod;
+  private PaymentMethod method;
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
-  private PaymentStatus paymentStatus;
+  private PaymentStatus status;
 
   @Column(name = "paid_at")
   private Instant paidAt;
@@ -43,14 +43,14 @@ public class Payment extends BaseEntity {
       UUID tenantId,
       UUID orderId,
       BigDecimal amount,
-      PaymentMethod paymentMethod,
-      PaymentStatus paymentStatus,
+      PaymentMethod method,
+      PaymentStatus status,
       Instant paidAt) {
     this.tenantId = requireNotNull(tenantId, "tenantId");
     this.orderId = requireNotNull(orderId, "orderId");
     this.amount = requirePositive(amount, "amount");
-    this.paymentMethod = requireNotNull(paymentMethod, "paymentMethod");
-    this.paymentStatus = requireNotNull(paymentStatus, "paymentStatus");
+    this.method = requireNotNull(method, "paymentMethod");
+    this.status = requireNotNull(status, "paymentStatus");
     this.paidAt = paidAt;
   }
 
@@ -77,15 +77,23 @@ public class Payment extends BaseEntity {
     return amount;
   }
 
-  public PaymentMethod getPaymentMethod() {
-    return paymentMethod;
+  public PaymentMethod getMethod() {
+    return method;
   }
 
-  public PaymentStatus getPaymentStatus() {
-    return paymentStatus;
+  public PaymentStatus getStatus() {
+    return status;
   }
 
   public Instant getPaidAt() {
     return paidAt;
+  }
+
+  public void markAsPaid(Instant paidAt) {
+    if (status == PaymentStatus.PAID) {
+      return;
+    }
+    status = PaymentStatus.PAID;
+    this.paidAt = requireNotNull(paidAt, "paidAt");
   }
 }

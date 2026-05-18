@@ -6,6 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
@@ -58,8 +59,8 @@ class PaymentServiceIntegrationTest {
     assertThat(payment.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(payment.getOrderId()).isEqualTo(ORDER_ID);
     assertThat(payment.getAmount()).isEqualByComparingTo("20.00");
-    assertThat(payment.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
-    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+    assertThat(payment.getMethod()).isEqualTo(PaymentMethod.CASH);
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
     assertThat(payment.getPaidAt()).isEqualTo(PAID_AT);
 
     verify(clock).instant();
@@ -79,8 +80,8 @@ class PaymentServiceIntegrationTest {
     assertThat(payment.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(payment.getOrderId()).isEqualTo(ORDER_ID);
     assertThat(payment.getAmount()).isEqualByComparingTo("20.00");
-    assertThat(payment.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
-    assertThat(payment.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+    assertThat(payment.getMethod()).isEqualTo(PaymentMethod.CASH);
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PENDING);
     assertThat(payment.getPaidAt()).isNull();
 
     verifyNoInteractions(clock);
@@ -91,6 +92,25 @@ class PaymentServiceIntegrationTest {
     assertThatThrownBy(() -> paymentService.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Payment for order id: %s not found".formatted(ORDER_ID));
+  }
+
+  @Test
+  void shouldMarkPendingPaymentAsPaidByOrderId() {
+    when(clock.instant()).thenReturn(PAID_AT);
+
+    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+    paymentRepository.save(payment);
+
+    paymentService.markAsPaid(TENANT_ID, ORDER_ID);
+
+    flushAndClear();
+
+    var persistedPayment = paymentService.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID);
+
+    assertThat(persistedPayment.getStatus()).isEqualTo(PaymentStatus.PAID);
+    assertThat(persistedPayment.getPaidAt()).isEqualTo(PAID_AT);
+
+    verify(clock).instant();
   }
 
   private void flushAndClear() {

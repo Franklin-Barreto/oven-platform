@@ -27,9 +27,9 @@ class PaymentTest {
 
     assertThat(paymentPaid.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(paymentPaid.getOrderId()).isEqualTo(ORDER_ID);
-    assertThat(paymentPaid.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
+    assertThat(paymentPaid.getMethod()).isEqualTo(PaymentMethod.CASH);
     assertThat(paymentPaid.getPaidAt()).isEqualTo(PAID_AT);
-    assertThat(paymentPaid.getPaymentStatus()).isEqualTo(PaymentStatus.PAID);
+    assertThat(paymentPaid.getStatus()).isEqualTo(PaymentStatus.PAID);
     assertThat(paymentPaid.getAmount()).isEqualByComparingTo("20.00");
   }
 
@@ -48,9 +48,9 @@ class PaymentTest {
 
     assertThat(pendingPayment.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(pendingPayment.getOrderId()).isEqualTo(ORDER_ID);
-    assertThat(pendingPayment.getPaymentMethod()).isEqualTo(PaymentMethod.CASH);
+    assertThat(pendingPayment.getMethod()).isEqualTo(PaymentMethod.CASH);
     assertThat(pendingPayment.getPaidAt()).isNull();
-    assertThat(pendingPayment.getPaymentStatus()).isEqualTo(PaymentStatus.PENDING);
+    assertThat(pendingPayment.getStatus()).isEqualTo(PaymentStatus.PENDING);
     assertThat(pendingPayment.getAmount()).isEqualByComparingTo("20.00");
   }
 
@@ -66,6 +66,38 @@ class PaymentTest {
     assertThatThrownBy(() -> Payment.paid(tenantId, orderId, paymentAmount, paymentMethod, paidAt))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
+  }
+
+  @Test
+  void shouldMarkPendingPaymentAsPaid() {
+
+    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+
+    payment.markAsPaid(PAID_AT);
+
+    assertThat(payment.getPaidAt()).isEqualTo(PAID_AT);
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+  }
+
+  @Test
+  void shouldKeepAlreadyPaidPaymentUnchanged() {
+
+    var payment = Payment.paid(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PAID_AT);
+    var secondPaymentTime = Instant.parse("2026-05-12T21:00:00Z");
+
+    payment.markAsPaid(secondPaymentTime);
+
+    assertThat(payment.getPaidAt()).isEqualTo(PAID_AT);
+    assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+  }
+
+  @Test
+  void shouldRejectMarkAsPaidWithoutPaidAt() {
+    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+
+    assertThatThrownBy(() -> payment.markAsPaid(null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("paidAt must not be null");
   }
 
   private static Stream<Arguments> invalidPaidPayments() {

@@ -1,13 +1,15 @@
 package br.com.f2e.ovenplatform.payment.application;
 
+import br.com.f2e.ovenplatform.payment.application.api.MarkOrderPaymentAsPaid;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class PaymentService {
+public class PaymentService implements MarkOrderPaymentAsPaid {
 
   private final PaymentRepository paymentRepository;
   private final Clock clock;
@@ -44,5 +46,12 @@ public class PaymentService {
             () ->
                 new ResourceNotFoundException(
                     "Payment for order id: %s not found".formatted(orderId)));
+  }
+
+  @Override
+  @Transactional
+  public void markAsPaid(UUID tenantId, UUID orderId) {
+    var payment = findByTenantIdAndOrderId(tenantId, orderId);
+    payment.markAsPaid(clock.instant());
   }
 }
