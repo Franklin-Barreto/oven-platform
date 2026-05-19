@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.payment.application;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,5 +58,10 @@ public class PaymentService {
             () ->
                 new ResourceNotFoundException(
                     "Payment for order id: %s not found".formatted(orderId)));
+  }
+
+  @Transactional(readOnly = true)
+  public List<OrderPaymentResponse> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds) {
+    return paymentRepository.findByTenantIdAndOrderIdIn(tenantId, orderIds);
   }
 }
