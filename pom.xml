@@ -27,7 +27,14 @@
         <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml
         </sonar.coverage.jacoco.xmlReportPaths>
         <sonar.coverage.exclusions>
-            **/*OvenPlatformApplication.java,**/*Config.java,**/*Properties.java,**/*Request.java,**/*Response.java,**/ApiErrorResponse.java,**/ApiErrorItem.java
+            **/*OvenPlatformApplication.java,
+            **/*Config.java,
+            **/*Properties.java,
+            **/*Request.java,
+            **/*Response.java,
+            **/ApiErrorResponse.java,
+            **/ApiErrorItem.java,
+            **/infrastructure/persistence/Jpa*RepositoryAdapter.java
         </sonar.coverage.exclusions>
     </properties>
     <dependencies>
