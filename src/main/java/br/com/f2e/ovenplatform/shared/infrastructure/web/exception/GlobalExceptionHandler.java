@@ -162,6 +162,14 @@ public class GlobalExceptionHandler {
               "Tenant not found.",
               request);
 
+      case "uk_tenant_memberships_tenant_id_user_id" ->
+          error(
+              HttpStatus.CONFLICT,
+              ApiErrorCodes.DUPLICATED_USER_TENANT,
+              resolveTraceIdForErrorResponse(traceContext),
+              "User already belongs to the tenant",
+              request);
+
       case null, default ->
           error(
               HttpStatus.CONFLICT,
