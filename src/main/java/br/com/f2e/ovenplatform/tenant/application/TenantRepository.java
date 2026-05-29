@@ -8,4 +8,6 @@ public interface TenantRepository {
   Tenant save(Tenant tenant);
 
   Optional<Tenant> findById(UUID id);
+
+  boolean existsById(UUID tenantId);
 }

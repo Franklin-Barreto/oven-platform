@@ -2,9 +2,8 @@ package br.com.f2e.ovenplatform.identity.infrastructure.persistence;
 
 import br.com.f2e.ovenplatform.identity.application.TenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
-import org.springframework.stereotype.Repository;
-
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaTenantMembershipRepositoryAdapter implements TenantMembershipRepository {

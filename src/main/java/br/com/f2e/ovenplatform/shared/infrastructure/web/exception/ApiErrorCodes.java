@@ -11,6 +11,7 @@ public final class ApiErrorCodes {
   public static final String MISSING_REQUEST_HEADER = "MISSING_REQUEST_HEADER";
   public static final String INVALID_API_VERSION = "INVALID_API_VERSION";
   public static final String INVALID_ORDER_STATUS_TRANSITION = "INVALID_ORDER_STATUS_TRANSITION";
+  public static final String DUPLICATED_USER_TENANT = "DUPLICATED_USER_TENANT";
 
   private ApiErrorCodes() {}
 }
