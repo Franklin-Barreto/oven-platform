@@ -12,6 +12,7 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.auth.LoginRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -25,6 +26,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class AuthenticationControllerTest {
 
   private static final String URL = "/auth/login";
+  private static final UUID TENANT_ID = UUID.randomUUID();
 
   @Autowired private MockMvc mockMvc;
 
@@ -35,7 +37,7 @@ class AuthenticationControllerTest {
   void shouldLoginAndReturnJwtToken() throws Exception {
     when(authService.login("john@email.com", "123456")).thenReturn("jwt-token");
 
-    var request = new LoginRequest("john@email.com", "123456");
+    var request = createLoginRequest();
 
     mockMvc
         .perform(
@@ -48,7 +50,7 @@ class AuthenticationControllerTest {
 
   @Test
   void shouldReturnBadRequestWhenRequestIsInvalid() throws Exception {
-    var request = new LoginRequest("", "");
+    var request = new LoginRequest(null, "", "");
 
     mockMvc
         .perform(
@@ -56,5 +58,9 @@ class AuthenticationControllerTest {
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(authService);
+  }
+
+  private static LoginRequest createLoginRequest() {
+    return new LoginRequest(TENANT_ID, "john@email.com", "123456");
   }
 }
