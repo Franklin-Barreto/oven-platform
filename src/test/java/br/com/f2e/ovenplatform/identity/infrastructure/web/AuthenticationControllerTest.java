@@ -35,7 +35,7 @@ class AuthenticationControllerTest {
 
   @Test
   void shouldLoginAndReturnJwtToken() throws Exception {
-    when(authService.login("john@email.com", "123456")).thenReturn("jwt-token");
+    when(authService.login(TENANT_ID, "john@email.com", "123456")).thenReturn("jwt-token");
 
     var request = createLoginRequest();
 
@@ -45,7 +45,7 @@ class AuthenticationControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.token").value("jwt-token"));
 
-    verify(authService).login("john@email.com", "123456");
+    verify(authService).login(TENANT_ID, "john@email.com", "123456");
   }
 
   @Test

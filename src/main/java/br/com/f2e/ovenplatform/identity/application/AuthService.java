@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.identity.application;
 
 import br.com.f2e.ovenplatform.identity.domain.User;
+import java.util.UUID;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -18,7 +19,7 @@ public class AuthService {
     this.jwtService = jwtService;
   }
 
-  public String login(String email, String password) {
+  public String login(UUID tenantId, String email, String password) {
     var user = UsernamePasswordAuthenticationToken.unauthenticated(email, password);
     var authenticated = authenticationManager.authenticate(user);
     SecurityContextHolder.getContext().setAuthentication(authenticated);

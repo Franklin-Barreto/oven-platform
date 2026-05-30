@@ -30,6 +30,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @ExtendWith(MockitoExtension.class)
 class AuthServiceTest {
 
+  private static final UUID TENANT_ID = UUID.randomUUID();
+
   @Mock private AuthenticationManager authenticationManager;
   @Mock private AccessTokenService accessTokenService;
 
@@ -57,7 +59,7 @@ class AuthServiceTest {
     when(accessTokenService.generateToken(user.getId(), UserRole.MEMBER.name()))
         .thenReturn("jwt-token");
 
-    var token = authService.login("john@email.com", "123456");
+    var token = authService.login(TENANT_ID, "john@email.com", "123456");
 
     assertEquals("jwt-token", token);
     assertSame(authenticated, SecurityContextHolder.getContext().getAuthentication());
@@ -74,7 +76,7 @@ class AuthServiceTest {
     when(accessTokenService.generateToken(user.getId(), UserRole.ADMIN.name()))
         .thenReturn("jwt-token");
 
-    authService.login("john@email.com", "123456");
+    authService.login(TENANT_ID, "john@email.com", "123456");
 
     verify(authenticationManager)
         .authenticate(
@@ -91,7 +93,8 @@ class AuthServiceTest {
         .thenThrow(new BadCredentialsException("Bad credentials"));
 
     assertThrows(
-        BadCredentialsException.class, () -> authService.login("john@email.com", "wrong-password"));
+        BadCredentialsException.class,
+        () -> authService.login(TENANT_ID, "john@email.com", "wrong-password"));
 
     assertNull(SecurityContextHolder.getContext().getAuthentication());
     verifyNoInteractions(accessTokenService);
@@ -103,7 +106,9 @@ class AuthServiceTest {
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
 
-    assertThrows(IllegalStateException.class, () -> authService.login("john@email.com", "123456"));
+    assertThrows(
+        IllegalStateException.class,
+        () -> authService.login(TENANT_ID, "john@email.com", "123456"));
 
     verifyNoInteractions(accessTokenService);
   }

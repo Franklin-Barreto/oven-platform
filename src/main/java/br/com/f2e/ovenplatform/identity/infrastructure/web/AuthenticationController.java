@@ -23,6 +23,7 @@ public class AuthenticationController {
   @PostMapping("/login")
   ResponseEntity<LoginResponse> login(@Valid @RequestBody LoginRequest request) {
     return ResponseEntity.ok(
-        new LoginResponse(authService.login(request.email(), request.password())));
+        new LoginResponse(
+            authService.login(request.tenantId(), request.email(), request.password())));
   }
 }
