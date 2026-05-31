@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.filter;
 
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import io.jsonwebtoken.Claims;
@@ -57,7 +57,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       Claims claims = jwtService.parseClaims(token);
       String role = claims.get("role").toString();
       var authenticatedUser =
-          new AuthenticatedUser(UUID.fromString(claims.getSubject()), UserRole.valueOf(role));
+          new AuthenticatedUser(
+              UUID.fromString(claims.getSubject()), TenantMembershipRole.valueOf(role));
       var authenticated = getAuthenticated(authenticatedUser, role);
       securityContext.setAuthentication(authenticated);
 
