@@ -10,7 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import io.jsonwebtoken.Claims;
@@ -65,7 +65,7 @@ class JwtAuthenticationFilterTest {
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
     when(claims.getSubject()).thenReturn(subject.toString());
-    when(claims.get("role")).thenReturn(UserRole.MEMBER.name());
+    when(claims.get("role")).thenReturn(TenantMembershipRole.MEMBER.name());
     when(jwtService.parseClaims("valid-token")).thenReturn(claims);
 
     filter.doFilter(request, response, filterChain);
@@ -79,12 +79,12 @@ class JwtAuthenticationFilterTest {
     var authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
 
     assertEquals(subject, authenticatedUser.id());
-    assertEquals(UserRole.MEMBER, authenticatedUser.role());
+    assertEquals(TenantMembershipRole.MEMBER, authenticatedUser.role());
 
     assertTrue(
         authentication.getAuthorities().stream()
             .anyMatch(
-                authority -> Objects.equals(authority.getAuthority(), UserRole.MEMBER.name())));
+                authority -> Objects.equals(authority.getAuthority(), TenantMembershipRole.MEMBER.name())));
 
     verify(filterChain).doFilter(request, response);
     verify(jwtService).parseClaims("valid-token");
@@ -123,7 +123,7 @@ class JwtAuthenticationFilterTest {
 
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
-    var role = UserRole.ADMIN;
+    var role = TenantMembershipRole.ADMIN;
     var authenticatedUser = new AuthenticatedUser(subject, role);
 
     var existingAuthentication =
