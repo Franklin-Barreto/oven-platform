@@ -84,7 +84,8 @@ class JwtAuthenticationFilterTest {
     assertTrue(
         authentication.getAuthorities().stream()
             .anyMatch(
-                authority -> Objects.equals(authority.getAuthority(), TenantMembershipRole.MEMBER.name())));
+                authority ->
+                    Objects.equals(authority.getAuthority(), TenantMembershipRole.MEMBER.name())));
 
     verify(filterChain).doFilter(request, response);
     verify(jwtService).parseClaims("valid-token");
