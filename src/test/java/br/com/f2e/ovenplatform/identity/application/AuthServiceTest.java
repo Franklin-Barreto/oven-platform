@@ -50,13 +50,12 @@ class AuthServiceTest {
 
   @Test
   void shouldAuthenticateUserAndReturnAccessToken() {
-    var tenantId = UUID.randomUUID();
-    var user = new User(tenantId, "john@email.com", "password-hash", UserRole.MEMBER);
+    var user = new User(TENANT_ID, "john@email.com", "password-hash", UserRole.MEMBER);
 
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(user.getId(), UserRole.MEMBER.name()))
+    when(accessTokenService.generateToken(TENANT_ID, user.getId(), UserRole.MEMBER.name()))
         .thenReturn("jwt-token");
 
     var token = authService.login(TENANT_ID, "john@email.com", "123456");
@@ -64,7 +63,7 @@ class AuthServiceTest {
     assertEquals("jwt-token", token);
     assertSame(authenticated, SecurityContextHolder.getContext().getAuthentication());
 
-    verify(accessTokenService).generateToken(user.getId(), UserRole.MEMBER.name());
+    verify(accessTokenService).generateToken(TENANT_ID, user.getId(), UserRole.MEMBER.name());
   }
 
   @Test
@@ -73,7 +72,7 @@ class AuthServiceTest {
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(user.getId(), UserRole.ADMIN.name()))
+    when(accessTokenService.generateToken(TENANT_ID, user.getId(), UserRole.ADMIN.name()))
         .thenReturn("jwt-token");
 
     authService.login(TENANT_ID, "john@email.com", "123456");
