@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web.exception;
 
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.AuthenticationController;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.IdentityController;
@@ -35,6 +36,19 @@ public class IdentityExceptionHandler {
             ApiErrorResponse.of(
                 HttpStatus.FORBIDDEN,
                 ApiErrorCodes.INACTIVE_TENANT_MEMBERSHIP,
+                resolveTraceIdForErrorResponse(traceContext),
+                exception.getMessage(),
+                request.getRequestURI()));
+  }
+
+  @ExceptionHandler(TenantAccessDeniedException.class)
+  public ResponseEntity<ApiErrorResponse> tenantAccessDeniedHandler(
+      TenantAccessDeniedException exception, HttpServletRequest request) {
+    return ResponseEntity.status(HttpStatus.FORBIDDEN)
+        .body(
+            ApiErrorResponse.of(
+                HttpStatus.FORBIDDEN,
+                ApiErrorCodes.TENANT_ACCESS_DENIED,
                 resolveTraceIdForErrorResponse(traceContext),
                 exception.getMessage(),
                 request.getRequestURI()));

@@ -3,7 +3,7 @@ package br.com.f2e.ovenplatform.identity.infrastructure.security;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
@@ -30,7 +30,7 @@ class JwtServiceTest {
   @Test
   void shouldGenerateAndParseToken() {
 
-    var token = jwtService.generateToken(TENANT_ID, SUBJECT, UserRole.MEMBER.name());
+    var token = jwtService.generateToken(TENANT_ID, SUBJECT, TenantMembershipRole.MEMBER.name());
     var claims = jwtService.parseClaims(token);
 
     Date issuedAt = claims.getIssuedAt();
@@ -38,7 +38,7 @@ class JwtServiceTest {
 
     assertThat(UUID.fromString(claims.getSubject())).isEqualTo(SUBJECT);
     assertThat(UUID.fromString(claims.get("tenantId", String.class))).isEqualTo(TENANT_ID);
-    assertThat(claims.get("role", String.class)).isEqualTo(UserRole.MEMBER.name());
+    assertThat(claims.get("role", String.class)).isEqualTo(TenantMembershipRole.MEMBER.name());
     assertThat(issuedAt).isNotNull();
     assertThat(expiration).isNotNull();
     assertThat(issuedAt).isBefore(expiration);
@@ -47,7 +47,7 @@ class JwtServiceTest {
   @Test
   void shouldFailWhenTokenSignatureIsInvalid() {
 
-    var token = jwtService.generateToken(TENANT_ID, SUBJECT, UserRole.MEMBER.name());
+    var token = jwtService.generateToken(TENANT_ID, SUBJECT, TenantMembershipRole.MEMBER.name());
     var jwtServiceWithDifferentSecret =
         new JwtService(Encoders.BASE64.encode(Jwts.SIG.HS256.key().build().getEncoded()), 20);
 
@@ -58,7 +58,8 @@ class JwtServiceTest {
   void shouldFailWhenTokenIsExpired() {
 
     var expiredJwtService = new JwtService(TEST_SECRET, -1);
-    var token = expiredJwtService.generateToken(TENANT_ID, SUBJECT, UserRole.ADMIN.name());
+    var token =
+        expiredJwtService.generateToken(TENANT_ID, SUBJECT, TenantMembershipRole.ADMIN.name());
 
     assertThrows(ExpiredJwtException.class, () -> expiredJwtService.parseClaims(token));
   }

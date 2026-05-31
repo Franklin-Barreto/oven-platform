@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -8,18 +9,27 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.f2e.ovenplatform.identity.application.AuthService;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.auth.LoginRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.ResultMatcher;
 
 @WebMvcTest(AuthenticationController.class)
 @Import(value = {TraceContext.class})
@@ -34,7 +44,7 @@ class AuthenticationControllerTest {
   @MockitoBean private JwtService jwtService;
 
   @Test
-  void shouldLoginAndReturnJwtToken() throws Exception {
+  void shouldLoginWithTenantIdAndReturnJwtToken() throws Exception {
     when(authService.login(TENANT_ID, "john@email.com", "123456")).thenReturn("jwt-token");
 
     var request = createLoginRequest();
@@ -49,7 +59,7 @@ class AuthenticationControllerTest {
   }
 
   @Test
-  void shouldReturnBadRequestWhenRequestIsInvalid() throws Exception {
+  void shouldReturnBadRequestWhenLoginRequestIsInvalid() throws Exception {
     var request = new LoginRequest(null, "", "");
 
     mockMvc
@@ -58,6 +68,52 @@ class AuthenticationControllerTest {
         .andExpect(status().isBadRequest());
 
     verifyNoInteractions(authService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("tenantAccessFailureScenarios")
+  void shouldMapTenantAccessFailureToExpectedErrorResponse(
+      ResultMatcher expectedStatus,
+      HttpStatus expectedHttpStatus,
+      String expectedErrorCode,
+      String expectedMessage,
+      RuntimeException exception)
+      throws Exception {
+    when(authService.login(TENANT_ID, "john@email.com", "123456")).thenThrow(exception);
+
+    var request = createLoginRequest();
+
+    mockMvc
+        .perform(
+            post(URL).contentType(MediaType.APPLICATION_JSON).content(JsonUtils.toJson(request)))
+        .andExpect(expectedStatus)
+        .andExpectAll(
+            expectValidationErrors(
+                expectedHttpStatus,
+                URL,
+                expectedHttpStatus.getReasonPhrase(),
+                expectedErrorCode,
+                expectedMessage,
+                null,
+                expectedHttpStatus.value()));
+
+    verify(authService).login(TENANT_ID, "john@email.com", "123456");
+  }
+
+  private static Stream<Arguments> tenantAccessFailureScenarios() {
+    return Stream.of(
+        Arguments.of(
+            status().isForbidden(),
+            HttpStatus.FORBIDDEN,
+            ApiErrorCodes.INACTIVE_TENANT_MEMBERSHIP,
+            "Tenant membership is inactive.",
+            new TenantMembershipInactiveException()),
+        Arguments.of(
+            status().isForbidden(),
+            HttpStatus.FORBIDDEN,
+            ApiErrorCodes.TENANT_ACCESS_DENIED,
+            "User does not have access to this tenant.",
+            new TenantAccessDeniedException()));
   }
 
   private static LoginRequest createLoginRequest() {

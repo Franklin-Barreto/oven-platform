@@ -3,8 +3,8 @@ package br.com.f2e.ovenplatform.identity.application;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
 import br.com.f2e.ovenplatform.identity.domain.User;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
-import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.UUID;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -48,11 +48,7 @@ public class AuthService {
   private TenantMembership getTenantMembership(UUID tenantId, UUID userId) {
     return tenantMembershipRepository
         .findByUserIdAndTenantId(userId, tenantId)
-        .orElseThrow(
-            () ->
-                new ResourceNotFoundException(
-                    "TenantMembership userId %s tenantId %s not found."
-                        .formatted(userId, tenantId)));
+        .orElseThrow(TenantAccessDeniedException::new);
   }
 
   private User getLoggedUser(Authentication authenticated) {

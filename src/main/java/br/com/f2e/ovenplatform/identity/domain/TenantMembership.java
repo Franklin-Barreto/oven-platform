@@ -64,7 +64,7 @@ public class TenantMembership extends BaseEntity {
     return user;
   }
 
-  public void inactiveTenantMembership() {
+  public void deactivate() {
     this.status = TenantMembershipStatus.INACTIVE;
   }
 }
