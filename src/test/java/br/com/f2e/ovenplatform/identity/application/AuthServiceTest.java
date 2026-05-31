@@ -10,10 +10,13 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,13 +37,15 @@ class AuthServiceTest {
 
   @Mock private AuthenticationManager authenticationManager;
   @Mock private AccessTokenService accessTokenService;
+  @Mock private TenantMembershipRepository tenantMembershipRepository;
 
   private AuthService authService;
 
   @BeforeEach
   void setUp() {
     SecurityContextHolder.clearContext();
-    authService = new AuthService(authenticationManager, accessTokenService);
+    authService =
+        new AuthService(authenticationManager, accessTokenService, tenantMembershipRepository);
   }
 
   @AfterEach
@@ -55,15 +60,19 @@ class AuthServiceTest {
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(TENANT_ID, user.getId(), UserRole.MEMBER.name()))
+    when(accessTokenService.generateToken(
+            TENANT_ID, user.getId(), TenantMembershipRole.MEMBER.name()))
         .thenReturn("jwt-token");
+    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+        .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.MEMBER)));
 
     var token = authService.login(TENANT_ID, "john@email.com", "123456");
 
     assertEquals("jwt-token", token);
     assertSame(authenticated, SecurityContextHolder.getContext().getAuthentication());
 
-    verify(accessTokenService).generateToken(TENANT_ID, user.getId(), UserRole.MEMBER.name());
+    verify(accessTokenService)
+        .generateToken(TENANT_ID, user.getId(), TenantMembershipRole.MEMBER.name());
   }
 
   @Test
@@ -72,8 +81,11 @@ class AuthServiceTest {
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(TENANT_ID, user.getId(), UserRole.ADMIN.name()))
+    when(accessTokenService.generateToken(
+            TENANT_ID, user.getId(), TenantMembershipRole.ADMIN.name()))
         .thenReturn("jwt-token");
+    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+        .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.ADMIN)));
 
     authService.login(TENANT_ID, "john@email.com", "123456");
 
@@ -110,5 +122,9 @@ class AuthServiceTest {
         () -> authService.login(TENANT_ID, "john@email.com", "123456"));
 
     verifyNoInteractions(accessTokenService);
+  }
+
+  private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {
+    return new TenantMembership(user, AuthServiceTest.TENANT_ID, role);
   }
 }
