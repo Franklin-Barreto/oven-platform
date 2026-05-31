@@ -24,7 +24,7 @@ public class AuthService {
     var authenticated = authenticationManager.authenticate(user);
     SecurityContextHolder.getContext().setAuthentication(authenticated);
     var loggedUser = getLoggedUser(authenticated);
-    return jwtService.generateToken(loggedUser.getId(), loggedUser.getRole().name());
+    return jwtService.generateToken(tenantId, loggedUser.getId(), loggedUser.getRole().name());
   }
 
   private static User getLoggedUser(Authentication authenticated) {
