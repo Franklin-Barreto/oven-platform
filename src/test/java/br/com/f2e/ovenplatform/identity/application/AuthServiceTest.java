@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.application;
 
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -14,6 +15,7 @@ import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -122,6 +124,23 @@ class AuthServiceTest {
         () -> authService.login(TENANT_ID, "john@email.com", "123456"));
 
     verifyNoInteractions(accessTokenService);
+  }
+
+  @Test
+  void shouldFailWhenTenantMembershipIsInactive() {
+
+    var user = new User(UUID.randomUUID(), "john@email.com", "password-hash", UserRole.ADMIN);
+    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    var tenantMembership = createTenantMembership(user, TenantMembershipRole.ADMIN);
+    tenantMembership.inactiveTenantMembership();
+
+    when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
+    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+        .thenReturn(Optional.of(tenantMembership));
+
+    assertThatThrownBy(() -> authService.login(TENANT_ID, "john@email.com", "123456"))
+        .isInstanceOf(TenantMembershipInactiveException.class)
+        .hasMessage("Tenant membership is inactive.");
   }
 
   private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {
