@@ -1,6 +1,10 @@
 package br.com.f2e.ovenplatform.identity.application;
 
+import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
 import br.com.f2e.ovenplatform.identity.domain.User;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.UUID;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -13,21 +17,45 @@ public class AuthService {
 
   private final AuthenticationManager authenticationManager;
   private final AccessTokenService jwtService;
+  private final TenantMembershipRepository tenantMembershipRepository;
 
-  public AuthService(AuthenticationManager authenticationManager, AccessTokenService jwtService) {
+  public AuthService(
+      AuthenticationManager authenticationManager,
+      AccessTokenService jwtService,
+      TenantMembershipRepository tenantMembershipRepository) {
     this.authenticationManager = authenticationManager;
     this.jwtService = jwtService;
+    this.tenantMembershipRepository = tenantMembershipRepository;
   }
 
   public String login(UUID tenantId, String email, String password) {
+
     var user = UsernamePasswordAuthenticationToken.unauthenticated(email, password);
     var authenticated = authenticationManager.authenticate(user);
+
     SecurityContextHolder.getContext().setAuthentication(authenticated);
+
     var loggedUser = getLoggedUser(authenticated);
-    return jwtService.generateToken(tenantId, loggedUser.getId(), loggedUser.getRole().name());
+    var tenantMembership = getTenantMembership(tenantId, loggedUser.getId());
+
+    if (tenantMembership.getStatus() != TenantMembershipStatus.ACTIVE) {
+      throw new TenantMembershipInactiveException();
+    }
+    return jwtService.generateToken(
+        tenantId, loggedUser.getId(), tenantMembership.getRole().name());
   }
 
-  private static User getLoggedUser(Authentication authenticated) {
+  private TenantMembership getTenantMembership(UUID tenantId, UUID userId) {
+    return tenantMembershipRepository
+        .findByUserIdAndTenantId(userId, tenantId)
+        .orElseThrow(
+            () ->
+                new ResourceNotFoundException(
+                    "TenantMembership userId %s tenantId %s not found."
+                        .formatted(userId, tenantId)));
+  }
+
+  private User getLoggedUser(Authentication authenticated) {
     if (authenticated.getPrincipal() instanceof User user) {
       return user;
     }
