@@ -15,6 +15,7 @@ import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.UserRole;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import java.util.List;
 import java.util.Objects;
@@ -79,7 +80,7 @@ class AuthServiceTest {
 
   @Test
   void shouldAuthenticateUsingEmailAndPassword() {
-    var user = new User(UUID.randomUUID(), "john@email.com", "password-hash", UserRole.ADMIN);
+    var user = createUser();
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
@@ -129,10 +130,10 @@ class AuthServiceTest {
   @Test
   void shouldFailWhenTenantMembershipIsInactive() {
 
-    var user = new User(UUID.randomUUID(), "john@email.com", "password-hash", UserRole.ADMIN);
+    var user = createUser();
     var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
     var tenantMembership = createTenantMembership(user, TenantMembershipRole.ADMIN);
-    tenantMembership.inactiveTenantMembership();
+    tenantMembership.deactivate();
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
     when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
@@ -141,6 +142,26 @@ class AuthServiceTest {
     assertThatThrownBy(() -> authService.login(TENANT_ID, "john@email.com", "123456"))
         .isInstanceOf(TenantMembershipInactiveException.class)
         .hasMessage("Tenant membership is inactive.");
+  }
+
+  @Test
+  void shouldFailWhenUserHasNoMembershipForTenant() {
+    var user = createUser();
+    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+
+    when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
+    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(() -> authService.login(TENANT_ID, "john@email.com", "123456"))
+        .isInstanceOf(TenantAccessDeniedException.class)
+        .hasMessage("User does not have access to this tenant.");
+
+    verifyNoInteractions(accessTokenService);
+  }
+
+  private static User createUser() {
+    return new User(UUID.randomUUID(), "john@email.com", "password-hash", UserRole.ADMIN);
   }
 
   private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {

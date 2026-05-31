@@ -46,7 +46,8 @@ class JwtAuthenticationFilterTest {
   @Mock private FilterChain filterChain;
   @Mock Claims claims;
 
-  private final UUID subject = UUID.randomUUID();
+  private static final UUID SUBJECT = UUID.randomUUID();
+  private static final UUID TENANT_ID = UUID.randomUUID();
 
   @BeforeEach
   void setUp() {
@@ -64,8 +65,9 @@ class JwtAuthenticationFilterTest {
   void shouldSetAuthenticationWhenBearerTokenIsValid() throws ServletException, IOException {
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
-    when(claims.getSubject()).thenReturn(subject.toString());
-    when(claims.get("role")).thenReturn(TenantMembershipRole.MEMBER.name());
+    when(claims.getSubject()).thenReturn(SUBJECT.toString());
+    when(claims.get("role", String.class)).thenReturn(TenantMembershipRole.MEMBER.name());
+    when(claims.get("tenantId", String.class)).thenReturn(TENANT_ID.toString());
     when(jwtService.parseClaims("valid-token")).thenReturn(claims);
 
     filter.doFilter(request, response, filterChain);
@@ -78,7 +80,8 @@ class JwtAuthenticationFilterTest {
 
     var authenticatedUser = (AuthenticatedUser) authentication.getPrincipal();
 
-    assertEquals(subject, authenticatedUser.id());
+    assertEquals(TENANT_ID, authenticatedUser.tenantId());
+    assertEquals(SUBJECT, authenticatedUser.userId());
     assertEquals(TenantMembershipRole.MEMBER, authenticatedUser.role());
 
     assertTrue(
@@ -125,7 +128,7 @@ class JwtAuthenticationFilterTest {
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
     var role = TenantMembershipRole.ADMIN;
-    var authenticatedUser = new AuthenticatedUser(subject, role);
+    var authenticatedUser = new AuthenticatedUser(TENANT_ID, SUBJECT, role);
 
     var existingAuthentication =
         new UsernamePasswordAuthenticationToken(
