@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.payment.infrastructure.web;
 
-import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
+import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -22,12 +22,14 @@ import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,6 +48,11 @@ class PaymentControllerTest {
   @MockitoBean private PaymentService paymentService;
   @MockitoBean private JwtService jwtService;
 
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
+
   @Test
   void shouldReturnPaymentsByOrderIds() throws Exception {
     var orderId = UUID.randomUUID();
@@ -59,7 +66,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request)))
         .andExpect(status().isOk())
@@ -83,7 +90,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request)))
         .andExpect(status().isOk())
@@ -98,7 +105,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(new OrderPaymentsLookupRequest(Collections.emptyList()))))
         .andExpect(status().isBadRequest())
