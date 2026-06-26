@@ -7,7 +7,5 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpringDataUserRepository extends JpaRepository<User, UUID> {
 
-  Optional<User> findByIdAndTenantId(UUID id, UUID tenantId);
-
   Optional<User> findByEmail(String email);
 }

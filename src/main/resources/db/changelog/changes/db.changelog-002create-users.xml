@@ -21,10 +21,6 @@
                 <constraints nullable="false"/>
             </column>
 
-            <column name="tenant_id" type="UUID">
-                <constraints nullable="false"/>
-            </column>
-
             <column name="email" type="VARCHAR(255)">
                 <constraints nullable="false"/>
             </column>
@@ -33,22 +29,14 @@
                 <constraints nullable="false"/>
             </column>
 
-            <column name="status" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
         </createTable>
 
         <addUniqueConstraint
                 tableName="users"
-                columnNames="tenant_id, email"
-                constraintName="uk_users_tenant_id_email"/>
+                columnNames="email"
+                constraintName="uk_users_email"/>
 
-        <createIndex tableName="users" indexName="idx_users_tenant_id">
-            <column name="tenant_id"/>
-        </createIndex>
-
-        <createIndex tableName="users" indexName="idx_users_tenant_id_email">
-            <column name="tenant_id"/>
+        <createIndex tableName="users" indexName="idx_users_email">
             <column name="email"/>
         </createIndex>
 

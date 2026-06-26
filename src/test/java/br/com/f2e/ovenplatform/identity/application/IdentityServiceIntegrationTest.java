@@ -76,9 +76,9 @@ class IdentityServiceIntegrationTest {
     assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     assertThat(persistedUser.getEmail()).isEqualTo(NORMALIZED_EMAIL);
-    assertThat(persistedUser.getPassword()).isNotEqualTo(RAW_PASSWORD);
-    assertThat(persistedUser.getPassword()).isNotBlank();
-    assertThat(persistedUser.getPassword()).startsWith("$2");
+    assertThat(persistedUser.getPasswordHash()).isNotEqualTo(RAW_PASSWORD);
+    assertThat(persistedUser.getPasswordHash()).isNotBlank();
+    assertThat(persistedUser.getPasswordHash()).startsWith("$2");
 
     assertThat(persistedMembership.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(persistedMembership.getUser().getId()).isEqualTo(persistedUser.getId());

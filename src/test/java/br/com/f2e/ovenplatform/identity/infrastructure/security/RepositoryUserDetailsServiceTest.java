@@ -34,7 +34,7 @@ class RepositoryUserDetailsServiceTest {
 
   @Test
   void shouldLoadUserByUsername() {
-    var user = withId(new User(UUID.randomUUID(), EMAIL, PASSWORD_HASH), USER_ID);
+    var user = withId(new User(EMAIL, PASSWORD_HASH), USER_ID);
 
     when(userRepository.findByEmail(EMAIL)).thenReturn(Optional.of(user));
 

@@ -169,11 +169,11 @@ class AuthServiceTest {
   }
 
   private static User createUser() {
-    return withId(new User(TENANT_ID, EMAIL, PASSWORD_HASH), USER_ID);
+    return withId(new User(EMAIL, PASSWORD_HASH), USER_ID);
   }
 
   private static AuthenticatedUserDetails createUserDetails(User user) {
-    return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPassword());
+    return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPasswordHash());
   }
 
   private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {
