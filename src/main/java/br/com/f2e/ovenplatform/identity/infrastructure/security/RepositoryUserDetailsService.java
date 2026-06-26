@@ -22,6 +22,6 @@ public class RepositoryUserDetailsService implements UserDetailsService {
             .findByEmail(username)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
-    return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPassword());
+    return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPasswordHash());
   }
 }

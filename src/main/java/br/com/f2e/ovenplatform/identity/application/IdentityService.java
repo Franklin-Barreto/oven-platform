@@ -53,14 +53,7 @@ public class IdentityService {
   private User createUserForTenantMembership(CreateTenantUserCommand command, String email) {
     var passwordHash = passwordEncoder.encode(command.rawPassword());
 
-    return userRepository.save(new User(command.tenantId(), email, passwordHash));
-  }
-
-  @Transactional(readOnly = true)
-  public User findByIdAndTenantId(UUID id, UUID tenantId) {
-    return userRepository
-        .findByIdAndTenantId(id, tenantId)
-        .orElseThrow(() -> new NoSuchElementException("User"));
+    return userRepository.save(new User(email, passwordHash));
   }
 
   @Transactional(readOnly = true)
