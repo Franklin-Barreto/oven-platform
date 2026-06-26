@@ -33,10 +33,6 @@
                 <constraints nullable="false"/>
             </column>
 
-            <column name="role" type="VARCHAR(50)">
-                <constraints nullable="false"/>
-            </column>
-
             <column name="status" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>

@@ -17,7 +17,7 @@ import br.com.f2e.ovenplatform.identity.application.TenantUserResult;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
-import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
+import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.UserRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;

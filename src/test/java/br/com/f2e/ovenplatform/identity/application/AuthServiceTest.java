@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.application;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -14,9 +15,9 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
+import br.com.f2e.ovenplatform.identity.infrastructure.security.AuthenticatedUserDetails;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
@@ -37,6 +38,9 @@ import org.springframework.security.core.context.SecurityContextHolder;
 class AuthServiceTest {
 
   private static final UUID TENANT_ID = UUID.randomUUID();
+  private static final UUID USER_ID = UUID.randomUUID();
+  private static final String EMAIL = "john@email.com";
+  private static final String PASSWORD_HASH = "password-hash";
 
   @Mock private AuthenticationManager authenticationManager;
   @Mock private AccessTokenService accessTokenService;
@@ -58,45 +62,46 @@ class AuthServiceTest {
 
   @Test
   void shouldAuthenticateUserAndReturnAccessToken() {
-    var user = new User(TENANT_ID, "john@email.com", "password-hash", UserRole.MEMBER);
-
-    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    var user = createUser();
+    var userDetails = createUserDetails(user);
+    var authenticated =
+        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(
-            TENANT_ID, user.getId(), TenantMembershipRole.MEMBER.name()))
+    when(accessTokenService.generateToken(TENANT_ID, USER_ID, TenantMembershipRole.MEMBER.name()))
         .thenReturn("jwt-token");
-    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+    when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
         .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.MEMBER)));
 
-    var token = authService.login(TENANT_ID, "john@email.com", "123456");
+    var token = authService.login(TENANT_ID, EMAIL, "123456");
 
     assertEquals("jwt-token", token);
     assertSame(authenticated, SecurityContextHolder.getContext().getAuthentication());
 
     verify(accessTokenService)
-        .generateToken(TENANT_ID, user.getId(), TenantMembershipRole.MEMBER.name());
+        .generateToken(TENANT_ID, USER_ID, TenantMembershipRole.MEMBER.name());
   }
 
   @Test
   void shouldAuthenticateUsingEmailAndPassword() {
     var user = createUser();
-    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    var userDetails = createUserDetails(user);
+    var authenticated =
+        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(
-            TENANT_ID, user.getId(), TenantMembershipRole.ADMIN.name()))
+    when(accessTokenService.generateToken(TENANT_ID, USER_ID, TenantMembershipRole.ADMIN.name()))
         .thenReturn("jwt-token");
-    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+    when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
         .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.ADMIN)));
 
-    authService.login(TENANT_ID, "john@email.com", "123456");
+    authService.login(TENANT_ID, EMAIL, "123456");
 
     verify(authenticationManager)
         .authenticate(
             argThat(
                 authentication ->
-                    Objects.equals(authentication.getPrincipal(), "john@email.com")
+                    Objects.equals(authentication.getPrincipal(), EMAIL)
                         && Objects.equals(authentication.getCredentials(), "123456")
                         && !authentication.isAuthenticated()));
   }
@@ -107,39 +112,40 @@ class AuthServiceTest {
         .thenThrow(new BadCredentialsException("Bad credentials"));
 
     assertThrows(
-        BadCredentialsException.class,
-        () -> authService.login(TENANT_ID, "john@email.com", "wrong-password"));
+        BadCredentialsException.class, () -> authService.login(TENANT_ID, EMAIL, "wrong-password"));
 
     assertNull(SecurityContextHolder.getContext().getAuthentication());
     verifyNoInteractions(accessTokenService);
   }
 
   @Test
-  void shouldFailWhenAuthenticatedPrincipalIsNotUser() {
-    var authenticated = new UsernamePasswordAuthenticationToken("john@email.com", null, List.of());
+  void shouldFailWhenAuthenticationPrincipalIsInvalid() {
+    var authenticated = new UsernamePasswordAuthenticationToken(EMAIL, null, List.of());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
 
-    assertThrows(
-        IllegalStateException.class,
-        () -> authService.login(TENANT_ID, "john@email.com", "123456"));
+    assertThatThrownBy(() -> authService.login(TENANT_ID, EMAIL, "123456"))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("Authenticated principal is not an AuthenticatedPrincipal");
 
     verifyNoInteractions(accessTokenService);
   }
 
   @Test
   void shouldFailWhenTenantMembershipIsInactive() {
-
     var user = createUser();
-    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    var userDetails = createUserDetails(user);
+    var authenticated =
+        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
+
     var tenantMembership = createTenantMembership(user, TenantMembershipRole.ADMIN);
     tenantMembership.deactivate();
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+    when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
         .thenReturn(Optional.of(tenantMembership));
 
-    assertThatThrownBy(() -> authService.login(TENANT_ID, "john@email.com", "123456"))
+    assertThatThrownBy(() -> authService.login(TENANT_ID, EMAIL, "123456"))
         .isInstanceOf(TenantMembershipInactiveException.class)
         .hasMessage("Tenant membership is inactive.");
   }
@@ -147,13 +153,15 @@ class AuthServiceTest {
   @Test
   void shouldFailWhenUserHasNoMembershipForTenant() {
     var user = createUser();
-    var authenticated = new UsernamePasswordAuthenticationToken(user, null, user.getAuthorities());
+    var userDetails = createUserDetails(user);
+    var authenticated =
+        new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(tenantMembershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID))
+    when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
         .thenReturn(Optional.empty());
 
-    assertThatThrownBy(() -> authService.login(TENANT_ID, "john@email.com", "123456"))
+    assertThatThrownBy(() -> authService.login(TENANT_ID, EMAIL, "123456"))
         .isInstanceOf(TenantAccessDeniedException.class)
         .hasMessage("User does not have access to this tenant.");
 
@@ -161,10 +169,14 @@ class AuthServiceTest {
   }
 
   private static User createUser() {
-    return new User(UUID.randomUUID(), "john@email.com", "password-hash", UserRole.ADMIN);
+    return withId(new User(TENANT_ID, EMAIL, PASSWORD_HASH), USER_ID);
+  }
+
+  private static AuthenticatedUserDetails createUserDetails(User user) {
+    return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPassword());
   }
 
   private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {
-    return new TenantMembership(user, AuthServiceTest.TENANT_ID, role);
+    return new TenantMembership(user, TENANT_ID, role);
   }
 }
