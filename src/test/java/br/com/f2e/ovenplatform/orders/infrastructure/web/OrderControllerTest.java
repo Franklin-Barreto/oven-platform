@@ -1,9 +1,9 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
-import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -42,6 +42,7 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -53,11 +54,12 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = OrderController.class)
-@Import(TraceContext.class)
+@Import({TraceContext.class})
 class OrderControllerTest {
 
   private static final String BASE_URL = "/orders";
@@ -70,6 +72,11 @@ class OrderControllerTest {
   @MockitoBean private OrderService orderService;
   @MockitoBean private JwtService jwtService;
   @MockitoBean private ApplicationEventPublisher eventPublisher;
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   void shouldCreateOrderWithItems() throws Exception {
@@ -85,7 +92,7 @@ class OrderControllerTest {
                 post(BASE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(orderRequest))
-                    .header(TENANT_ID_HEADER, TENANT_ID))
+                    .with(authenticatedTenantUser(TENANT_ID)))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(order.getId().toString()))
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
@@ -115,51 +122,6 @@ class OrderControllerTest {
     assertThat(command.paymentInfo().status()).isEqualTo(OrderPaymentStatus.PAID);
   }
 
-  @Test
-  void shouldReturnBadRequestWhenTenantHeaderIsMissing() throws Exception {
-    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
-    mockMvc
-        .perform(
-            post(BASE_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(JsonUtils.toJson(orderRequest)))
-        .andExpect(status().isBadRequest())
-        .andExpectAll(
-            expectValidationErrors(
-                HttpStatus.BAD_REQUEST,
-                BASE_URL,
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCodes.MISSING_REQUEST_HEADER,
-                "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
-                null,
-                HttpStatus.BAD_REQUEST.value()));
-
-    verifyNoInteractions(orderService);
-  }
-
-  @Test
-  void shouldReturnBadRequestWhenTenantHeaderIsInvalid() throws Exception {
-    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
-    mockMvc
-        .perform(
-            post(BASE_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(JsonUtils.toJson(orderRequest))
-                .header(TENANT_ID_HEADER, "invalid-request-id"))
-        .andExpect(status().isBadRequest())
-        .andExpectAll(
-            expectValidationErrors(
-                HttpStatus.BAD_REQUEST,
-                BASE_URL,
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCodes.INVALID_ARGUMENT,
-                "Invalid UUID string: invalid-request-id",
-                null,
-                HttpStatus.BAD_REQUEST.value()));
-
-    verifyNoInteractions(orderService);
-  }
-
   @ParameterizedTest(name = "{0}")
   @MethodSource("invalidCreateOrderRequests")
   void shouldReturnBadRequestWhenRequestBodyIsInvalid(
@@ -169,7 +131,7 @@ class OrderControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -193,7 +155,7 @@ class OrderControllerTest {
     when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
 
     mockMvc
-        .perform(get(BASE_URL + "/" + ORDER_ID).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ORDER_ID.toString()))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
@@ -219,7 +181,7 @@ class OrderControllerTest {
     when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.empty());
 
     mockMvc
-        .perform(get(BASE_URL + "/" + ORDER_ID).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isNotFound());
 
     verify(orderService).findOrder(TENANT_ID, ORDER_ID);
@@ -230,7 +192,7 @@ class OrderControllerTest {
     var invalidOrderId = "invalid-uuid";
 
     mockMvc
-        .perform(get(BASE_URL + "/" + invalidOrderId).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(get(BASE_URL + "/" + invalidOrderId).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isBadRequest())
         .andExpectAll(
             expectValidationErrors(
@@ -252,7 +214,7 @@ class OrderControllerTest {
     mockMvc
         .perform(
             post(BASE_URL + "/" + ORDER_ID + endpoint)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isNoContent())
         .andExpect(content().string(""));
@@ -269,7 +231,7 @@ class OrderControllerTest {
         .markAsReady(TENANT_ID, ORDER_ID);
 
     mockMvc
-        .perform(post(fullPath).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isNotFound())
         .andExpectAll(
             expectValidationErrors(
@@ -293,7 +255,7 @@ class OrderControllerTest {
         .cancel(TENANT_ID, ORDER_ID);
 
     mockMvc
-        .perform(post(fullPath).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isConflict())
         .andExpectAll(
             expectValidationErrors(
@@ -324,7 +286,7 @@ class OrderControllerTest {
     var secondOrderJson = "$[1]";
 
     mockMvc
-        .perform(get(BASE_URL).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(get(BASE_URL).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].id").value(ORDER_ID.toString()))
@@ -354,7 +316,7 @@ class OrderControllerTest {
         .perform(
             post(BASE_URL + "/" + orderId + "/payment/mark-paid")
                 .accept(MediaType.APPLICATION_JSON)
-                .header(ApiHeaders.TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .header(ApiHeaders.API_VERSION_HEADER, ApiHeaders.API_VERSION_VALUE))
         .andExpect(status().isNoContent());
 

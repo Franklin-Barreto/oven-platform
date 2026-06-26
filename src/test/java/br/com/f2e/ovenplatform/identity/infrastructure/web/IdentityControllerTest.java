@@ -1,11 +1,10 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
-import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.TENANT_ID_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -26,6 +25,7 @@ import java.util.NoSuchElementException;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.hibernate.exception.ConstraintViolationException;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -36,12 +36,12 @@ import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
-import org.springframework.test.web.servlet.ResultActions;
 
 @WebMvcTest(IdentityController.class)
-@Import(value = {TraceContext.class})
+@Import({TraceContext.class})
 class IdentityControllerTest {
 
   private static final String EMAIL = "user.email@outlook.com";
@@ -53,6 +53,11 @@ class IdentityControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private IdentityService identityService;
   @MockitoBean private JwtService jwtService;
+
+  @AfterEach
+  void tearDown() {
+    SecurityContextHolder.clearContext();
+  }
 
   @Test
   void shouldCreateUserSuccessfully() throws Exception {
@@ -69,7 +74,7 @@ class IdentityControllerTest {
                 post(BASE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(userRequest))
-                    .header(TENANT_ID_HEADER, TENANT_ID)
+                    .with(authenticatedTenantUser(TENANT_ID))
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
@@ -89,7 +94,7 @@ class IdentityControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -105,58 +110,13 @@ class IdentityControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenCreateTenantIdHeaderIsInvalid() throws Exception {
-    var userRequest = createUserRequest();
-
-    mockMvc
-        .perform(
-            post(BASE_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(JsonUtils.toJson(userRequest))
-                .header(TENANT_ID_HEADER, "invalid-uuid"))
-        .andExpectAll(
-            expectValidationErrors(
-                HttpStatus.BAD_REQUEST,
-                BASE_URL,
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCodes.INVALID_ARGUMENT,
-                "Invalid UUID string: invalid-uuid",
-                null,
-                HttpStatus.BAD_REQUEST.value()));
-
-    verifyNoInteractions(identityService);
-  }
-
-  @Test
-  void shouldReturn400WhenCreateTenantIdHeaderIsMissing() throws Exception {
-    var userRequest = createUserRequest();
-
-    mockMvc
-        .perform(
-            post(BASE_URL)
-                .contentType(MediaType.APPLICATION_JSON)
-                .content(JsonUtils.toJson(userRequest)))
-        .andExpectAll(
-            expectValidationErrors(
-                HttpStatus.BAD_REQUEST,
-                BASE_URL,
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCodes.MISSING_REQUEST_HEADER,
-                "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
-                null,
-                HttpStatus.BAD_REQUEST.value()));
-
-    verifyNoInteractions(identityService);
-  }
-
-  @Test
   void shouldReturn200WhenUserExists() throws Exception {
     when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID)).thenReturn(createUser());
 
     mockMvc
         .perform(
             get(BASE_URL + "/%s".formatted(USER_ID))
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
@@ -175,7 +135,7 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .contentType(MediaType.APPLICATION_JSON)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -189,53 +149,12 @@ class IdentityControllerTest {
   }
 
   @Test
-  void shouldReturn400WhenGetTenantIdHeaderIsMissing() throws Exception {
-    var getUrl = BASE_URL + "/" + USER_ID;
-
-    ResultActions result =
-        mockMvc
-            .perform(get(getUrl).accept(MediaType.APPLICATION_JSON))
-            .andExpectAll(
-                expectValidationErrors(
-                    HttpStatus.BAD_REQUEST,
-                    getUrl,
-                    HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                    ApiErrorCodes.MISSING_REQUEST_HEADER,
-                    "Required request header 'X-Tenant-Id' for method parameter type UUID is not present",
-                    null,
-                    HttpStatus.BAD_REQUEST.value()));
-    assertNotNull(result);
-    verifyNoInteractions(identityService);
-  }
-
-  @Test
-  void shouldReturn400WhenGetTenantIdHeaderIsInvalid() throws Exception {
-    var getUrl = BASE_URL + "/" + USER_ID;
-
-    mockMvc
-        .perform(
-            get(getUrl)
-                .accept(MediaType.APPLICATION_JSON)
-                .header(TENANT_ID_HEADER, "invalid tenant"))
-        .andExpectAll(
-            expectValidationErrors(
-                HttpStatus.BAD_REQUEST,
-                getUrl,
-                HttpStatus.BAD_REQUEST.getReasonPhrase(),
-                ApiErrorCodes.INVALID_ARGUMENT,
-                "Invalid UUID string: invalid tenant",
-                null,
-                HttpStatus.BAD_REQUEST.value()));
-
-    verifyNoInteractions(identityService);
-  }
-
-  @Test
   void shouldReturn400WhenUserIdIsInvalid() throws Exception {
     var getUrl = BASE_URL + "/" + "invalidUserId";
 
     mockMvc
-        .perform(get(getUrl).accept(MediaType.APPLICATION_JSON).header(TENANT_ID_HEADER, TENANT_ID))
+        .perform(
+            get(getUrl).accept(MediaType.APPLICATION_JSON).with(authenticatedTenantUser(TENANT_ID)))
         .andExpectAll(
             expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -266,7 +185,7 @@ class IdentityControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -287,7 +206,7 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .header(API_VERSION_HEADER, "3.0.0"))
         .andExpectAll(
             expectValidationErrors(
@@ -310,7 +229,7 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .header(TENANT_ID_HEADER, TENANT_ID)
+                .with(authenticatedTenantUser(TENANT_ID))
                 .header(API_VERSION_HEADER, "2.0.0"))
         .andExpectAll(
             expectValidationErrors(

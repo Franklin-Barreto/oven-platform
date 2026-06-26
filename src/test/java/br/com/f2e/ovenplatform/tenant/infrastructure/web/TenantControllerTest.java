@@ -33,7 +33,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @ActiveProfiles("test")
 @WebMvcTest(TenantController.class)
-@Import(value = {TraceContext.class})
+@Import({TraceContext.class})
 class TenantControllerTest {
 
   private static final String BASE_URL = "/tenants";
