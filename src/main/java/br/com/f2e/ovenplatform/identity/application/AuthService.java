@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.identity.application;
 
+import br.com.f2e.ovenplatform.identity.application.security.AuthenticatedPrincipal;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
-import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import java.util.UUID;
@@ -36,13 +36,13 @@ public class AuthService {
     SecurityContextHolder.getContext().setAuthentication(authenticated);
 
     var loggedUser = getLoggedUser(authenticated);
-    var tenantMembership = getTenantMembership(tenantId, loggedUser.getId());
+    var tenantMembership = getTenantMembership(tenantId, loggedUser.userId());
 
     if (tenantMembership.getStatus() != TenantMembershipStatus.ACTIVE) {
       throw new TenantMembershipInactiveException();
     }
     return jwtService.generateToken(
-        tenantId, loggedUser.getId(), tenantMembership.getRole().name());
+        tenantId, loggedUser.userId(), tenantMembership.getRole().name());
   }
 
   private TenantMembership getTenantMembership(UUID tenantId, UUID userId) {
@@ -51,11 +51,11 @@ public class AuthService {
         .orElseThrow(TenantAccessDeniedException::new);
   }
 
-  private User getLoggedUser(Authentication authenticated) {
-    if (authenticated.getPrincipal() instanceof User user) {
-      return user;
+  private AuthenticatedPrincipal getLoggedUser(Authentication authenticated) {
+    if (authenticated.getPrincipal() instanceof AuthenticatedPrincipal userDetails) {
+      return userDetails;
     }
 
-    throw new IllegalStateException("Authenticated principal is not a User");
+    throw new IllegalStateException("Authenticated principal is not an AuthenticatedPrincipal");
   }
 }

@@ -39,7 +39,7 @@ class TenantMembershipTest {
   }
 
   private static User createUser() {
-    return new User(TENANT_ID, USER_EMAIL, RAW_PASSWORD, UserRole.OWNER);
+    return new User(TENANT_ID, USER_EMAIL, RAW_PASSWORD);
   }
 
   private static Stream<Arguments> invalidData() {

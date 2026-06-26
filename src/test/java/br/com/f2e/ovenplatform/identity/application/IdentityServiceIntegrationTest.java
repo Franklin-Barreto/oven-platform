@@ -3,19 +3,13 @@ package br.com.f2e.ovenplatform.identity.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
-import br.com.f2e.ovenplatform.identity.domain.User;
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
-import br.com.f2e.ovenplatform.identity.domain.UserStatus;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.JpaTenantMembershipRepositoryAdapter;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.JpaUserRepositoryAdapter;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataTenantMembershipRepository;
@@ -29,7 +23,6 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -61,57 +54,38 @@ class IdentityServiceIntegrationTest {
   @MockitoBean private TenantValidator tenantValidator;
 
   @Test
-  void shouldCreateUserSuccessfully() {
-    var user = createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN);
+  void shouldCreateNewUserAndTenantMembershipWhenTenantExists() {
+    var command =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
 
-    assertUser(user, TENANT_ID, UserRole.ADMIN);
-  }
+    var response = identityService.createTenantUser(command);
 
-  @Test
-  void shouldHashPasswordBeforePersistingUser() {
-    var user = createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN);
+    flushAndClear();
 
-    assertNotEquals(RAW_PASSWORD, user.getPassword());
-    assertThat(user.getPassword()).isNotNull();
-    assertFalse(user.getPassword().isBlank());
-    assertTrue(user.getPassword().startsWith("$2"));
-  }
+    var persistedUser = userRepository.findByEmail(NORMALIZED_EMAIL).orElseThrow();
+    var persistedMembership =
+        tenantMembershipRepository.findAll().stream()
+            .filter(membership -> membership.getUser().getId().equals(persistedUser.getId()))
+            .findFirst()
+            .orElseThrow();
 
-  @Test
-  void shouldThrowExceptionForDuplicateEmailWithinSameTenant() {
-    createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN);
+    assertThat(response.userId()).isEqualTo(persistedUser.getId());
+    assertThat(response.tenantId()).isEqualTo(TENANT_ID);
+    assertThat(response.email()).isEqualTo(NORMALIZED_EMAIL);
+    assertThat(response.role()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
-    identityService.create(TENANT_ID, EMAIL, UUID.randomUUID().toString(), UserRole.OWNER);
+    assertThat(persistedUser.getEmail()).isEqualTo(NORMALIZED_EMAIL);
+    assertThat(persistedUser.getPassword()).isNotEqualTo(RAW_PASSWORD);
+    assertThat(persistedUser.getPassword()).isNotBlank();
+    assertThat(persistedUser.getPassword()).startsWith("$2");
 
-    assertThrows(DataIntegrityViolationException.class, userRepository::flush);
-  }
+    assertThat(persistedMembership.getTenantId()).isEqualTo(TENANT_ID);
+    assertThat(persistedMembership.getUser().getId()).isEqualTo(persistedUser.getId());
+    assertThat(persistedMembership.getRole()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(persistedMembership.getStatus()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
-  @Test
-  void shouldAllowSameEmailForDifferentTenants() {
-    var user = createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN);
-    var user2 = createUserAndFlush(ANOTHER_TENANT_ID, EMAIL, UserRole.OWNER);
-
-    assertUser(user, TENANT_ID, UserRole.ADMIN);
-    assertUser(user2, ANOTHER_TENANT_ID, UserRole.OWNER);
-  }
-
-  @Test
-  void shouldNormalizeEmailBeforePersisting() {
-    var user = createUserAndFlush(TENANT_ID, " Contact@email.com", UserRole.ADMIN);
-
-    assertEquals(NORMALIZED_EMAIL, user.getEmail());
-    assertEquals(TENANT_ID, user.getTenantId());
-    assertEquals(UserRole.ADMIN, user.getRole());
-    assertEquals(UserStatus.ACTIVE, user.getStatus());
-  }
-
-  @Test
-  void shouldThrowExceptionWhenEmailIsInvalid() {
-    assertThrows(
-        IllegalArgumentException.class,
-        () ->
-            identityService.create(
-                TENANT_ID, "invalidEmailOutlook.com", RAW_PASSWORD, UserRole.MEMBER));
+    verify(tenantValidator).ensureTenantExists(TENANT_ID);
   }
 
   @Test
@@ -154,6 +128,7 @@ class IdentityServiceIntegrationTest {
     flushAndClear();
 
     var userId = created.userId();
+
     var exception =
         assertThrows(
             NoSuchElementException.class,
@@ -165,61 +140,47 @@ class IdentityServiceIntegrationTest {
   }
 
   @Test
-  void shouldCreateNewUserAndTenantMembershipWhenTenantExists() {
-    var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+  void shouldReuseExistingUserAndCreateTenantMembershipWhenEmailAlreadyExists() {
+    var firstTenantCommand =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.MEMBER);
 
-    var response = identityService.createTenantUser(command);
-
+    var existingUserResponse = identityService.createTenantUser(firstTenantCommand);
     flushAndClear();
 
-    var persistedUser = userRepository.findByEmail(NORMALIZED_EMAIL).orElseThrow();
-    var persistedMembership =
-        tenantMembershipRepository.findAll().stream()
-            .filter(membership -> membership.getUser().getId().equals(persistedUser.getId()))
-            .findFirst()
-            .orElseThrow();
-
-    assertThat(response.userId()).isEqualTo(persistedUser.getId());
-    assertThat(response.tenantId()).isEqualTo(TENANT_ID);
-    assertThat(response.role()).isEqualTo(TenantMembershipRole.ADMIN);
-    assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
-
-    assertThat(persistedMembership.getTenantId()).isEqualTo(TENANT_ID);
-    assertThat(persistedMembership.getUser().getId()).isEqualTo(persistedUser.getId());
-    assertThat(persistedMembership.getRole()).isEqualTo(TenantMembershipRole.ADMIN);
-    assertThat(persistedMembership.getStatus()).isEqualTo(TenantMembershipStatus.ACTIVE);
-
-    verify(tenantValidator).ensureTenantExists(TENANT_ID);
-  }
-
-  @Test
-  void shouldReuseExistingUserAndCreateTenantMembershipWhenEmailAlreadyExists() {
-    var existingUser = createUserAndFlush(TENANT_ID, EMAIL, UserRole.MEMBER);
-
-    var command =
+    var secondTenantCommand =
         new CreateTenantUserCommand(
             ANOTHER_TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.OWNER);
 
-    var response = identityService.createTenantUser(command);
-
+    var response = identityService.createTenantUser(secondTenantCommand);
     flushAndClear();
 
     var users = userRepository.findAll();
 
     assertThat(users).hasSize(1);
-    assertThat(response.userId()).isEqualTo(existingUser.getId());
+    assertThat(response.userId()).isEqualTo(existingUserResponse.userId());
     assertThat(response.tenantId()).isEqualTo(ANOTHER_TENANT_ID);
+    assertThat(response.email()).isEqualTo(NORMALIZED_EMAIL);
     assertThat(response.role()).isEqualTo(TenantMembershipRole.OWNER);
     assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     var memberships = tenantMembershipRepository.findAll();
 
-    assertThat(memberships).hasSize(1);
-    assertThat(memberships.getFirst().getUser().getId()).isEqualTo(existingUser.getId());
-    assertThat(memberships.getFirst().getTenantId()).isEqualTo(ANOTHER_TENANT_ID);
-    assertThat(memberships.getFirst().getRole()).isEqualTo(TenantMembershipRole.OWNER);
+    assertThat(memberships)
+        .hasSize(2)
+        .anySatisfy(
+            membership -> {
+              assertThat(membership.getUser().getId()).isEqualTo(existingUserResponse.userId());
+              assertThat(membership.getTenantId()).isEqualTo(TENANT_ID);
+              assertThat(membership.getRole()).isEqualTo(TenantMembershipRole.MEMBER);
+            })
+        .anySatisfy(
+            membership -> {
+              assertThat(membership.getUser().getId()).isEqualTo(existingUserResponse.userId());
+              assertThat(membership.getTenantId()).isEqualTo(ANOTHER_TENANT_ID);
+              assertThat(membership.getRole()).isEqualTo(TenantMembershipRole.OWNER);
+            });
 
+    verify(tenantValidator).ensureTenantExists(TENANT_ID);
     verify(tenantValidator).ensureTenantExists(ANOTHER_TENANT_ID);
   }
 
@@ -275,27 +236,15 @@ class IdentityServiceIntegrationTest {
     var persistedUser = userRepository.findByEmail(NORMALIZED_EMAIL).orElseThrow();
 
     assertThat(response.userId()).isEqualTo(persistedUser.getId());
+    assertThat(response.email()).isEqualTo(NORMALIZED_EMAIL);
     assertThat(persistedUser.getEmail()).isEqualTo(NORMALIZED_EMAIL);
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
-  }
-
-  private User createUserAndFlush(UUID tenantId, String email, UserRole role) {
-    var user = identityService.create(tenantId, email, RAW_PASSWORD, role);
-    userRepository.flush();
-    return user;
   }
 
   private void flushAndClear() {
     userRepository.flush();
     tenantMembershipRepository.flush();
     entityManager.clear();
-  }
-
-  private static void assertUser(User user, UUID tenantId, UserRole expectedRole) {
-    assertEquals(NORMALIZED_EMAIL, user.getEmail());
-    assertEquals(tenantId, user.getTenantId());
-    assertEquals(expectedRole, user.getRole());
-    assertEquals(UserStatus.ACTIVE, user.getStatus());
   }
 }
