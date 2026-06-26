@@ -29,4 +29,9 @@ public class JpaTenantRepositoryAdapter implements TenantRepository {
   public boolean existsById(UUID tenantId) {
     return repository.existsById(tenantId);
   }
+
+  @Override
+  public Optional<Tenant> findByName(String name) {
+    return repository.findByName(name);
+  }
 }

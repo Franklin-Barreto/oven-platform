@@ -34,7 +34,8 @@
             **/*Response.java,
             **/ApiErrorResponse.java,
             **/ApiErrorItem.java,
-            **/infrastructure/persistence/Jpa*RepositoryAdapter.java
+            **/infrastructure/persistence/Jpa*RepositoryAdapter.java,
+            **/infrastructure/bootstrap/**
         </sonar.coverage.exclusions>
     </properties>
     <dependencies>

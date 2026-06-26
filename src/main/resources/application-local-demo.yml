@@ -1,0 +1,6 @@
+oven:
+  demo:
+    identity:
+      tenant-name: Demo Tenant
+      user-email: demo@oven.local
+      user-password: ${OVEN_DEMO_USER_PASSWORD:1234567}
