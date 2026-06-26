@@ -1,7 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
-import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
@@ -12,10 +11,11 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.f2e.ovenplatform.identity.application.CreateTenantUserCommand;
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
-import br.com.f2e.ovenplatform.identity.domain.User;
-import br.com.f2e.ovenplatform.identity.domain.UserRole;
-import br.com.f2e.ovenplatform.identity.domain.UserStatus;
+import br.com.f2e.ovenplatform.identity.application.TenantUserResult;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
@@ -62,9 +62,9 @@ class IdentityControllerTest {
   @Test
   void shouldCreateUserSuccessfully() throws Exception {
 
-    var user = createUser();
-
-    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER)).thenReturn(user);
+    var request =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
+    when(identityService.createTenantUser(request)).thenReturn(tenantUserCreatedResponse());
 
     var userRequest = createUserRequest();
 
@@ -77,12 +77,12 @@ class IdentityControllerTest {
                     .with(authenticatedTenantUser(TENANT_ID))
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated())
-            .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
+            .andExpect(jsonPath("$.status").value(TenantMembershipStatus.ACTIVE.name()))
             .andExpect(jsonPath("$.email").value(EMAIL))
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
             .andReturn();
 
-    assertLocationPath(result, BASE_URL + "/" + user.getId());
+    assertLocationPath(result, BASE_URL + "/" + USER_ID);
   }
 
   @ParameterizedTest
@@ -111,7 +111,8 @@ class IdentityControllerTest {
 
   @Test
   void shouldReturn200WhenUserExists() throws Exception {
-    when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID)).thenReturn(createUser());
+    when(identityService.findTenantUserById(TENANT_ID, USER_ID))
+        .thenReturn(tenantUserCreatedResponse());
 
     mockMvc
         .perform(
@@ -119,7 +120,7 @@ class IdentityControllerTest {
                 .with(authenticatedTenantUser(TENANT_ID))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
-        .andExpect(jsonPath("$.status").value(UserStatus.ACTIVE.name()))
+        .andExpect(jsonPath("$.status").value(TenantMembershipStatus.ACTIVE.name()))
         .andExpect(jsonPath("$.email").value(EMAIL))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()));
   }
@@ -128,7 +129,7 @@ class IdentityControllerTest {
   void shouldReturn404WhenUserDoesNotExist() throws Exception {
     var getUrl = BASE_URL + "/" + USER_ID;
 
-    when(identityService.findByIdAndTenantId(USER_ID, TENANT_ID))
+    when(identityService.findTenantUserById(TENANT_ID, USER_ID))
         .thenThrow(new NoSuchElementException("User"));
 
     mockMvc
@@ -176,7 +177,10 @@ class IdentityControllerTest {
       String expectedCode,
       String expectedMessage)
       throws Exception {
-    when(identityService.create(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER)).thenThrow(exception);
+
+    var request =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
+    when(identityService.createTenantUser(request)).thenThrow(exception);
 
     var userRequest = createUserRequest();
 
@@ -247,11 +251,11 @@ class IdentityControllerTest {
   private static Stream<Arguments> invalidRequestsCreate() {
     return Stream.of(
         Arguments.of(
-            new UserRequest("invalidEmail.com", "1234", UserRole.MEMBER),
+            new UserRequest("invalidEmail.com", "1234", TenantMembershipRole.MEMBER),
             "email",
             "must be a well-formed email address"),
         Arguments.of(
-            new UserRequest("user@email.com", "", UserRole.MEMBER),
+            new UserRequest("user@email.com", "", TenantMembershipRole.MEMBER),
             "password",
             "must not be blank"),
         Arguments.of(new UserRequest("user@email.com", "1234", null), "role", "must not be null"));
@@ -277,11 +281,12 @@ class IdentityControllerTest {
   }
 
   private static UserRequest createUserRequest() {
-    return new UserRequest(EMAIL, PASSWORD, UserRole.MEMBER);
+    return new UserRequest(EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
   }
 
-  private static User createUser() {
-    return withRandomId(new User(TENANT_ID, EMAIL, PASSWORD, UserRole.MEMBER));
+  private static TenantUserResult tenantUserCreatedResponse() {
+    return new TenantUserResult(
+        USER_ID, TENANT_ID, EMAIL, TenantMembershipRole.MEMBER, TenantMembershipStatus.ACTIVE);
   }
 
   private static DataIntegrityViolationException directConstraintViolation(String constraintName) {

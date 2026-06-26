@@ -1,9 +1,10 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
+import br.com.f2e.ovenplatform.identity.application.CreateTenantUserCommand;
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.UserRequest;
-import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.UserResponse;
+import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.TenantUserResponse;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.UUID;
@@ -26,22 +27,24 @@ public class IdentityController {
   }
 
   @PostMapping(version = "1.0")
-  public ResponseEntity<UserResponse> createUser(
+  public ResponseEntity<TenantUserResponse> createUser(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody UserRequest userRequest) {
 
     var userResponse =
-        UserResponse.fromEntity(
-            identityService.create(
-                tenantId, userRequest.email(), userRequest.password(), userRequest.role()));
+        TenantUserResponse.from(
+            identityService.createTenantUser(
+                new CreateTenantUserCommand(
+                    tenantId, userRequest.email(), userRequest.password(), userRequest.role())));
+
     var uri = ResourceUriBuilder.buildLocation(userResponse.id());
 
     return ResponseEntity.created(uri).body(userResponse);
   }
 
   @GetMapping(value = "/{id}", version = "1.0")
-  public ResponseEntity<UserResponse> findByIdAndTenantId(
+  public ResponseEntity<TenantUserResponse> findByIdAndTenantId(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     return ResponseEntity.ok(
-        UserResponse.fromEntity(identityService.findByIdAndTenantId(id, tenantId)));
+        TenantUserResponse.from(identityService.findTenantUserById(tenantId, id)));
   }
 }

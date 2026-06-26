@@ -46,7 +46,7 @@ public class IdentityService implements UserDetailsService {
   }
 
   @Transactional
-  public TenantUserCreatedResponse createTenantUser(CreateTenantUserCommand command) {
+  public TenantUserResult createTenantUser(CreateTenantUserCommand command) {
     tenantValidator.ensureTenantExists(command.tenantId());
 
     var email = normalize(command.email());
@@ -59,8 +59,12 @@ public class IdentityService implements UserDetailsService {
     TenantMembership saved =
         tenantMembershipRepository.save(
             new TenantMembership(user, command.tenantId(), command.role()));
-    return new TenantUserCreatedResponse(
-        saved.getUser().getId(), saved.getTenantId(), saved.getRole(), saved.getStatus());
+    return new TenantUserResult(
+        saved.getUser().getId(),
+        saved.getTenantId(),
+        saved.getUser().getEmail(),
+        saved.getRole(),
+        saved.getStatus());
   }
 
   private User createUserForTenantMembership(CreateTenantUserCommand command, String email) {
@@ -74,6 +78,21 @@ public class IdentityService implements UserDetailsService {
     return userRepository
         .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new NoSuchElementException("User"));
+  }
+
+  @Transactional(readOnly = true)
+  public TenantUserResult findTenantUserById(UUID tenantId, UUID userId) {
+    var membership =
+        tenantMembershipRepository
+            .findByUserIdAndTenantId(userId, tenantId)
+            .orElseThrow(() -> new NoSuchElementException("User"));
+
+    return new TenantUserResult(
+        membership.getUser().getId(),
+        membership.getTenantId(),
+        membership.getUser().getEmail(),
+        membership.getRole(),
+        membership.getStatus());
   }
 
   @Override
