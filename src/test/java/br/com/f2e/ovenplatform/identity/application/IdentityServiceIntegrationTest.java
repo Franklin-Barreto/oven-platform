@@ -115,36 +115,53 @@ class IdentityServiceIntegrationTest {
   }
 
   @Test
-  void shouldFindUserByIdAndTenantIdThroughService() {
-    var user = createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN);
+  void shouldFindTenantUserByIdThroughService() {
+    var command =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
 
-    var result = identityService.findByIdAndTenantId(user.getId(), TENANT_ID);
+    var created = identityService.createTenantUser(command);
+    flushAndClear();
 
-    assertUser(result, TENANT_ID, UserRole.ADMIN);
+    var result = identityService.findTenantUserById(TENANT_ID, created.userId());
+
+    assertThat(result.userId()).isEqualTo(created.userId());
+    assertThat(result.tenantId()).isEqualTo(TENANT_ID);
+    assertThat(result.email()).isEqualTo(NORMALIZED_EMAIL);
+    assertThat(result.role()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(result.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
+
+    verify(tenantValidator).ensureTenantExists(TENANT_ID);
   }
 
   @Test
-  void shouldThrowWhenUserDoesNotExistThroughService() {
+  void shouldThrowWhenTenantUserDoesNotExistThroughService() {
     UUID userId = UUID.randomUUID();
 
     var exception =
         assertThrows(
             NoSuchElementException.class,
-            () -> identityService.findByIdAndTenantId(userId, TENANT_ID));
+            () -> identityService.findTenantUserById(TENANT_ID, userId));
 
     assertEquals("User", exception.getMessage());
   }
 
   @Test
-  void shouldThrowWhenUserBelongsToAnotherTenantThroughService() {
-    var userId = createUserAndFlush(TENANT_ID, EMAIL, UserRole.ADMIN).getId();
+  void shouldThrowWhenUserDoesNotBelongToTenantThroughService() {
+    var command =
+        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
 
+    var created = identityService.createTenantUser(command);
+    flushAndClear();
+
+    var userId = created.userId();
     var exception =
         assertThrows(
             NoSuchElementException.class,
-            () -> identityService.findByIdAndTenantId(userId, ANOTHER_TENANT_ID));
+            () -> identityService.findTenantUserById(ANOTHER_TENANT_ID, userId));
 
     assertEquals("User", exception.getMessage());
+
+    verify(tenantValidator).ensureTenantExists(TENANT_ID);
   }
 
   @Test
