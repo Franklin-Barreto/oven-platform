@@ -12,5 +12,6 @@
     <include file="db/changelog/changes/db.changelog-004-create-orders-and-order-items-tables.xml"/>
     <include file="db/changelog/changes/db.changelog-005-create-payments-table.xml" />
     <include file="db/changelog/changes/db.changelog-006-create-tenant-membership-table.xml" />
+    <include file="db/changelog/changes/db.changelog-007-create-categories.xml" />
 
 </databaseChangeLog>
