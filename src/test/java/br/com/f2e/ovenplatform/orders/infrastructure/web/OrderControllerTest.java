@@ -66,6 +66,7 @@ class OrderControllerTest {
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final String PRODUCT_NAME = "Pizza Portuguesa";
 
   @Autowired private MockMvc mockMvc;
 
@@ -101,6 +102,7 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.items").isArray())
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
+            .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
             .andExpect(jsonPath("$.items[0].quantity").value(3))
             .andExpect(jsonPath("$.items[0].unitPrice").value(35.40))
             .andExpect(jsonPath("$.items[0].subtotal").value(106.20))
@@ -168,6 +170,7 @@ class OrderControllerTest {
         .andExpect(jsonPath("$.items").isArray())
         .andExpect(jsonPath("$.items.length()").value(1))
         .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
+        .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
         .andExpect(jsonPath("$.items[0].quantity").value(3))
         .andExpect(jsonPath("$.items[0].unitPrice").value(25.30))
         .andExpect(jsonPath("$.items[0].subtotal").value(75.90));
@@ -301,6 +304,7 @@ class OrderControllerTest {
         .andExpect(jsonPath(secondOrderJson + ".items").isArray())
         .andExpect(jsonPath(secondOrderJson + ".items.length()").value(1))
         .andExpect(jsonPath(secondOrderJson + ".items[0].productId").value(PRODUCT_ID.toString()))
+        .andExpect(jsonPath(secondOrderJson + ".items[0].productName").value(PRODUCT_NAME))
         .andExpect(jsonPath(secondOrderJson + ".items[0].quantity").value(2))
         .andExpect(jsonPath(secondOrderJson + ".items[0].unitPrice").value(25.30))
         .andExpect(jsonPath(secondOrderJson + ".items[0].subtotal").value(50.60));
@@ -326,7 +330,7 @@ class OrderControllerTest {
   private Order createOrder(
       UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
     var order = withId(new Order(tenantId), orderId);
-    order.addItem(productId, quantity, unitPrice);
+    order.addItem(productId, PRODUCT_NAME, quantity, unitPrice);
     return order;
   }
 

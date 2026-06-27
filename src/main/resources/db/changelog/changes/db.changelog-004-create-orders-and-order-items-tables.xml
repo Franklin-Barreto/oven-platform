@@ -52,6 +52,10 @@
                 <constraints nullable="false"/>
             </column>
 
+            <column name="product_name" type="varchar(80)">
+                <constraints nullable="false" />
+            </column>
+
             <column name="quantity" type="int">
                 <constraints nullable="false"/>
             </column>

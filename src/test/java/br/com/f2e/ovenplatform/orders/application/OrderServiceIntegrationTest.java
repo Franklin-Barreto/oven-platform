@@ -44,6 +44,7 @@ class OrderServiceIntegrationTest {
 
   private static final UUID ANOTHER_TENANT_ID =
       UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final String PRODUCT_NAME = "Pizza Portuguesa";
 
   private record OrderItemFixture(
       CreateOrderItemCommand command, OrderableProduct orderableProduct) {}
@@ -117,9 +118,44 @@ class OrderServiceIntegrationTest {
     var item = persistedOrder.getItems().getFirst();
 
     assertThat(item.getProductId()).isEqualTo(order.getItems().getFirst().getProductId());
+    assertThat(item.getProductName()).isEqualTo(PRODUCT_NAME);
     assertThat(item.getQuantity()).isEqualTo(1);
     assertThat(item.getUnitPrice()).isEqualByComparingTo("1.00");
     assertThat(item.getSubtotal()).isEqualByComparingTo("1.00");
+  }
+
+  @Test
+  void shouldKeepOrderItemSnapshotAfterProductInformationChanges() {
+    var productId = UUID.randomUUID();
+    var originalProductName = "Pizza Calabresa";
+    var updatedProductName = "Pizza Calabresa Especial";
+    var originalPrice = new BigDecimal("42.00");
+    var updatedPrice = new BigDecimal("55.00");
+    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var command =
+        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 2)), paymentInfo);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(productId)))
+        .thenReturn(List.of(new OrderableProduct(productId, originalProductName, originalPrice)))
+        .thenReturn(List.of(new OrderableProduct(productId, updatedProductName, updatedPrice)));
+
+    var savedOrder = orderService.createOrder(TENANT_ID, command);
+
+    flushAndClear();
+
+    orderService.createOrder(TENANT_ID, command);
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrderWithItems(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder).isPresent();
+
+    var item = foundOrder.get().getItems().getFirst();
+
+    assertThat(item.getProductName()).isEqualTo(originalProductName);
+    assertThat(item.getUnitPrice()).isEqualByComparingTo(originalPrice);
+    assertThat(item.getSubtotal()).isEqualByComparingTo("84.00");
   }
 
   @Test
@@ -329,7 +365,7 @@ class OrderServiceIntegrationTest {
 
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
     var order = new Order(tenantId);
-    order.addItem(UUID.randomUUID(), itemQuantity, BigDecimal.ONE);
+    order.addItem(UUID.randomUUID(), PRODUCT_NAME, itemQuantity, BigDecimal.ONE);
     return order;
   }
 
@@ -339,12 +375,13 @@ class OrderServiceIntegrationTest {
 
     for (int i = 1; i <= itemCount; i++) {
       var productId = UUID.randomUUID();
+      var productName = "Product %d".formatted(i);
       var unitPrice = BigDecimal.valueOf(i);
 
       fixtures.add(
           new OrderItemFixture(
               new CreateOrderItemCommand(productId, i),
-              new OrderableProduct(productId, unitPrice)));
+              new OrderableProduct(productId, productName, unitPrice)));
     }
 
     return fixtures;
@@ -386,6 +423,7 @@ class OrderServiceIntegrationTest {
 
               assertThat(fixture).isNotNull();
               assertThat(item.getQuantity()).isEqualTo(fixture.command().quantity());
+              assertThat(item.getProductName()).isEqualTo(fixture.orderableProduct().productName());
               assertThat(item.getUnitPrice())
                   .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
               assertThat(item.getSubtotal())

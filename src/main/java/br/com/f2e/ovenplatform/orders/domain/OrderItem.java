@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.orders.domain;
 
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireMinimumSize;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
@@ -24,6 +25,9 @@ public class OrderItem extends BaseEntity {
   @Column(nullable = false)
   private UUID productId;
 
+  @Column(nullable = false, length = 80)
+  private String productName;
+
   @Column(nullable = false)
   private int quantity;
 
@@ -36,9 +40,10 @@ public class OrderItem extends BaseEntity {
   @SuppressWarnings("unused")
   protected OrderItem() {}
 
-  OrderItem(Order order, UUID productId, int quantity, BigDecimal unitPrice) {
+  OrderItem(Order order, UUID productId, String productName, int quantity, BigDecimal unitPrice) {
     this.order = requireNotNull(order, "order");
     this.productId = requireNotNull(productId, "productId");
+    this.productName = requireMinimumSize(productName, "productName", 5);
     this.quantity = requirePositive(quantity, "quantity");
     this.unitPrice = requirePositive(unitPrice, "unitPrice");
     this.subtotal = this.unitPrice.multiply(BigDecimal.valueOf(this.quantity));
@@ -46,6 +51,10 @@ public class OrderItem extends BaseEntity {
 
   public UUID getProductId() {
     return productId;
+  }
+
+  public String getProductName() {
+    return productName;
   }
 
   public int getQuantity() {

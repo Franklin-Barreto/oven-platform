@@ -20,7 +20,7 @@ public class CatalogProductLookupService implements CatalogProductLookup {
   public List<SellableProduct> findSellableProducts(UUID tenantId, Set<UUID> productIds) {
 
     return repository.findActiveByTenantIdAndIdIn(tenantId, productIds).stream()
-        .map(product -> new SellableProduct(product.getId(), product.getPrice()))
+        .map(product -> new SellableProduct(product.getId(), product.getName(), product.getPrice()))
         .toList();
   }
 }
