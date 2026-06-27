@@ -115,10 +115,11 @@ class CategoryServiceIntegrationTest {
   @Test
   void shouldThrowResourceNotFoundWhenUpdatingUnknownCategory() {
     var tenant = createTenant();
+    var tenantId = tenant.getId();
     var categoryId = UUID.randomUUID();
 
     ThrowableAssert.ThrowingCallable updateUnknownCategory =
-        () -> categoryService.update(tenant.getId(), categoryId, "Drinks", true);
+        () -> categoryService.update(tenantId, categoryId, "Drinks", true);
 
     assertThatThrownBy(updateUnknownCategory)
         .isInstanceOf(ResourceNotFoundException.class)
@@ -144,13 +145,15 @@ class CategoryServiceIntegrationTest {
     var ownerTenant = createTenant("Don Corleone Pizzeria");
     var anotherTenant = createTenant("Soprano Pizzeria");
     var category = createCategory(ownerTenant);
+    var tenantId = anotherTenant.getId();
+    var categoryId = category.getId();
 
     ThrowableAssert.ThrowingCallable throwingCallable =
-        () -> categoryService.deactivate(anotherTenant.getId(), category.getId());
+        () -> categoryService.deactivate(tenantId, categoryId);
 
     assertThatThrownBy(throwingCallable)
         .isInstanceOf(ResourceNotFoundException.class)
-        .hasMessage("Category id: %s not found".formatted(category.getId()));
+        .hasMessage("Category id: %s not found".formatted(categoryId));
   }
 
   private Tenant createTenant() {

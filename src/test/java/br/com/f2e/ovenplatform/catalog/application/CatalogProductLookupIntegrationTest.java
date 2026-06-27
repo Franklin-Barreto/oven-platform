@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
 import br.com.f2e.ovenplatform.catalog.application.api.SellableProduct;
+import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
@@ -26,12 +28,17 @@ import org.springframework.test.context.ActiveProfiles;
 
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({CatalogProductLookupService.class, JpaProductRepositoryAdapter.class})
+@Import({
+  CatalogProductLookupService.class,
+  JpaProductRepositoryAdapter.class,
+  JpaCategoryRepositoryAdapter.class
+})
 @EnableJpaAuditing
 class CatalogProductLookupIntegrationTest {
 
   @Autowired private CatalogProductLookup catalogProductLookup;
   @Autowired private ProductRepository productRepository;
+  @Autowired private CategoryRepository categoryRepository;
   @Autowired private SpringDataTenantRepository tenantRepository;
   @Autowired private EntityManager entityManager;
 
@@ -134,9 +141,12 @@ class CatalogProductLookupIntegrationTest {
 
   private List<Product> createProducts(Tenant tenant, int quantity, boolean active) {
     List<Product> products = new ArrayList<>(quantity);
+    var category = categoryRepository.save(new Category("Pizzas", tenant.getId()));
 
     for (int i = 1; i <= quantity; i++) {
-      Product product = new Product(tenant.getId(), "Product %d".formatted(i), new BigDecimal(i));
+      Product product =
+          new Product(
+              tenant.getId(), category.getId(), "Product %d".formatted(i), null, new BigDecimal(i));
       if (!active) {
         product.deactivate();
       }
