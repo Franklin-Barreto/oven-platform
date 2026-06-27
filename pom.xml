@@ -20,6 +20,7 @@
         <spotbug.version>4.9.8</spotbug.version>
         <jacoco.version>0.8.13</jacoco.version>
         <jjwt.version>0.13.0</jjwt.version>
+        <mockito.version>5.20.0</mockito.version>
 
         <sonar.projectKey>Franklin-Barreto_oven-platform</sonar.projectKey>
         <sonar.organization>franklin-barreto</sonar.organization>
@@ -117,6 +118,12 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-jackson-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.mockito</groupId>
+            <artifactId>mockito-core</artifactId>
+            <version>${mockito.version}</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -249,6 +256,13 @@
                         </configuration>
                     </execution>
                 </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>@{argLine} -javaagent:${settings.localRepository}/org/mockito/mockito-core/${mockito.version}/mockito-core-${mockito.version}.jar -Xshare:off</argLine>
+                </configuration>
             </plugin>
             <plugin>
                 <groupId>org.sonarsource.scanner.maven</groupId>
