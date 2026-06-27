@@ -48,7 +48,7 @@ public class OrderService {
 
     var orderableProducts =
         orderableProductProvider.findOrderableProducts(tenantId, productIds).stream()
-            .collect(Collectors.toMap(OrderableProduct::productId, OrderableProduct::unitPrice));
+            .collect(Collectors.toMap(OrderableProduct::productId, product -> product));
 
     var order = new Order(tenantId);
 
@@ -56,13 +56,17 @@ public class OrderService {
         .items()
         .forEach(
             item -> {
-              var unitPrice = orderableProducts.get(item.productId());
+              var orderableProduct = orderableProducts.get(item.productId());
 
-              if (unitPrice == null) {
+              if (orderableProduct == null) {
                 throw new ProductNotAvailableForOrderingException(item.productId());
               }
 
-              order.addItem(item.productId(), item.quantity(), unitPrice);
+              order.addItem(
+                  item.productId(),
+                  orderableProduct.productName(),
+                  item.quantity(),
+                  orderableProduct.unitPrice());
             });
 
     var savedOrder = orderRepository.save(order);

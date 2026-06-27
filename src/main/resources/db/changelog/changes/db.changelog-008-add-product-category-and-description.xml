@@ -8,7 +8,9 @@
 
     <changeSet id="add-product-category-and-description" author="franklin">
         <addColumn tableName="products">
-            <column name="category_id" type="uuid"/>
+            <column name="category_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
             <column name="description" type="varchar(500)"/>
         </addColumn>
 

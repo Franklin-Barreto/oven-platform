@@ -51,20 +51,25 @@ class CatalogProductLookupIntegrationTest {
     entityManager.flush();
     entityManager.clear();
 
-    var resultMap = products.stream().collect(Collectors.toMap(Product::getId, Product::getPrice));
+    var expectedProductsById =
+        products.stream().collect(Collectors.toMap(Product::getId, product -> product));
     var sellableProducts =
-        catalogProductLookup.findSellableProducts(tenant.getId(), resultMap.keySet());
+        catalogProductLookup.findSellableProducts(tenant.getId(), expectedProductsById.keySet());
 
-    var actualPricesByProductId =
+    var actualProductsById =
         sellableProducts.stream()
-            .collect(Collectors.toMap(SellableProduct::productId, SellableProduct::price));
+            .collect(Collectors.toMap(SellableProduct::productId, product -> product));
 
-    assertThat(actualPricesByProductId.keySet())
-        .containsExactlyInAnyOrderElementsOf(resultMap.keySet());
+    assertThat(actualProductsById.keySet())
+        .containsExactlyInAnyOrderElementsOf(expectedProductsById.keySet());
 
-    resultMap.forEach(
-        (productId, expectedPrice) ->
-            assertThat(actualPricesByProductId.get(productId)).isEqualByComparingTo(expectedPrice));
+    expectedProductsById.forEach(
+        (productId, expectedProduct) -> {
+          var actualProduct = actualProductsById.get(productId);
+
+          assertThat(actualProduct.productName()).isEqualTo(expectedProduct.getName());
+          assertThat(actualProduct.price()).isEqualByComparingTo(expectedProduct.getPrice());
+        });
   }
 
   @Test

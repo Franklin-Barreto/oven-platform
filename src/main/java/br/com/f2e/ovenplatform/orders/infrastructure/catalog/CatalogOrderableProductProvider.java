@@ -22,7 +22,10 @@ public class CatalogOrderableProductProvider implements OrderableProductProvider
     return catalogProductLookup.findSellableProducts(tenantId, productIds).stream()
         .map(
             sellableProduct ->
-                new OrderableProduct(sellableProduct.productId(), sellableProduct.price()))
+                new OrderableProduct(
+                    sellableProduct.productId(),
+                    sellableProduct.productName(),
+                    sellableProduct.price()))
         .toList();
   }
 }

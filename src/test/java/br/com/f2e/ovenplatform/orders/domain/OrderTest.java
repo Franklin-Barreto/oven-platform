@@ -17,6 +17,7 @@ class OrderTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
+  private static final String PRODUCT_NAME = "Pizza Portuguesa";
   private static final int VALID_QUANTITY = 2;
   private static final BigDecimal VALID_UNIT_PRICE = new BigDecimal("35.40");
 
@@ -45,7 +46,7 @@ class OrderTest {
   void shouldAddItemToOrder() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     assertThat(order.getItems()).hasSize(1);
 
@@ -53,6 +54,7 @@ class OrderTest {
 
     assertThat(item.getQuantity()).isEqualTo(VALID_QUANTITY);
     assertThat(item.getProductId()).isEqualTo(PRODUCT_ID);
+    assertThat(item.getProductName()).isEqualTo(PRODUCT_NAME);
     assertThat(item.getUnitPrice()).isEqualByComparingTo(VALID_UNIT_PRICE);
     assertThat(item.getSubtotal()).isEqualByComparingTo("70.80");
   }
@@ -61,7 +63,7 @@ class OrderTest {
   void shouldRecalculateTotalWhenAddingOneItem() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     assertThat(order.getTotalAmount()).isEqualByComparingTo("70.80");
   }
@@ -70,8 +72,8 @@ class OrderTest {
   void shouldRecalculateTotalWhenAddingMultipleItems() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, 2, new BigDecimal("35.40"));
-    order.addItem(UUID.randomUUID(), 3, new BigDecimal("10.00"));
+    order.addItem(PRODUCT_ID, PRODUCT_NAME, 2, new BigDecimal("35.40"));
+    order.addItem(UUID.randomUUID(), "Coca-cola lata", 3, new BigDecimal("10.00"));
 
     assertThat(order.getTotalAmount()).isEqualByComparingTo("100.80");
   }
@@ -79,9 +81,13 @@ class OrderTest {
   @ParameterizedTest
   @MethodSource("invalidItems")
   void shouldRejectInvalidItemData(
-      UUID productId, int quantity, BigDecimal unitPrice, String expectedMessage) {
+      UUID productId,
+      String productName,
+      int quantity,
+      BigDecimal unitPrice,
+      String expectedMessage) {
     var order = new Order(TENANT_ID);
-    assertThatThrownBy(() -> order.addItem(productId, quantity, unitPrice))
+    assertThatThrownBy(() -> order.addItem(productId, productName, quantity, unitPrice))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -89,7 +95,7 @@ class OrderTest {
   @Test
   void shouldExposeItemsAsReadOnlyCollection() {
     var order = order();
-    order.addItem(PRODUCT_ID, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     var items = order.getItems();
 
@@ -192,14 +198,32 @@ class OrderTest {
 
   private static Stream<Arguments> invalidItems() {
     return Stream.of(
-        Arguments.of(null, VALID_QUANTITY, VALID_UNIT_PRICE, "productId must not be null"),
-        Arguments.of(PRODUCT_ID, 0, VALID_UNIT_PRICE, "quantity must be greater than zero"),
-        Arguments.of(PRODUCT_ID, -1, VALID_UNIT_PRICE, "quantity must be greater than zero"),
-        Arguments.of(PRODUCT_ID, VALID_QUANTITY, null, "unitPrice must not be null"),
         Arguments.of(
-            PRODUCT_ID, VALID_QUANTITY, BigDecimal.ZERO, "unitPrice must be greater than zero"),
+            null, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE, "productId must not be null"),
+        Arguments.of(
+            PRODUCT_ID, null, VALID_QUANTITY, VALID_UNIT_PRICE, "productName must not be null"),
+        Arguments.of(
+            PRODUCT_ID, "", VALID_QUANTITY, VALID_UNIT_PRICE, "productName must not be blank"),
         Arguments.of(
             PRODUCT_ID,
+            "beer",
+            VALID_QUANTITY,
+            VALID_UNIT_PRICE,
+            "productName must have at least 5 characters"),
+        Arguments.of(
+            PRODUCT_ID, PRODUCT_NAME, 0, VALID_UNIT_PRICE, "quantity must be greater than zero"),
+        Arguments.of(
+            PRODUCT_ID, PRODUCT_NAME, -1, VALID_UNIT_PRICE, "quantity must be greater than zero"),
+        Arguments.of(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, null, "unitPrice must not be null"),
+        Arguments.of(
+            PRODUCT_ID,
+            PRODUCT_NAME,
+            VALID_QUANTITY,
+            BigDecimal.ZERO,
+            "unitPrice must be greater than zero"),
+        Arguments.of(
+            PRODUCT_ID,
+            PRODUCT_NAME,
             VALID_QUANTITY,
             new BigDecimal("-1.00"),
             "unitPrice must be greater than zero"));
