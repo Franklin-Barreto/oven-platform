@@ -15,7 +15,9 @@ import org.junit.jupiter.params.provider.ValueSource;
 class ProductTest {
 
   private static final UUID TENANT_ID = UUID.randomUUID();
+  private static final UUID CATEGORY_ID = UUID.randomUUID();
   private static final String VALID_NAME = "Pizza Portuguesa";
+  private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";
   private static final BigDecimal VALID_PRICE = new BigDecimal("35.40");
 
   @Test
@@ -23,36 +25,51 @@ class ProductTest {
     var product = product();
 
     assertThat(product.getTenantId()).isEqualTo(TENANT_ID);
+    assertThat(product.getCategoryId()).isEqualTo(CATEGORY_ID);
     assertThat(product.getName()).isEqualTo(VALID_NAME);
+    assertThat(product.getDescription()).isEqualTo(VALID_DESCRIPTION);
     assertThat(product.getPrice()).isEqualByComparingTo(VALID_PRICE);
     assertThat(product.isActive()).isTrue();
   }
 
   @Test
   void shouldTrimProductNameWhenCreatingProduct() {
-    var product = new Product(TENANT_ID, "Pizza portuguesa      ", VALID_PRICE);
+    var product =
+        new Product(
+            TENANT_ID, CATEGORY_ID, "Pizza portuguesa      ", VALID_DESCRIPTION, VALID_PRICE);
 
     assertThat(product.getName()).isEqualTo("Pizza portuguesa");
   }
 
   @Test
   void shouldRejectNullTenantId() {
-    assertThatThrownBy(() -> new Product(null, VALID_NAME, VALID_PRICE))
+    assertThatThrownBy(
+            () -> new Product(null, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("tenantId must not be null");
+  }
+
+  @Test
+  void shouldRejectNullCategoryId() {
+    assertThatThrownBy(
+            () -> new Product(TENANT_ID, null, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("categoryId must not be null");
   }
 
   @ParameterizedTest
   @MethodSource("invalidProductNames")
   void shouldRejectInvalidProductName(String name, String expectedMessage) {
-    assertThatThrownBy(() -> new Product(TENANT_ID, name, VALID_PRICE))
+    assertThatThrownBy(
+            () -> new Product(TENANT_ID, CATEGORY_ID, name, VALID_DESCRIPTION, VALID_PRICE))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
 
   @Test
   void shouldRejectNullPrice() {
-    assertThatThrownBy(() -> new Product(TENANT_ID, VALID_NAME, null))
+    assertThatThrownBy(
+            () -> new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("price must not be null");
   }
@@ -62,9 +79,29 @@ class ProductTest {
   void shouldRejectInvalidPrice(String value) {
     var price = new BigDecimal(value);
 
-    assertThatThrownBy(() -> new Product(TENANT_ID, VALID_NAME, price))
+    assertThatThrownBy(
+            () -> new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, price))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("price must be greater than zero");
+  }
+
+  @Test
+  void shouldChangeProductCategoryWhenValid() {
+    var product = product();
+    var newCategoryId = UUID.randomUUID();
+
+    product.changeCategory(newCategoryId);
+
+    assertThat(product.getCategoryId()).isEqualTo(newCategoryId);
+  }
+
+  @Test
+  void shouldRejectNullProductCategoryWhenChangingCategory() {
+    var product = product();
+
+    assertThatThrownBy(() -> product.changeCategory(null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("categoryId must not be null");
   }
 
   @Test
@@ -93,6 +130,34 @@ class ProductTest {
     assertThatThrownBy(() -> product.rename(name))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
+  }
+
+  @Test
+  void shouldChangeProductDescriptionWhenValid() {
+    var product = product();
+
+    product.changeDescription("  Massa fina com borda recheada  ");
+
+    assertThat(product.getDescription()).isEqualTo("Massa fina com borda recheada");
+  }
+
+  @Test
+  void shouldClearProductDescriptionWhenBlank() {
+    var product = product();
+
+    product.changeDescription("   ");
+
+    assertThat(product.getDescription()).isNull();
+  }
+
+  @Test
+  void shouldRejectDescriptionWithMoreThan500Characters() {
+    var product = product();
+    var description = "a".repeat(501);
+
+    assertThatThrownBy(() -> product.changeDescription(description))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("description must have at most 500 characters");
   }
 
   @Test
@@ -154,6 +219,6 @@ class ProductTest {
   }
 
   private static Product product() {
-    return new Product(TENANT_ID, VALID_NAME, VALID_PRICE);
+    return new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE);
   }
 }

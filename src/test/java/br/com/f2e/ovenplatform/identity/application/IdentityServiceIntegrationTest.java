@@ -213,11 +213,9 @@ class IdentityServiceIntegrationTest {
     assertThat(userRepository.findAll()).hasSize(1);
     assertThat(tenantMembershipRepository.findAll()).hasSize(1);
 
-    assertThatThrownBy(
-            () -> {
-              identityService.createTenantUser(command);
-              entityManager.flush();
-            })
+    identityService.createTenantUser(command);
+
+    assertThatThrownBy(() -> entityManager.flush())
         .isInstanceOf(org.hibernate.exception.ConstraintViolationException.class);
 
     verify(tenantValidator, times(2)).ensureTenantExists(TENANT_ID);

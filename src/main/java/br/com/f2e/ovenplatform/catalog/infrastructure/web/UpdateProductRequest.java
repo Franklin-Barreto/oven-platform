@@ -7,8 +7,9 @@ import jakarta.validation.constraints.Size;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record CreateProductRequest(
+public record UpdateProductRequest(
     @NotNull UUID categoryId,
     @NotBlank @Size(min = 5, message = "name must have at least 5 characters") String name,
     @Size(max = 500, message = "description must have at most 500 characters") String description,
-    @NotNull @Positive BigDecimal price) {}
+    @NotNull @Positive BigDecimal price,
+    @NotNull Boolean active) {}
