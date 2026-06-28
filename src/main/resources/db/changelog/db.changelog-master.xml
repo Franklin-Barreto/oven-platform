@@ -14,5 +14,5 @@
     <include file="db/changelog/changes/db.changelog-006-create-tenant-membership-table.xml" />
     <include file="db/changelog/changes/db.changelog-007-create-categories.xml" />
     <include file="db/changelog/changes/db.changelog-008-add-product-category-and-description.xml" />
-
+    <include file="db/changelog/changes/db.changelog-009-create-event-publication-tables.xml" />
 </databaseChangeLog>
