@@ -14,6 +14,7 @@ import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -25,20 +26,14 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
-@DataJpaTest
-@ActiveProfiles("test")
 @Import({OrderService.class, JpaOrderRepositoryAdapter.class})
-@EnableJpaAuditing
 @RecordApplicationEvents
-class OrderServiceIntegrationTest {
+class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
 
@@ -48,6 +43,10 @@ class OrderServiceIntegrationTest {
 
   private record OrderItemFixture(
       CreateOrderItemCommand command, OrderableProduct orderableProduct) {}
+
+  @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
+  @Autowired
+  private ApplicationEvents applicationEvents;
 
   @Autowired private OrderService orderService;
   @Autowired private EntityManager entityManager;
@@ -59,8 +58,6 @@ class OrderServiceIntegrationTest {
   @SuppressWarnings("unused")
   @MockitoBean
   private Clock clock;
-
-  @Autowired private ApplicationEvents applicationEvents;
 
   @Test
   void shouldCreateOrderWithItemsUsingOrderableProductPrices() {

@@ -24,11 +24,11 @@
                 <constraints nullable="false"/>
             </column>
 
-            <column name="payment_method" type="VARCHAR(50)">
+            <column name="method" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
 
-            <column name="payment_status" type="VARCHAR(50)">
+            <column name="status" type="VARCHAR(50)">
                 <constraints nullable="false"/>
             </column>
 

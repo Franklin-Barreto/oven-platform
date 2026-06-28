@@ -11,6 +11,7 @@ import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -20,17 +21,11 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@DataJpaTest
-@ActiveProfiles("test")
 @Import({PaymentService.class, JpaPaymentRepositoryAdapter.class})
-@EnableJpaAuditing
-class PaymentServiceIntegrationTest {
+class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");

@@ -8,6 +8,7 @@ import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
@@ -15,20 +16,14 @@ import java.math.BigDecimal;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
 import org.springframework.context.annotation.Import;
-import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
-import org.springframework.test.context.ActiveProfiles;
 
-@DataJpaTest
-@ActiveProfiles("test")
 @Import({
   CatalogService.class,
   JpaProductRepositoryAdapter.class,
   JpaCategoryRepositoryAdapter.class
 })
-@EnableJpaAuditing
-class CatalogServiceIntegrationTest {
+class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final String VALID_NAME = "Pizza Portuguesa";
   private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";

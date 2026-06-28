@@ -1,0 +1,12 @@
+package br.com.f2e.ovenplatform.e2e;
+
+import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
+import io.cucumber.spring.CucumberContextConfiguration;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.context.annotation.Import;
+
+@SuppressWarnings("unused")
+@CucumberContextConfiguration
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@Import(PostgresTestContainerConfiguration.class)
+class CucumberSpringConfiguration {}
