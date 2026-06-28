@@ -12,8 +12,13 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
+import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OrderPlacedOutboxEventListener;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
+import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
+import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
+import br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
@@ -26,12 +31,21 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
+import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
-@Import({OrderService.class, JpaOrderRepositoryAdapter.class})
+@ImportAutoConfiguration(JacksonAutoConfiguration.class)
+@Import({
+  OrderService.class,
+  JpaOrderRepositoryAdapter.class,
+  OutboxService.class,
+  JpaOutboxEventRepository.class,
+  OrderPlacedOutboxEventListener.class
+})
 @RecordApplicationEvents
 class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
@@ -50,6 +64,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private OrderService orderService;
   @Autowired private EntityManager entityManager;
+  @Autowired private OutboxEventRepository outboxEventRepository;
 
   @SuppressWarnings("unused")
   @MockitoBean
@@ -353,6 +368,35 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var events = applicationEvents.stream(OrderPaymentMarkedAsPaidEvent.class).toList();
 
     assertThat(events).isEmpty();
+  }
+
+  @Test
+  void shouldCreatePendingOutboxEventWhenOrderIsCreated() {
+    var fixtures = createOrderItemFixtures();
+    var command = createOrderCommand(fixtures);
+    var orderableProducts = createOrderableProducts(fixtures);
+    var productIds = extractProductIds(command);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
+        .thenReturn(orderableProducts);
+
+    var order = orderService.createOrder(TENANT_ID, command);
+
+    flushAndClear();
+
+    var outboxEvent =
+        outboxEventRepository
+            .findByAggregateTypeAndAggregateIdAndEventType("ORDER", order.getId(), "order.created")
+            .orElseThrow();
+
+    assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
+    assertThat(outboxEvent.getTopic()).isEqualTo("order.created");
+    assertThat(outboxEvent.getMessageKey()).isEqualTo(order.getId().toString());
+    assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
+    assertThat(outboxEvent.getAttempts()).isZero();
+    assertThat(outboxEvent.getPublishedAt()).isNull();
+    assertThat(outboxEvent.getLastError()).isNull();
+    assertThat(outboxEvent.getPayload()).contains(order.getId().toString());
   }
 
   private void flushAndClear() {
