@@ -7,6 +7,8 @@ import org.springframework.context.annotation.Import;
 
 @SuppressWarnings("unused")
 @CucumberContextConfiguration
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@SpringBootTest(
+    webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
+    properties = {"jwt.secret=0123456789012345678901234567890123456789012345678901234567890123"})
 @Import(PostgresTestContainerConfiguration.class)
 class CucumberSpringConfiguration {}

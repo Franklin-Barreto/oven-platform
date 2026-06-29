@@ -1,15 +1,11 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
-@SuppressFBWarnings(
-    value = "EI_EXPOSE_REP2",
-    justification = "Spring dependency injection stores managed beans by reference.")
 @Service
 public class OutboxService {
 

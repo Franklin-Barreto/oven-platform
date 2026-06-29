@@ -7,7 +7,6 @@ import br.com.f2e.ovenplatform.identity.infrastructure.web.IdentityController;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponse;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -18,10 +17,6 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 @ControllerAdvice(assignableTypes = {IdentityController.class, AuthenticationController.class})
 public class IdentityExceptionHandler {
 
-  @SuppressFBWarnings(
-      value = "EI_EXPOSE_REP2",
-      justification =
-          "TraceContext is a Spring-managed dependency used to read the current request trace id.")
   private final TraceContext traceContext;
 
   public IdentityExceptionHandler(TraceContext traceContext) {

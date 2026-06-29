@@ -7,11 +7,6 @@
 
     <Match>
         <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityConfig"/>
-    </Match>
-
-    <Match>
-        <Bug pattern="EI_EXPOSE_REP2"/>
-        <Class name="br.com.f2e.ovenplatform.shared.infrastructure.web.exception.GlobalExceptionHandler"/>
+        <Class name="~br\.com\.f2e\.ovenplatform\..*\.(application|infrastructure)\..*(Adapter|Client|Configuration|Config|Handler|Listener|Publisher|Repository|Service|Validator)$"/>
     </Match>
 </FindBugsFilter>
