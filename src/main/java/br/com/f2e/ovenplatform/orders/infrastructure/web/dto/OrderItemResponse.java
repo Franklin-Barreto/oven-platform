@@ -7,16 +7,17 @@ import java.util.UUID;
 
 public record OrderItemResponse(
     UUID productId, String productName, int quantity, BigDecimal unitPrice, BigDecimal subtotal) {
+
+  public static OrderItemResponse from(OrderItem item) {
+    return new OrderItemResponse(
+        item.getProductId(),
+        item.getProductName(),
+        item.getQuantity(),
+        item.getUnitPrice(),
+        item.getSubtotal());
+  }
+
   public static List<OrderItemResponse> from(List<OrderItem> items) {
-    return items.stream()
-        .map(
-            item ->
-                new OrderItemResponse(
-                    item.getProductId(),
-                    item.getProductName(),
-                    item.getQuantity(),
-                    item.getUnitPrice(),
-                    item.getSubtotal()))
-        .toList();
+    return items.stream().map(OrderItemResponse::from).toList();
   }
 }

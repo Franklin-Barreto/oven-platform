@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.TOPIC;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
