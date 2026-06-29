@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.orders.application;
 
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
@@ -77,7 +78,8 @@ public class OrderService {
             savedOrder.getId(),
             orderCommand.paymentInfo().method(),
             orderCommand.paymentInfo().status(),
-            savedOrder.getTotalAmount()));
+            savedOrder.getTotalAmount(),
+            savedOrder.getItems().stream().map(OrderPlacedItem::from).toList()));
 
     return savedOrder;
   }

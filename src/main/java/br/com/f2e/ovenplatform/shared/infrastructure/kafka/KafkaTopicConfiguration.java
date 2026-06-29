@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.kafka;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.TOPIC;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;

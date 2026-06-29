@@ -4,20 +4,20 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-public record OrderPlacedEvent(
+public record OrderCreatedPayload(
     UUID tenantId,
     UUID orderId,
+    BigDecimal totalAmount,
     OrderPaymentMethod paymentMethod,
     OrderPaymentStatus paymentStatus,
-    BigDecimal totalAmount,
-    List<OrderPlacedItem> items) {
+    List<OrderCreatedItemPayload> items) {
 
-  public OrderPlacedEvent {
+  public OrderCreatedPayload {
     items = List.copyOf(items);
   }
 
   @Override
-  public List<OrderPlacedItem> items() {
+  public List<OrderCreatedItemPayload> items() {
     return List.copyOf(items);
   }
 }

@@ -1,11 +1,12 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.PAYLOAD_VERSION;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.TOPIC;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.PAYLOAD_VERSION;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedIntegrationEvent;
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedItemPayload;
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.context.event.EventListener;
@@ -23,12 +24,13 @@ public class OrderPlacedOutboxEventListener {
   @EventListener
   void on(OrderPlacedEvent event) {
     var payload =
-        new OrderCreatedIntegrationEvent(
+        new OrderCreatedPayload(
             event.tenantId(),
             event.orderId(),
             event.totalAmount(),
             event.paymentMethod(),
-            event.paymentStatus());
+            event.paymentStatus(),
+            event.items().stream().map(OrderCreatedItemPayload::from).toList());
 
     outboxService.enqueue(
         AGGREGATE_TYPE,

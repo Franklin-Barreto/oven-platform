@@ -1,14 +1,15 @@
 package br.com.f2e.ovenplatform.orders.application;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.TOPIC;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
@@ -23,6 +24,7 @@ import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
+import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -110,6 +112,21 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(orderPlacedEvent.paymentMethod()).isEqualTo(OrderPaymentMethod.CASH);
     assertThat(orderPlacedEvent.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
     assertThat(orderPlacedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
+    assertThat(orderPlacedEvent.items()).hasSize(fixtures.size());
+    assertThat(orderPlacedEvent.items())
+        .allSatisfy(
+            item -> {
+              var fixture =
+                  fixtures.stream()
+                      .filter(candidate -> candidate.command().productId().equals(item.productId()))
+                      .findFirst()
+                      .orElseThrow();
+
+              assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
+              assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
+              assertThat(item.unitPrice())
+                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
+            });
   }
 
   @Test
@@ -400,7 +417,29 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(outboxEvent.getAttempts()).isZero();
     assertThat(outboxEvent.getPublishedAt()).isNull();
     assertThat(outboxEvent.getLastError()).isNull();
-    assertThat(outboxEvent.getPayload()).contains(order.getId().toString());
+
+    var payload = JsonUtils.fromJson(outboxEvent.getPayload(), OrderCreatedPayload.class);
+
+    assertThat(payload.tenantId()).isEqualTo(TENANT_ID);
+    assertThat(payload.orderId()).isEqualTo(order.getId());
+    assertThat(payload.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
+    assertThat(payload.paymentMethod()).isEqualTo(OrderPaymentMethod.CASH);
+    assertThat(payload.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
+    assertThat(payload.items()).hasSize(fixtures.size());
+    assertThat(payload.items())
+        .allSatisfy(
+            item -> {
+              var fixture =
+                  fixtures.stream()
+                      .filter(candidate -> candidate.command().productId().equals(item.productId()))
+                      .findFirst()
+                      .orElseThrow();
+
+              assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
+              assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
+              assertThat(item.unitPrice())
+                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
+            });
   }
 
   private void flushAndClear() {
