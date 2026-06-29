@@ -1,0 +1,4 @@
+oven:
+  kafka:
+    topics:
+      auto-create: true

@@ -1,5 +1,8 @@
 package br.com.f2e.ovenplatform.orders.application;
 
+import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.OrderIntegrationEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -386,11 +389,12 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var outboxEvent =
         outboxEventRepository
-            .findByAggregateTypeAndAggregateIdAndEventType("ORDER", order.getId(), "order.created")
+            .findByAggregateTypeAndAggregateIdAndEventType(
+                AGGREGATE_TYPE, order.getId(), ORDER_CREATED_EVENT)
             .orElseThrow();
 
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo("order.created");
+    assertThat(outboxEvent.getTopic()).isEqualTo(TOPIC);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(order.getId().toString());
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();

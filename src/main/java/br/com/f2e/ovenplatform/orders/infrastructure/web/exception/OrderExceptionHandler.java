@@ -6,7 +6,6 @@ import br.com.f2e.ovenplatform.orders.infrastructure.web.OrderController;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponse;
-import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
 import jakarta.servlet.http.HttpServletRequest;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
@@ -17,10 +16,6 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 @RestControllerAdvice(assignableTypes = OrderController.class)
 public class OrderExceptionHandler {
 
-  @SuppressFBWarnings(
-      value = "EI_EXPOSE_REP2",
-      justification =
-          "TraceContext is a Spring-managed dependency used to read the current request trace id.")
   private final TraceContext traceContext;
 
   public OrderExceptionHandler(TraceContext traceContext) {
