@@ -30,6 +30,7 @@ import org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
+import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 
 @Import({
@@ -41,6 +42,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
   OutboxPublisherKafkaIntegrationTest.TestConfig.class
 })
 @ImportAutoConfiguration(KafkaAutoConfiguration.class)
+@TestPropertySource(properties = "oven.kafka.topics.auto-create=true")
 class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
   private static final Instant NOW = Instant.parse("2026-06-29T12:00:00Z");
