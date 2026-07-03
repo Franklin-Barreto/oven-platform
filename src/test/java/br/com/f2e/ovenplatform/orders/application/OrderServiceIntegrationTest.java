@@ -25,7 +25,6 @@ import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -68,7 +67,6 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   private ApplicationEvents applicationEvents;
 
   @Autowired private OrderService orderService;
-  @Autowired private EntityManager entityManager;
   @Autowired private OutboxEventRepository outboxEventRepository;
 
   @SuppressWarnings("unused")
@@ -440,11 +438,6 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
               assertThat(item.unitPrice())
                   .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
             });
-  }
-
-  private void flushAndClear() {
-    entityManager.flush();
-    entityManager.clear();
   }
 
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {

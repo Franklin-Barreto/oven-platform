@@ -17,7 +17,6 @@ import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataUse
 import br.com.f2e.ovenplatform.identity.infrastructure.security.config.PasswordEncoderConfig;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import jakarta.persistence.EntityManager;
 import java.util.NoSuchElementException;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -44,7 +43,6 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Autowired private IdentityService identityService;
   @Autowired private SpringDataUserRepository userRepository;
   @Autowired private SpringDataTenantMembershipRepository tenantMembershipRepository;
-  @Autowired private EntityManager entityManager;
 
   @MockitoBean private TenantValidator tenantValidator;
 
@@ -233,11 +231,5 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(persistedUser.getEmail()).isEqualTo(NORMALIZED_EMAIL);
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
-  }
-
-  private void flushAndClear() {
-    userRepository.flush();
-    tenantMembershipRepository.flush();
-    entityManager.clear();
   }
 }

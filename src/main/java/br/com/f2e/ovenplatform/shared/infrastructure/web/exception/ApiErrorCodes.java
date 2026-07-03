@@ -14,6 +14,7 @@ public final class ApiErrorCodes {
   public static final String DUPLICATED_USER_TENANT = "DUPLICATED_USER_TENANT";
   public static final String INACTIVE_TENANT_MEMBERSHIP = "INACTIVE_TENANT_MEMBERSHIP";
   public static final String TENANT_ACCESS_DENIED = "TENANT_ACCESS_DENIED";
+  public static final String INVALID_TICKET_STATUS_TRANSITION = "INVALID_TICKET_STATUS_TRANSITION";
 
   private ApiErrorCodes() {}
 }

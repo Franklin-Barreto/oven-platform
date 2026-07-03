@@ -12,7 +12,6 @@ import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -34,7 +33,6 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private PaymentService paymentService;
   @Autowired private JpaPaymentRepositoryAdapter paymentRepository;
-  @Autowired private EntityManager entityManager;
 
   @SuppressWarnings("unused")
   @MockitoBean
@@ -164,10 +162,5 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
       orderIds.add(saved.getOrderId());
     }
     return orderIds;
-  }
-
-  private void flushAndClear() {
-    entityManager.flush();
-    entityManager.clear();
   }
 }

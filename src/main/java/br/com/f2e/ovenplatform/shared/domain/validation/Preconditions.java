@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.shared.domain.validation;
 
 import java.math.BigDecimal;
+import java.util.Collection;
 
 public final class Preconditions {
 
@@ -51,5 +52,15 @@ public final class Preconditions {
           "%s must have at least %d characters".formatted(fieldName, minimumSize));
     }
     return trimmed;
+  }
+
+  public static <T extends Collection<?>> T requireNotEmpty(T field, String fieldName) {
+    requireNotNull(field, fieldName);
+
+    if (field.isEmpty()) {
+      throw new IllegalArgumentException("%s must have at least 1 item".formatted(fieldName));
+    }
+
+    return field;
   }
 }

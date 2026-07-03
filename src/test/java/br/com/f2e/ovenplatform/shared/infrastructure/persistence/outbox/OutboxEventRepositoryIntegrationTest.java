@@ -8,7 +8,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import jakarta.persistence.EntityManager;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -19,7 +18,6 @@ import org.springframework.context.annotation.Import;
 class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private OutboxEventRepository repository;
-  @Autowired private EntityManager entityManager;
 
   @Test
   void shouldFindOnlyPendingEvents() {
@@ -48,10 +46,5 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
-  }
-
-  private void flushAndClear() {
-    entityManager.flush();
-    entityManager.clear();
   }
 }
