@@ -24,12 +24,9 @@ public class KitchenService {
 
   @Transactional
   public Ticket createTicketFromOrder(CreateTicketCommand command) {
-    var items =
-        command.items().stream()
-            .map(item -> new TicketItem(item.productId(), item.productName(), item.quantity()))
-            .toList();
-    var ticket = new Ticket(command.tenantId(), command.orderId(), items);
-    return repository.save(ticket);
+    return repository
+        .findByTenantIdAndOrderId(command.tenantId(), command.orderId())
+        .orElseGet(() -> createAndSaveTicket(command));
   }
 
   @Transactional(readOnly = true)
@@ -66,14 +63,25 @@ public class KitchenService {
     updateTicket(tenantId, id, ticket -> ticket.markAsReady(clock.instant()));
   }
 
+  @Transactional
+  public void cancel(UUID tenantId, UUID id) {
+    updateTicket(tenantId, id, ticket -> ticket.cancel(clock.instant()));
+  }
+
   private Ticket findTicketById(UUID tenantId, UUID id) {
     return repository
         .findByIdAndTenantId(id, tenantId)
         .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, id));
   }
 
-  @Transactional
-  public void cancel(UUID tenantId, UUID id) {
-    updateTicket(tenantId, id, ticket -> ticket.cancel(clock.instant()));
+  private Ticket createAndSaveTicket(CreateTicketCommand command) {
+    var items =
+        command.items().stream()
+            .map(item -> new TicketItem(item.productId(), item.productName(), item.quantity()))
+            .toList();
+
+    var ticket = new Ticket(command.tenantId(), command.orderId(), items);
+
+    return repository.save(ticket);
   }
 }

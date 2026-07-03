@@ -112,6 +112,39 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
         .isInstanceOf(ResourceNotFoundException.class);
   }
 
+  @Test
+  void shouldNotCreateDuplicatedTicketForSameTenantAndOrder() {
+    var firstTicket = kitchenService.createTicketFromOrder(createTicketCommand());
+
+    kitchenService.createTicketFromOrder(createTicketCommand());
+
+    flushAndClear();
+
+    var tickets = kitchenService.list(TENANT_ID);
+
+    assertThat(tickets)
+        .singleElement()
+        .satisfies(
+            ticket -> {
+              assertThat(ticket.getId()).isEqualTo(firstTicket.getId());
+              assertThat(ticket.getTenantId()).isEqualTo(TENANT_ID);
+              assertThat(ticket.getOrderId()).isEqualTo(ORDER_ID);
+              assertThat(ticket.getStatus()).isEqualTo(TicketStatus.RECEIVED);
+              assertThat(ticket.getItems()).hasSize(1);
+            });
+  }
+
+  @Test
+  void shouldCreateTicketsForSameOrderIdInDifferentTenants() {
+    kitchenService.createTicketFromOrder(createTicketCommand(TENANT_ID, ORDER_ID));
+    kitchenService.createTicketFromOrder(createTicketCommand(OTHER_TENANT_ID, ORDER_ID));
+
+    flushAndClear();
+
+    assertThat(kitchenService.list(TENANT_ID)).hasSize(1);
+    assertThat(kitchenService.list(OTHER_TENANT_ID)).hasSize(1);
+  }
+
   private CreateTicketCommand createTicketCommand() {
     return createTicketCommand(TENANT_ID, ORDER_ID);
   }
