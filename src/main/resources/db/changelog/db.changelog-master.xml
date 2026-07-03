@@ -16,4 +16,5 @@
     <include file="db/changelog/changes/db.changelog-008-add-product-category-and-description.xml" />
     <include file="db/changelog/changes/db.changelog-009-create-event-publication-tables.xml" />
     <include file="db/changelog/changes/db.changelog-010-create-outbox-events.xml" />
+    <include file="db/changelog/changes/db.changelog-011-create-kitchen-tickets.xml" />
 </databaseChangeLog>
