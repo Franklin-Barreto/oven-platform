@@ -22,6 +22,10 @@ spring:
       acks: all
       properties:
         enable.idempotence: true
+    consumer:
+      auto-offset-reset: earliest
+      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   mvc:
     apiversion:
       default: 1.0

@@ -77,10 +77,10 @@
             <column name="status"/>
         </createIndex>
 
-        <createIndex indexName="idx_kitchen_tickets_tenant_id_order_id" tableName="kitchen_tickets">
-            <column name="tenant_id"/>
-            <column name="order_id"/>
-        </createIndex>
+        <addUniqueConstraint
+                tableName="kitchen_tickets"
+                columnNames="tenant_id, order_id"
+                constraintName="uk_kitchen_tickets_tenant_id_order_id"/>
 
         <createIndex indexName="idx_kitchen_ticket_items_kitchen_ticket_id" tableName="kitchen_ticket_items">
             <column name="kitchen_ticket_id"/>

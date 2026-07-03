@@ -10,6 +10,10 @@ public final class JsonUtils {
   private static final Logger LOGGER = LoggerFactory.getLogger(JsonUtils.class);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
+  public static ObjectMapper getObjectMapper() {
+    return OBJECT_MAPPER;
+  }
+
   private JsonUtils() {
     throw new UnsupportedOperationException("Utility class should not be instantiated");
   }
