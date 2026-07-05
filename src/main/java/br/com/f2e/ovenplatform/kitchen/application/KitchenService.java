@@ -84,4 +84,11 @@ public class KitchenService {
 
     return repository.save(ticket);
   }
+
+  @Transactional(readOnly = true)
+  public Ticket findByOrderIdWithItems(UUID tenantId, UUID orderId) {
+    return repository
+        .findByTenantIdAndOrderIdWithItems(tenantId, orderId)
+        .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, "orderId", orderId));
+  }
 }

@@ -145,6 +145,43 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(kitchenService.list(OTHER_TENANT_ID)).hasSize(1);
   }
 
+  @Test
+  void shouldFindTicketByOrderIdWithItems() {
+
+    var firstTicket = kitchenService.createTicketFromOrder(createTicketCommand());
+
+    flushAndClear();
+
+    var tickets = kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID);
+
+    assertThat(tickets)
+        .satisfies(
+            ticket -> {
+              assertThat(ticket.getId()).isEqualTo(firstTicket.getId());
+              assertThat(ticket.getTenantId()).isEqualTo(TENANT_ID);
+              assertThat(ticket.getItems()).hasSize(1);
+            });
+  }
+
+  @Test
+  void shouldThrowResourceNotFoundWhenFindingByOrderIdAndTicketDoesNotExist() {
+
+    assertThatThrownBy(() -> kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID))
+        .hasMessage("Ticket orderId: %s not found".formatted(ORDER_ID))
+        .isInstanceOf(ResourceNotFoundException.class);
+  }
+
+  @Test
+  void shouldThrowResourceNotFoundWhenFindingByOrderIdFromAnotherTenant() {
+
+    kitchenService.createTicketFromOrder(createTicketCommand(TENANT_ID, ORDER_ID));
+    flushAndClear();
+
+    assertThatThrownBy(() -> kitchenService.findByOrderIdWithItems(OTHER_TENANT_ID, ORDER_ID))
+        .hasMessage("Ticket orderId: %s not found".formatted(ORDER_ID))
+        .isInstanceOf(ResourceNotFoundException.class);
+  }
+
   private CreateTicketCommand createTicketCommand() {
     return createTicketCommand(TENANT_ID, ORDER_ID);
   }

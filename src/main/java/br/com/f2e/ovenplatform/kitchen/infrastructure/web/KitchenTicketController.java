@@ -15,44 +15,52 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/kitchen/tickets")
+@RequestMapping("/kitchen")
 public class KitchenTicketController {
 
+  private static final String TICKETS = "tickets";
   private final KitchenService service;
 
   public KitchenTicketController(KitchenService service) {
     this.service = service;
   }
 
-  @GetMapping(version = API_VERSION_VALUE)
+  @GetMapping(version = API_VERSION_VALUE, path = "/" + TICKETS)
   public ResponseEntity<List<TicketResponse>> list(@CurrentTenantId UUID tenantId) {
     var response = service.list(tenantId).stream().map(TicketResponse::from).toList();
     return ResponseEntity.ok(response);
   }
 
-  @GetMapping(version = API_VERSION_VALUE, path = "/{id}")
+  @GetMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}")
   public ResponseEntity<TicketResponse> findById(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     var response = TicketResponse.from(service.findByIdWithItems(tenantId, id));
     return ResponseEntity.ok(response);
   }
 
-  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/start-preparation")
+  @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/start-preparation")
   public ResponseEntity<Void> startPreparation(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     service.startPreparation(tenantId, id);
     return ResponseEntity.noContent().build();
   }
 
-  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/mark-ready")
+  @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/mark-ready")
   public ResponseEntity<Void> markAsReady(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     service.markAsReady(tenantId, id);
     return ResponseEntity.noContent().build();
   }
 
-  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/cancel")
+  @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/cancel")
   public ResponseEntity<Void> cancel(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     service.cancel(tenantId, id);
     return ResponseEntity.noContent().build();
+  }
+
+  @GetMapping(version = API_VERSION_VALUE, path = "/orders/{orderId}/ticket")
+  public ResponseEntity<TicketResponse> findByOrderId(
+      @CurrentTenantId UUID tenantId, @PathVariable UUID orderId) {
+    return ResponseEntity.ok(
+        TicketResponse.from(service.findByOrderIdWithItems(tenantId, orderId)));
   }
 }

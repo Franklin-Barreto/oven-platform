@@ -18,4 +18,6 @@ public interface TicketRepository {
   List<Ticket> findByTenantIdWithItems(UUID tenantId);
 
   Optional<Ticket> findByTenantIdAndOrderId(UUID tenantId, UUID orderId);
+
+  Optional<Ticket> findByTenantIdAndOrderIdWithItems(UUID tenantId, UUID orderId);
 }
