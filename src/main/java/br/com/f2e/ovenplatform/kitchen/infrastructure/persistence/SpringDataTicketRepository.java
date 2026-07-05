@@ -32,4 +32,14 @@ public interface SpringDataTicketRepository extends JpaRepository<Ticket, UUID> 
   List<Ticket> findByTenantIdWithItems(UUID tenantId);
 
   Optional<Ticket> findByTenantIdAndOrderId(UUID tenantId, UUID orderId);
+
+  @Query(
+      """
+          select ticket
+          from Ticket ticket
+          left join fetch ticket.items
+          where ticket.orderId = :orderId
+            and ticket.tenantId = :tenantId
+          """)
+  Optional<Ticket> findByTenantIdAndOrderIdWithItems(UUID tenantId, UUID orderId);
 }

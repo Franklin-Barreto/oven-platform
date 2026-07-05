@@ -43,7 +43,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @Import({TraceContext.class})
 class KitchenTicketControllerTest {
 
-  private static final String BASE_URL = "/kitchen/tickets";
+  private static final String BASE_URL = "/kitchen/";
+  private static final String TICKETS_URL = "/kitchen/tickets";
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID TICKET_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
@@ -63,7 +64,7 @@ class KitchenTicketControllerTest {
     when(kitchenService.list(TENANT_ID)).thenReturn(List.of(ticket));
 
     mockMvc
-        .perform(get(BASE_URL).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(TICKETS_URL).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$").isNotEmpty())
@@ -86,7 +87,7 @@ class KitchenTicketControllerTest {
     when(kitchenService.findByIdWithItems(TENANT_ID, TICKET_ID)).thenReturn(createTicket());
 
     mockMvc
-        .perform(get(BASE_URL + "/" + TICKET_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(TICKETS_URL + "/" + TICKET_ID).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isNotEmpty())
         .andExpect(jsonPath("$.id").value(TICKET_ID.toString()))
@@ -108,7 +109,7 @@ class KitchenTicketControllerTest {
     when(kitchenService.findByIdWithItems(TENANT_ID, TICKET_ID))
         .thenThrow(new ResourceNotFoundException("Ticket", TICKET_ID));
 
-    var fullpath = BASE_URL + "/" + TICKET_ID;
+    var fullpath = TICKETS_URL + "/" + TICKET_ID;
     mockMvc
         .perform(get(fullpath).with(authenticatedTenantUser(TENANT_ID)))
         .andExpect(status().isNotFound())
@@ -133,7 +134,7 @@ class KitchenTicketControllerTest {
 
     mockMvc
         .perform(
-            post(BASE_URL + "/" + TICKET_ID + endpoint)
+            post(TICKETS_URL + "/" + TICKET_ID + endpoint)
                 .with(authenticatedTenantUser(TENANT_ID))
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isNoContent())
@@ -147,7 +148,7 @@ class KitchenTicketControllerTest {
   void shouldReturnNotFoundWhenExecutingCommandAndTicketDoesNotExist(
       String scenario, String endpoint, Consumer<KitchenService> serviceMock) throws Exception {
 
-    var fullPath = BASE_URL + "/" + TICKET_ID + endpoint;
+    var fullPath = TICKETS_URL + "/" + TICKET_ID + endpoint;
 
     serviceMock.accept(
         doThrow(new ResourceNotFoundException("Ticket", TICKET_ID)).when(kitchenService));
@@ -181,7 +182,7 @@ class KitchenTicketControllerTest {
       Consumer<KitchenService> serviceMock)
       throws Exception {
 
-    var fullPath = BASE_URL + "/" + TICKET_ID + endpoint;
+    var fullPath = TICKETS_URL + "/" + TICKET_ID + endpoint;
 
     serviceMock.accept(
         doThrow(new InvalidTicketStatusTransitionException(currentStatus, targetStatus))
@@ -204,6 +205,53 @@ class KitchenTicketControllerTest {
                 HttpStatus.CONFLICT.value()));
 
     serviceMock.accept(verify(kitchenService));
+  }
+
+  @Test
+  void shouldFindTicketByOrderId() throws Exception {
+
+    when(kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID)).thenReturn(createTicket());
+
+    mockMvc
+        .perform(
+            get(BASE_URL + "orders/" + ORDER_ID + "/ticket")
+                .with(authenticatedTenantUser(TENANT_ID)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$").isNotEmpty())
+        .andExpect(jsonPath("$.id").value(TICKET_ID.toString()))
+        .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
+        .andExpect(jsonPath("$.orderId").value(ORDER_ID.toString()))
+        .andExpect(jsonPath("$.status").value(TicketStatus.RECEIVED.name()))
+        .andExpect(jsonPath("$.items").isArray())
+        .andExpect(jsonPath("$.items.length()").value(1))
+        .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
+        .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
+        .andExpect(jsonPath("$.items[0].quantity").value(2));
+
+    verify(kitchenService).findByOrderIdWithItems(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
+  void shouldReturnNotFoundWhenFindingTicketByOrderIdAndTicketDoesNotExist() throws Exception {
+
+    when(kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID))
+        .thenThrow(new ResourceNotFoundException("Ticket", "orderId", ORDER_ID));
+
+    var fullpath = BASE_URL + "orders/" + ORDER_ID + "/ticket";
+    mockMvc
+        .perform(get(fullpath).with(authenticatedTenantUser(TENANT_ID)))
+        .andExpect(status().isNotFound())
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.NOT_FOUND,
+                fullpath,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ApiErrorCodes.RESOURCE_NOT_FOUND,
+                "Ticket orderId: %s not found".formatted(ORDER_ID),
+                null,
+                HttpStatus.NOT_FOUND.value()));
+
+    verify(kitchenService).findByOrderIdWithItems(TENANT_ID, ORDER_ID);
   }
 
   private static Stream<Arguments> ticketCommands() {

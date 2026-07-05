@@ -45,4 +45,9 @@ public class JpaTicketRepositoryAdapter implements TicketRepository {
   public Optional<Ticket> findByTenantIdAndOrderId(UUID tenantId, UUID orderId) {
     return repository.findByTenantIdAndOrderId(tenantId, orderId);
   }
+
+  @Override
+  public Optional<Ticket> findByTenantIdAndOrderIdWithItems(UUID tenantId, UUID orderId) {
+    return repository.findByTenantIdAndOrderIdWithItems(tenantId, orderId);
+  }
 }
