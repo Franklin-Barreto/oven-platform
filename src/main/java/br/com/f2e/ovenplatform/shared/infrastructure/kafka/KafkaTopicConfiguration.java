@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.kafka;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
-
+import br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants;
+import br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants;
 import org.apache.kafka.clients.admin.NewTopic;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -14,6 +14,11 @@ public class KafkaTopicConfiguration {
 
   @Bean
   NewTopic orderEventsTopic() {
-    return TopicBuilder.name(TOPIC).partitions(3).replicas(1).build();
+    return TopicBuilder.name(OrderEventConstants.TOPIC).partitions(3).replicas(1).build();
+  }
+
+  @Bean
+  NewTopic kitchenEventsTopic() {
+    return TopicBuilder.name(KitchenEventConstants.TOPIC).partitions(3).replicas(1).build();
   }
 }

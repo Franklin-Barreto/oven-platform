@@ -1,12 +1,13 @@
 package br.com.f2e.ovenplatform.kitchen.application;
 
+import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.kitchen.domain.Ticket;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketItem;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
 import java.util.List;
 import java.util.UUID;
-import java.util.function.Consumer;
+import java.util.function.Predicate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +17,15 @@ public class KitchenService {
   private static final String RESOURCE = "Ticket";
   private final TicketRepository repository;
   private final Clock clock;
+  private final KitchenTicketReadyEventPublisher readyEventPublisher;
 
-  public KitchenService(TicketRepository repository, Clock clock) {
+  public KitchenService(
+      TicketRepository repository,
+      Clock clock,
+      KitchenTicketReadyEventPublisher readyEventPublisher) {
     this.repository = repository;
     this.clock = clock;
+    this.readyEventPublisher = readyEventPublisher;
   }
 
   @Transactional
@@ -53,14 +59,16 @@ public class KitchenService {
     updateTicket(tenantId, id, ticket -> ticket.startPreparation(clock.instant()));
   }
 
-  private void updateTicket(UUID tenantId, UUID id, Consumer<Ticket> action) {
-    var ticket = findTicketById(tenantId, id);
-    action.accept(ticket);
-  }
-
   @Transactional
   public void markAsReady(UUID tenantId, UUID id) {
-    updateTicket(tenantId, id, ticket -> ticket.markAsReady(clock.instant()));
+    var occurredAt = clock.instant();
+    var result = updateTicket(tenantId, id, ticket -> ticket.markAsReady(occurredAt));
+
+    if (result.changed()) {
+      readyEventPublisher.publish(
+          new KitchenTicketMarkedAsReadyEvent(
+              result.tenantId(), result.ticketId(), result.orderId(), result.readyAt()));
+    }
   }
 
   @Transactional
@@ -90,5 +98,11 @@ public class KitchenService {
     return repository
         .findByTenantIdAndOrderIdWithItems(tenantId, orderId)
         .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, "orderId", orderId));
+  }
+
+  private TicketUpdateResult updateTicket(UUID tenantId, UUID id, Predicate<Ticket> action) {
+    var ticket = findTicketById(tenantId, id);
+    var changed = action.test(ticket);
+    return TicketUpdateResult.from(ticket, changed);
   }
 }

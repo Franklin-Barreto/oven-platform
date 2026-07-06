@@ -84,25 +84,34 @@ public class Ticket extends BaseEntity {
     return cancelledAt;
   }
 
-  public void startPreparation(Instant occurredAt) {
-    if (transitionTo(IN_PREPARATION)) {
+  public boolean startPreparation(Instant occurredAt) {
+    var changed = changeStatusTo(IN_PREPARATION);
+
+    if (changed) {
       startedAt = occurredAt;
     }
+    return changed;
   }
 
-  public void markAsReady(Instant occurredAt) {
-    if (transitionTo(READY)) {
+  public boolean markAsReady(Instant occurredAt) {
+    var changed = changeStatusTo(READY);
+
+    if (changed) {
       readyAt = occurredAt;
     }
+    return changed;
   }
 
-  public void cancel(Instant occurredAt) {
-    if (transitionTo(CANCELLED)) {
+  public boolean cancel(Instant occurredAt) {
+    var changed = changeStatusTo(CANCELLED);
+
+    if (changed) {
       cancelledAt = occurredAt;
     }
+    return changed;
   }
 
-  private boolean transitionTo(TicketStatus target) {
+  private boolean changeStatusTo(TicketStatus target) {
     if (status == target) {
       return false;
     }

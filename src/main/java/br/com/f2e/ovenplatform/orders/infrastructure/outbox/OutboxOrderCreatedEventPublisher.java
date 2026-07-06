@@ -5,24 +5,24 @@ import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstan
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.PAYLOAD_VERSION;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 
+import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
-import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OrderPlacedOutboxEventListener {
+public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublisher {
 
   private final OutboxService outboxService;
 
-  public OrderPlacedOutboxEventListener(OutboxService outboxService) {
+  public OutboxOrderCreatedEventPublisher(OutboxService outboxService) {
     this.outboxService = outboxService;
   }
 
-  @EventListener
-  void on(OrderPlacedEvent event) {
+  @Override
+  public void publish(OrderPlacedEvent event) {
     var payload =
         new OrderCreatedPayload(
             event.tenantId(),

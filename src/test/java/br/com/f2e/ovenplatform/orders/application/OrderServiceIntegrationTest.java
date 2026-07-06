@@ -16,7 +16,7 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
-import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OrderPlacedOutboxEventListener;
+import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OutboxOrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
@@ -48,7 +48,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
   JpaOrderRepositoryAdapter.class,
   OutboxService.class,
   JpaOutboxEventRepository.class,
-  OrderPlacedOutboxEventListener.class
+  OutboxOrderCreatedEventPublisher.class
 })
 @RecordApplicationEvents
 class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
