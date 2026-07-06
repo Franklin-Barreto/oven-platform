@@ -24,16 +24,19 @@ public class OrderService {
   private final OrderableProductProvider orderableProductProvider;
   private final Clock clock;
   private final ApplicationEventPublisher eventPublisher;
+  private final OrderCreatedEventPublisher orderCreatedEventPublisher;
 
   public OrderService(
       OrderRepository orderRepository,
       OrderableProductProvider orderableProductProvider,
       Clock clock,
-      ApplicationEventPublisher eventPublisher) {
+      ApplicationEventPublisher eventPublisher,
+      OrderCreatedEventPublisher orderCreatedEventPublisher) {
     this.orderRepository = orderRepository;
     this.orderableProductProvider = orderableProductProvider;
     this.clock = clock;
     this.eventPublisher = eventPublisher;
+    this.orderCreatedEventPublisher = orderCreatedEventPublisher;
   }
 
   public Order save(Order order) {
@@ -72,14 +75,17 @@ public class OrderService {
 
     var savedOrder = orderRepository.save(order);
 
-    eventPublisher.publishEvent(
+    var orderPlacedEvent =
         new OrderPlacedEvent(
             savedOrder.getTenantId(),
             savedOrder.getId(),
             orderCommand.paymentInfo().method(),
             orderCommand.paymentInfo().status(),
             savedOrder.getTotalAmount(),
-            savedOrder.getItems().stream().map(OrderPlacedItem::from).toList()));
+            savedOrder.getItems().stream().map(OrderPlacedItem::from).toList());
+
+    eventPublisher.publishEvent(orderPlacedEvent);
+    orderCreatedEventPublisher.publish(orderPlacedEvent);
 
     return savedOrder;
   }
