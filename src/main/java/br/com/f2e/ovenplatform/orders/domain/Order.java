@@ -80,18 +80,21 @@ public class Order extends BaseEntity {
   }
 
   public void markAsReady(Instant occurredAt) {
+    requireNotNull(occurredAt, "readyAt");
     if (transitionTo(OrderStatus.READY)) {
       readyAt = occurredAt;
     }
   }
 
   public void markAsDelivered(Instant occurredAt) {
+    requireNotNull(occurredAt, "deliveredAt");
     if (transitionTo(OrderStatus.DELIVERED)) {
       deliveredAt = occurredAt;
     }
   }
 
   public void cancel(Instant occurredAt) {
+    requireNotNull(occurredAt, "cancelledAt");
     if (transitionTo(OrderStatus.CANCELLED)) {
       cancelledAt = occurredAt;
     }

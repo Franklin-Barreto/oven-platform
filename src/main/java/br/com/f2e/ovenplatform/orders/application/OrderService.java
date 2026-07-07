@@ -6,6 +6,7 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -108,6 +109,11 @@ public class OrderService {
   @Transactional
   public void markAsReady(UUID tenantId, UUID orderId) {
     updateOrder(tenantId, orderId, order -> order.markAsReady(clock.instant()));
+  }
+
+  @Transactional
+  public void markAsReady(UUID tenantId, UUID orderId, Instant readyAt) {
+    updateOrder(tenantId, orderId, order -> order.markAsReady(readyAt));
   }
 
   @Transactional
