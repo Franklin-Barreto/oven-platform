@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka;
 
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TOPIC;
-
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
 import br.com.f2e.ovenplatform.fulfillment.application.PreparationReadyCommand;
 import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.payload.KitchenTicketReadyPayload;
@@ -20,7 +18,9 @@ public class KitchenTicketReadyConsumer {
     this.mapper = mapper;
   }
 
-  @KafkaListener(topics = TOPIC, groupId = "oven-platform-fulfillment")
+  @KafkaListener(
+      topics = "${oven.kafka.topics.kitchen}",
+      groupId = "${oven.kafka.consumer-groups.fulfillment}")
   public void on(String payload) {
     var ticketReadyPayload = mapper.readValue(payload, KitchenTicketReadyPayload.class);
     fulfillmentService.handlePreparationReady(

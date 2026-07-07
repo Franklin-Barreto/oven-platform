@@ -1,9 +1,7 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.kafka;
 
-import br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants;
-import br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants;
-import br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants;
 import org.apache.kafka.clients.admin.NewTopic;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,18 +11,31 @@ import org.springframework.kafka.config.TopicBuilder;
 @ConditionalOnProperty(name = "oven.kafka.topics.auto-create", havingValue = "true")
 public class KafkaTopicConfiguration {
 
+  private final String fulfillmentTopic;
+  private final String orderTopic;
+  private final String kitchenTopic;
+
+  public KafkaTopicConfiguration(
+      @Value("${oven.kafka.topics.kitchen}") String kitchenTopic,
+      @Value("${oven.kafka.topics.orders}") String orderTopic,
+      @Value("${oven.kafka.topics.fulfillment}") String fulfillmentTopic) {
+    this.kitchenTopic = kitchenTopic;
+    this.orderTopic = orderTopic;
+    this.fulfillmentTopic = fulfillmentTopic;
+  }
+
   @Bean
   NewTopic orderEventsTopic() {
-    return TopicBuilder.name(OrderEventConstants.TOPIC).partitions(3).replicas(1).build();
+    return TopicBuilder.name(orderTopic).partitions(3).replicas(1).build();
   }
 
   @Bean
   NewTopic kitchenEventsTopic() {
-    return TopicBuilder.name(KitchenEventConstants.TOPIC).partitions(3).replicas(1).build();
+    return TopicBuilder.name(kitchenTopic).partitions(3).replicas(1).build();
   }
 
   @Bean
   NewTopic fulfillmentEventsTopic() {
-    return TopicBuilder.name(FulfillmentEventConstants.TOPIC).partitions(3).replicas(1).build();
+    return TopicBuilder.name(fulfillmentTopic).partitions(3).replicas(1).build();
   }
 }

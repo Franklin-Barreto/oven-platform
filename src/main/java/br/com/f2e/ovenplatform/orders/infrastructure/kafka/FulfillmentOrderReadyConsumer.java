@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.kafka;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.TOPIC;
-
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.infrastructure.kafka.payload.FulfillmentOrderReadyPayload;
 import org.springframework.kafka.annotation.KafkaListener;
@@ -19,7 +17,9 @@ public class FulfillmentOrderReadyConsumer {
     this.mapper = mapper;
   }
 
-  @KafkaListener(topics = TOPIC, groupId = "oven-platform-orders")
+  @KafkaListener(
+      topics = "${oven.kafka.topics.fulfillment}",
+      groupId = "${oven.kafka.consumer-groups.orders}")
   public void on(String payload) {
     var orderReadyPayload = mapper.readValue(payload, FulfillmentOrderReadyPayload.class);
     orderService.markAsReady(

@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.kitchen.application;
 
 import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.when;
@@ -24,6 +23,7 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Import;
@@ -46,6 +46,9 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
   private static final int VALID_QUANTITY = 2;
+
+  @Value("${oven.kafka.topics.kitchen}")
+  private String kitchenTopic;
 
   private @Autowired KitchenService kitchenService;
   private @Autowired OutboxEventRepository outboxEventRepository;
@@ -135,7 +138,7 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
             .orElseThrow();
 
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo(TOPIC);
+    assertThat(outboxEvent.getTopic()).isEqualTo(kitchenTopic);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(ORDER_ID.toString());
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();

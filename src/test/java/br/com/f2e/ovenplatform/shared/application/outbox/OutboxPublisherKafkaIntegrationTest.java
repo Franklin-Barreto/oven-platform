@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.shared.application.outbox;
 
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
@@ -25,6 +24,7 @@ import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
@@ -47,6 +47,9 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
   private static final Instant NOW = Instant.parse("2026-06-29T12:00:00Z");
 
+  @Value("${oven.kafka.topics.orders}")
+  private String orderTopic;
+
   @Autowired private ConfluentKafkaContainer kafkaContainer;
 
   @Autowired private OutboxPublisher outboxPublisher;
@@ -60,16 +63,22 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
     repository.save(
         OutboxEvent.pending(
-            AGGREGATE_TYPE, orderId, ORDER_CREATED_EVENT, TOPIC, orderId.toString(), payload, 1));
+            AGGREGATE_TYPE,
+            orderId,
+            ORDER_CREATED_EVENT,
+            orderTopic,
+            orderId.toString(),
+            payload,
+            1));
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
-      consumer.subscribe(List.of(TOPIC));
+      consumer.subscribe(List.of(orderTopic));
 
       outboxPublisher.publishPendingEvents();
 
       var rec = pollRecord(consumer, orderId.toString(), Duration.ofSeconds(10));
 
-      assertThat(rec.topic()).isEqualTo(TOPIC);
+      assertThat(rec.topic()).isEqualTo(orderTopic);
       assertThat(rec.key()).isEqualTo(orderId.toString());
       assertThat(rec.value()).isEqualTo(payload);
     }

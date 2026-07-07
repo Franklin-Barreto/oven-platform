@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.fulfillment.application;
 
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderReadyPayload;
@@ -17,6 +16,7 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Import;
@@ -33,6 +33,9 @@ class FulfillmentServiceIntegrationTest extends DataJpaIntegrationTest {
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final Instant READY_AT = Instant.parse("2026-05-12T20:30:00Z");
+
+  @Value("${oven.kafka.topics.fulfillment}")
+  private String fulfillmentTopic;
 
   @Autowired private FulfillmentService fulfillmentService;
   @Autowired private OutboxEventRepository outboxEventRepository;
@@ -51,7 +54,7 @@ class FulfillmentServiceIntegrationTest extends DataJpaIntegrationTest {
             .orElseThrow();
 
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo(TOPIC);
+    assertThat(outboxEvent.getTopic()).isEqualTo(fulfillmentTopic);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(ORDER_ID.toString());
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();

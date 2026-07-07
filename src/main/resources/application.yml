@@ -38,4 +38,11 @@ jwt:
 oven:
   kafka:
     topics:
-      auto-create: false
+      auto-create: true
+      orders: order-events
+      kitchen: kitchen-events
+      fulfillment: fulfillment-events
+    consumer-groups:
+      orders: oven-platform-orders
+      kitchen: oven-platform-kitchen
+      fulfillment: oven-platform-fulfillment

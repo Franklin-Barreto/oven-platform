@@ -3,22 +3,25 @@ package br.com.f2e.ovenplatform.orders.infrastructure.outbox;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.PAYLOAD_VERSION;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 
 import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublisher {
 
   private final OutboxService outboxService;
+  private final String orderTopic;
 
-  public OutboxOrderCreatedEventPublisher(OutboxService outboxService) {
+  public OutboxOrderCreatedEventPublisher(
+      OutboxService outboxService, @Value("${oven.kafka.topics.orders}") String orderTopic) {
     this.outboxService = outboxService;
+    this.orderTopic = orderTopic;
   }
 
   @Override
@@ -36,7 +39,7 @@ public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublis
         AGGREGATE_TYPE,
         event.orderId(),
         ORDER_CREATED_EVENT,
-        TOPIC,
+        orderTopic,
         event.orderId().toString(),
         payload,
         PAYLOAD_VERSION);

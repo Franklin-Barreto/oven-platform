@@ -3,12 +3,12 @@ package br.com.f2e.ovenplatform.fulfillment.infrastructure.outbox;
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.PAYLOAD_VERSION;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.TOPIC;
 
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentOrderReadyEventPublisher;
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -16,9 +16,13 @@ public class OutboxFulfillmentOrderReadyEventPublisher
     implements FulfillmentOrderReadyEventPublisher {
 
   private final OutboxService outboxService;
+  private final String fulfillmentTopic;
 
-  public OutboxFulfillmentOrderReadyEventPublisher(OutboxService outboxService) {
+  public OutboxFulfillmentOrderReadyEventPublisher(
+      OutboxService outboxService,
+      @Value("${oven.kafka.topics.fulfillment}") String fulfillmentTopic) {
     this.outboxService = outboxService;
+    this.fulfillmentTopic = fulfillmentTopic;
   }
 
   @Override
@@ -29,7 +33,7 @@ public class OutboxFulfillmentOrderReadyEventPublisher
         AGGREGATE_TYPE,
         event.orderId(),
         FULFILLMENT_ORDER_READY_EVENT,
-        TOPIC,
+        fulfillmentTopic,
         event.orderId().toString(),
         payload,
         PAYLOAD_VERSION);

@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox;
 
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
@@ -12,10 +11,14 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
 
 @Import(JpaOutboxEventRepository.class)
 class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
+
+  @Value("${oven.kafka.topics.orders}")
+  private String orderTopic;
 
   @Autowired private OutboxEventRepository repository;
 
@@ -42,7 +45,7 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         AGGREGATE_TYPE,
         orderId,
         ORDER_CREATED_EVENT,
-        TOPIC,
+        orderTopic,
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
