@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.orders.application;
 
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.TOPIC;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -35,6 +34,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Import;
@@ -61,6 +61,9 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private record OrderItemFixture(
       CreateOrderItemCommand command, OrderableProduct orderableProduct) {}
+
+  @Value("${oven.kafka.topics.orders}")
+  private String orderTopic;
 
   @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
   @Autowired
@@ -464,7 +467,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             .orElseThrow();
 
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo(TOPIC);
+    assertThat(outboxEvent.getTopic()).isEqualTo(orderTopic);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(order.getId().toString());
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();
