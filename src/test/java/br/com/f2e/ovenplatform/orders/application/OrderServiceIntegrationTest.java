@@ -287,6 +287,61 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
+  void shouldMarkOrderAsReadyUsingProvidedReadyAt() {
+    var readyAt = Instant.parse("2026-05-12T20:18:00Z");
+
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+
+    flushAndClear();
+
+    orderService.markAsReady(TENANT_ID, savedOrder.getId(), readyAt);
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
+              assertThat(order.getReadyAt()).isEqualTo(readyAt);
+              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCancelledAt()).isNull();
+            });
+  }
+
+  @Test
+  void shouldPreserveOriginalReadyAtWhenMarkAsReadyIsCalledAgainWithProvidedReadyAt() {
+
+    var readyAt = Instant.parse("2026-05-12T20:18:00Z");
+    var secondReadyAt = Instant.parse("2026-05-12T22:18:00Z");
+
+    var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
+
+    flushAndClear();
+
+    orderService.markAsReady(TENANT_ID, savedOrder.getId(), readyAt);
+    orderService.markAsReady(TENANT_ID, savedOrder.getId(), secondReadyAt);
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
+              assertThat(order.getReadyAt()).isEqualTo(readyAt);
+              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCancelledAt()).isNull();
+            });
+  }
+
+  @Test
   void shouldThrowResourceNotFoundWhenMarkingUnknownOrderAsReady() {
     var orderId = UUID.randomUUID();
 
