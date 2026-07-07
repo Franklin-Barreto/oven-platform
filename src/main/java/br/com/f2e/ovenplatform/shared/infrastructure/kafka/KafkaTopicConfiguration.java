@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.kafka;
 
+import br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants;
 import br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants;
 import br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants;
 import org.apache.kafka.clients.admin.NewTopic;
@@ -20,5 +21,10 @@ public class KafkaTopicConfiguration {
   @Bean
   NewTopic kitchenEventsTopic() {
     return TopicBuilder.name(KitchenEventConstants.TOPIC).partitions(3).replicas(1).build();
+  }
+
+  @Bean
+  NewTopic fulfillmentEventsTopic() {
+    return TopicBuilder.name(FulfillmentEventConstants.TOPIC).partitions(3).replicas(1).build();
   }
 }
