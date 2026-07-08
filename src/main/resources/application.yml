@@ -46,3 +46,4 @@ oven:
       orders: oven-platform-orders
       kitchen: oven-platform-kitchen
       fulfillment: oven-platform-fulfillment
+      payment: oven-platform-payment

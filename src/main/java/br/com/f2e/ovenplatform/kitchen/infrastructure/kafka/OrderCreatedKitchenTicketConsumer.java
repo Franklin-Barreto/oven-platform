@@ -3,7 +3,7 @@ package br.com.f2e.ovenplatform.kitchen.infrastructure.kafka;
 import br.com.f2e.ovenplatform.kitchen.application.CreateTicketCommand;
 import br.com.f2e.ovenplatform.kitchen.application.CreateTicketItemCommand;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.payload.OrderCreatedPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;

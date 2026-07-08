@@ -3,6 +3,8 @@ package br.com.f2e.ovenplatform.architecture;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.classes;
 import static com.tngtech.archunit.lang.syntax.ArchRuleDefinition.noClasses;
 
+import com.tngtech.archunit.base.DescribedPredicate;
+import com.tngtech.archunit.core.domain.JavaClass;
 import com.tngtech.archunit.core.domain.JavaClasses;
 import com.tngtech.archunit.core.importer.ClassFileImporter;
 import com.tngtech.archunit.core.importer.ImportOption;
@@ -10,6 +12,12 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 class LayerArchitectureTests {
+
+  private static final DescribedPredicate<JavaClass> INTERNAL_NON_SHARED_CLASS =
+      JavaClass.Predicates.resideInAPackage("br.com.f2e.ovenplatform..")
+          .and(
+              DescribedPredicate.not(
+                  JavaClass.Predicates.resideInAPackage("br.com.f2e.ovenplatform.shared..")));
 
   private static JavaClasses importedClasses;
 
@@ -51,6 +59,16 @@ class LayerArchitectureTests {
         .should()
         .dependOnClassesThat()
         .resideInAnyPackage("..infrastructure..")
+        .check(importedClasses);
+  }
+
+  @Test
+  void sharedShouldOnlyDependOnSharedOrExternalCode() {
+    noClasses()
+        .that()
+        .resideInAPackage("..shared..")
+        .should()
+        .dependOnClassesThat(INTERNAL_NON_SHARED_CLASS)
         .check(importedClasses);
   }
 

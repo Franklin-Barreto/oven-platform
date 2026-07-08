@@ -4,8 +4,8 @@ import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventC
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.fulfillment.infrastructure.outbox.OutboxFulfillmentOrderReadyEventPublisher;
+import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;

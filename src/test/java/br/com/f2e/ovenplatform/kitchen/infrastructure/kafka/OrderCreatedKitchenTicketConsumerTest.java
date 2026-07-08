@@ -5,11 +5,15 @@ import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.kitchen.application.CreateTicketCommand;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.payload.OrderCreatedItemPayload;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.payload.OrderCreatedPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
+import org.jetbrains.annotations.NotNull;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,6 +32,7 @@ class OrderCreatedKitchenTicketConsumerTest {
 
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
   private static final String SECOND_PRODUCT_NAME = "Pizza Calabresa";
+  private static final BigDecimal UNIT_PRICE = new BigDecimal("60.00");
 
   @Mock private KitchenService kitchenService;
 
@@ -44,9 +49,12 @@ class OrderCreatedKitchenTicketConsumerTest {
         new OrderCreatedPayload(
             TENANT_ID,
             ORDER_ID,
+            BigDecimal.valueOf(120),
+            PaymentMethod.CASH,
+            OrderPaymentStatus.PAID,
             List.of(
-                new OrderCreatedItemPayload(PRODUCT_ID, PRODUCT_NAME, 2),
-                new OrderCreatedItemPayload(SECOND_PRODUCT_ID, SECOND_PRODUCT_NAME, 1)));
+                createdItemPayload(PRODUCT_ID, PRODUCT_NAME, 2, UNIT_PRICE),
+                createdItemPayload(SECOND_PRODUCT_ID, SECOND_PRODUCT_NAME, 1, UNIT_PRICE)));
 
     var json = JsonUtils.toJson(payload);
 
@@ -110,5 +118,10 @@ class OrderCreatedKitchenTicketConsumerTest {
               assertThat(item.productName()).isEqualTo("Pizza Portuguesa");
               assertThat(item.quantity()).isEqualTo(2);
             });
+  }
+
+  private static @NotNull OrderCreatedItemPayload createdItemPayload(
+      UUID productId, String productName, int quantity, BigDecimal unitPrice) {
+    return new OrderCreatedItemPayload(productId, productName, quantity, unitPrice);
   }
 }

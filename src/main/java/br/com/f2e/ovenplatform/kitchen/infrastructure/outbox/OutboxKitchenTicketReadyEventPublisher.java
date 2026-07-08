@@ -6,7 +6,7 @@ import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConst
 
 import br.com.f2e.ovenplatform.kitchen.application.KitchenTicketReadyEventPublisher;
 import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketMarkedAsReadyEvent;
-import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

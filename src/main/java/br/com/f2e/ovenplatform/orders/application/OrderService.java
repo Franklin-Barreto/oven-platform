@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.orders.application;
 
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -76,8 +76,8 @@ public class OrderService {
 
     var savedOrder = orderRepository.save(order);
 
-    var orderPlacedEvent =
-        new OrderPlacedEvent(
+    var orderCreatedEvent =
+        new OrderCreatedEvent(
             savedOrder.getTenantId(),
             savedOrder.getId(),
             orderCommand.paymentInfo().method(),
@@ -85,8 +85,8 @@ public class OrderService {
             savedOrder.getTotalAmount(),
             savedOrder.getItems().stream().map(OrderPlacedItem::from).toList());
 
-    eventPublisher.publishEvent(orderPlacedEvent);
-    orderCreatedEventPublisher.publish(orderPlacedEvent);
+    eventPublisher.publishEvent(orderCreatedEvent);
+    orderCreatedEventPublisher.publish(orderCreatedEvent);
 
     return savedOrder;
   }

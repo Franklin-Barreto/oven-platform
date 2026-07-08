@@ -23,13 +23,13 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
+import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
@@ -120,7 +120,7 @@ class OrderControllerTest {
     assertThat(command.items().getFirst().productId()).isEqualTo(PRODUCT_ID);
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
     assertThat(command.paymentInfo()).isNotNull();
-    assertThat(command.paymentInfo().method()).isEqualTo(OrderPaymentMethod.CASH);
+    assertThat(command.paymentInfo().method()).isEqualTo(PaymentMethod.CASH);
     assertThat(command.paymentInfo().status()).isEqualTo(OrderPaymentStatus.PAID);
   }
 
@@ -363,11 +363,11 @@ class OrderControllerTest {
   private static CreateOrderRequest createOrderRequest(UUID productId, int quantity) {
     return new CreateOrderRequest(
         List.of(new OrderItemRequest(productId, quantity)),
-        new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID));
+        new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
   }
 
   private static CreateOrderRequest createOrderRequest(List<OrderItemRequest> items) {
     return new CreateOrderRequest(
-        items, new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID));
+        items, new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
   }
 }

@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.kafka;
 
 import br.com.f2e.ovenplatform.orders.application.OrderService;
-import br.com.f2e.ovenplatform.orders.infrastructure.kafka.payload.FulfillmentOrderReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;

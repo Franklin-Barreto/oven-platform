@@ -5,13 +5,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.f2e.ovenplatform.e2e.context.E2eScenarioContext;
 import br.com.f2e.ovenplatform.e2e.support.E2eApiClient;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemResponse;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderResponse;
+import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
@@ -39,7 +39,7 @@ public class OrderSteps {
     var request =
         new CreateOrderRequest(
             List.of(new OrderItemRequest(productResponse.id(), quantity)),
-            new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID));
+            new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
 
     var response =
         api.authenticated()

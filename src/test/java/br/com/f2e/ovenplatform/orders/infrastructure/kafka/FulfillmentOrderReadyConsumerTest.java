@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 
 import br.com.f2e.ovenplatform.orders.application.OrderService;
-import br.com.f2e.ovenplatform.orders.infrastructure.kafka.payload.FulfillmentOrderReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.time.Instant;
 import java.util.UUID;

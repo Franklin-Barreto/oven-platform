@@ -2,7 +2,7 @@ package br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka;
 
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
 import br.com.f2e.ovenplatform.fulfillment.application.PreparationReadyCommand;
-import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.payload.KitchenTicketReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 import tools.jackson.databind.ObjectMapper;

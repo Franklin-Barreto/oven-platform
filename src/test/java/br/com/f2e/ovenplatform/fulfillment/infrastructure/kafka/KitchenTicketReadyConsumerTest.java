@@ -5,7 +5,7 @@ import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
 import br.com.f2e.ovenplatform.fulfillment.application.PreparationReadyCommand;
-import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.payload.KitchenTicketReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.time.Instant;
 import java.util.UUID;

@@ -5,9 +5,9 @@ import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstan
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.PAYLOAD_VERSION;
 
 import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedItemPayload;
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -25,7 +25,7 @@ public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublis
   }
 
   @Override
-  public void publish(OrderPlacedEvent event) {
+  public void publish(OrderCreatedEvent event) {
     var payload =
         new OrderCreatedPayload(
             event.tenantId(),
@@ -33,7 +33,15 @@ public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublis
             event.totalAmount(),
             event.paymentMethod(),
             event.paymentStatus(),
-            event.items().stream().map(OrderCreatedItemPayload::from).toList());
+            event.items().stream()
+                .map(
+                    orderPlacedItem ->
+                        new OrderCreatedItemPayload(
+                            orderPlacedItem.productId(),
+                            orderPlacedItem.productName(),
+                            orderPlacedItem.quantity(),
+                            orderPlacedItem.unitPrice()))
+                .toList());
 
     outboxService.enqueue(
         AGGREGATE_TYPE,
