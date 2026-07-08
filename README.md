@@ -22,6 +22,8 @@ The current MVP focuses on the foundations required for a SaaS platform:
 - JWT-based security
 - product catalog
 - order management
+- kitchen preparation workflow
+- fulfillment readiness flow
 - initial payment tracking
 - platform-level observability and API consistency
 
@@ -41,6 +43,7 @@ The main goals of this project are:
 - Keep infrastructure details isolated from application use cases
 - Use events to reduce coupling between modules where it adds business value
 - Provide a strong foundation for future event-driven and distributed-system patterns
+- Use the outbox pattern for integration event publication
 - Maintain production-oriented quality through tests, static analysis, architecture rules, and CI
 
 ---
@@ -87,6 +90,15 @@ br.com.f2e.ovenplatform
 │   ├── application
 │   └── infrastructure
 │
+├── kitchen
+│   ├── domain
+│   ├── application
+│   └── infrastructure
+│
+├── fulfillment
+│   ├── application
+│   └── infrastructure
+│
 ├── payment
 │   ├── domain
 │   ├── application
@@ -109,7 +121,8 @@ br.com.f2e.ovenplatform
 - Cross-module JPA relationships are avoided where they would increase coupling.
 - Tenant isolation is treated as a first-class concern.
 - Modules communicate through explicit contracts when direct coupling would make future evolution harder.
-- Event listeners act as infrastructure adapters and translate external module events into local application commands.
+- Kafka consumers act as infrastructure adapters and translate integration payloads into local application commands.
+- Integration events are published through outbox adapters instead of direct cross-module service calls.
 
 ---
 
@@ -185,8 +198,29 @@ The orders module currently includes:
 - idempotent status transitions
 - invalid transition protection
 - order creation with required initial payment information
-- `OrderPlacedEvent` publication after order creation
-- named event contract exposed for module consumers such as Payments
+- `order.created` integration event publication through the outbox
+- consumption of `fulfillment.order.ready` events to mark orders as ready
+- shared integration payload contract for downstream consumers such as Kitchen and Payments
+
+### Kitchen
+
+The kitchen module currently includes:
+
+- tenant-scoped kitchen tickets created from `order.created` events
+- ticket item snapshots based on order items
+- ticket lookup by order id
+- ticket preparation workflow
+- ticket readiness publication through the outbox
+- `kitchen.ticket.ready` integration event for downstream fulfillment processing
+
+### Fulfillment
+
+The fulfillment module currently includes:
+
+- consumption of `kitchen.ticket.ready` events
+- translation of external payloads into local preparation-ready commands
+- publication of `fulfillment.order.ready` events through the outbox
+- idempotent outbox enqueueing for fulfillment readiness events
 
 ### Payments
 
@@ -194,7 +228,7 @@ The payment module currently includes:
 
 - `Payment` aggregate
 - tenant-scoped payment persistence
-- payment creation from `OrderPlacedEvent`
+- payment registration from `order.created` events
 - initial payment statuses:
   - `PENDING`
   - `PAID`
@@ -204,13 +238,21 @@ The payment module currently includes:
   - `PIX`
 - `paidAt` handling through application time using `Clock`
 - one payment per order in the current MVP scope
-- event listener adapter that maps Orders events into Payments commands
+- Kafka consumer adapter that maps shared order-created payloads into Payments commands
 - payment repository port and JPA adapter
 
 ### Platform and Cross-Cutting Concerns
 
 The shared platform layer includes:
 
+- shared integration event payloads
+- outbox domain model and application services
+- Kafka outbox publisher
+- scheduled outbox event publishing
+- configurable Kafka topics and consumer groups
+- Kafka dead-letter topic creation for local/development usage
+- configurable Kafka consumer retry handling
+- non-retryable consumer handling for invalid payload/use-case errors
 - global exception handling
 - standardized API error response
 - stable API error codes
@@ -241,6 +283,7 @@ The project uses different test levels depending on the concern:
 - integration tests for application flows
 - JPA-backed tests for persistence behavior through application services
 - event publication tests where module communication is part of the use case
+- Kafka/Testcontainers integration tests for consumer error handling
 - architecture tests with ArchUnit and Spring Modulith
 
 ### Code Quality
@@ -278,10 +321,13 @@ This makes the API easier to consume and easier to debug.
 - Spring Data JPA
 - Hibernate
 - PostgreSQL
+- Kafka
+- Kafka UI for local development
 - H2 for tests
 - Liquibase
 - JJWT
 - JUnit 5
+- Testcontainers
 - Mockito
 - AssertJ
 - ArchUnit
@@ -331,9 +377,74 @@ The current token contract includes user identity and role. Tenant context is st
 
 ### Event-Driven Module Communication
 
-Orders publishes `OrderPlacedEvent` after successful order creation.
+The project uses Kafka integration events between modules when the communication represents an asynchronous business fact.
 
-Payments consumes this event through an infrastructure listener and translates it into a local application command. This keeps Orders from directly calling Payments while still allowing the system to evolve toward asynchronous processing patterns.
+Current event flow:
+
+```text
+Orders
+  -> order.created
+  -> Kitchen creates a preparation ticket
+  -> Payments registers the initial payment
+
+Kitchen
+  -> kitchen.ticket.ready
+  -> Fulfillment handles preparation readiness
+
+Fulfillment
+  -> fulfillment.order.ready
+  -> Orders marks the order as ready
+```
+
+Business modules expose local application commands and events. Infrastructure adapters are responsible for mapping those local models to shared integration payloads, topics, consumer groups, and outbox metadata.
+
+### Outbox Publishing
+
+Integration events are enqueued in the shared outbox instead of being sent directly from business use cases.
+
+The scheduled outbox publisher is controlled by:
+
+```yaml
+oven:
+  outbox:
+    publishing:
+      enabled: true
+      fixed-delay: 5s
+```
+
+This keeps transactional business changes separate from Kafka publishing and gives the platform a foundation for retry, status tracking, and future idempotency improvements.
+
+### Kafka Consumer Error Handling
+
+Kafka consumer retry behavior is configurable:
+
+```yaml
+oven:
+  kafka:
+    consumer:
+      retry:
+        interval: 1s
+        max-retries: 3
+```
+
+Invalid consumer payload/use-case failures represented by `IllegalArgumentException` are classified as non-retryable and sent to the dead-letter topic through Spring Kafka's error handling flow.
+
+### Local Development
+
+The local Compose setup includes:
+
+- PostgreSQL on port `5432`
+- Kafka on port `9092`
+- Kafka UI on port `8081`
+
+Kafka topics can be auto-created in local development through:
+
+```yaml
+oven:
+  kafka:
+    topics:
+      auto-create: true
+```
 
 ---
 
@@ -367,6 +478,7 @@ The project will continue evolving toward patterns commonly used in distributed 
 - retry strategies
 - idempotency
 - dead-letter handling
+- consumer error classification
 - batch processing
 - eventual consistency scenarios
 
@@ -404,8 +516,13 @@ Implemented foundations:
 - catalog domain and persistence
 - order creation, lookup, listing, and operational lifecycle
 - order payment information capture
-- order event publication
-- initial payment registration from order events
+- order-created event publication through outbox
+- kitchen ticket creation from order-created events
+- ticket readiness and fulfillment readiness events
+- order readiness from fulfillment events
+- initial payment registration from order-created events
+- scheduled outbox publishing to Kafka
+- Kafka consumer retry and dead-letter handling
 - API error contract
 - request tracing and logging
 - architecture guardrails
@@ -419,5 +536,5 @@ Planned / upcoming:
 - order payment summary
 - pagination and filtering
 - operational queue views
-- asynchronous reliability patterns
-- outbox and idempotency flows
+- stronger asynchronous reliability patterns
+- broader idempotency coverage
