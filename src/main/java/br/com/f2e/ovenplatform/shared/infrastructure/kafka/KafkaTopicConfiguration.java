@@ -11,6 +11,10 @@ import org.springframework.kafka.config.TopicBuilder;
 @ConditionalOnProperty(name = "oven.kafka.topics.auto-create", havingValue = "true")
 public class KafkaTopicConfiguration {
 
+  private static final int PARTITIONS = 3;
+  private static final int REPLICAS = 1;
+  private static final String DEAD_LETTER_TOPIC_SUFFIX = "-dlt";
+
   private final String fulfillmentTopic;
   private final String orderTopic;
   private final String kitchenTopic;
@@ -26,16 +30,39 @@ public class KafkaTopicConfiguration {
 
   @Bean
   NewTopic orderEventsTopic() {
-    return TopicBuilder.name(orderTopic).partitions(3).replicas(1).build();
+    return topic(orderTopic);
   }
 
   @Bean
   NewTopic kitchenEventsTopic() {
-    return TopicBuilder.name(kitchenTopic).partitions(3).replicas(1).build();
+    return topic(kitchenTopic);
   }
 
   @Bean
   NewTopic fulfillmentEventsTopic() {
-    return TopicBuilder.name(fulfillmentTopic).partitions(3).replicas(1).build();
+    return topic(fulfillmentTopic);
+  }
+
+  @Bean
+  NewTopic orderEventsDeadLetterTopic() {
+    return deadLetterTopic(orderTopic);
+  }
+
+  @Bean
+  NewTopic kitchenEventsDeadLetterTopic() {
+    return deadLetterTopic(kitchenTopic);
+  }
+
+  @Bean
+  NewTopic fulfillmentEventsDeadLetterTopic() {
+    return deadLetterTopic(fulfillmentTopic);
+  }
+
+  private NewTopic deadLetterTopic(String topic) {
+    return topic(topic + DEAD_LETTER_TOPIC_SUFFIX);
+  }
+
+  private NewTopic topic(String topic) {
+    return TopicBuilder.name(topic).partitions(PARTITIONS).replicas(REPLICAS).build();
   }
 }

@@ -37,6 +37,10 @@ jwt:
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
 oven:
   kafka:
+    consumer:
+      retry:
+        interval: 1s
+        max-retries: 3
     topics:
       auto-create: true
       orders: order-events
