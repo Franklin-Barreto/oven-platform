@@ -47,3 +47,7 @@ oven:
       kitchen: oven-platform-kitchen
       fulfillment: oven-platform-fulfillment
       payment: oven-platform-payment
+  outbox:
+    publishing:
+      enabled: true
+      fixed-delay: 5s

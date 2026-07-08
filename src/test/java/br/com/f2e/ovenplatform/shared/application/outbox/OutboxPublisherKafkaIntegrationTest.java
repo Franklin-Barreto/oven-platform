@@ -9,7 +9,7 @@ import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.KafkaOutboxEventPublisher;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.KafkaTopicConfiguration;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.test.KafkaTestContainerConfiguration;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox.JpaOutboxEventRepository;
+import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.time.Clock;
 import java.time.Duration;

@@ -19,6 +19,9 @@ class LayerArchitectureTests {
               DescribedPredicate.not(
                   JavaClass.Predicates.resideInAPackage("br.com.f2e.ovenplatform.shared..")));
 
+  private static final DescribedPredicate<JavaClass> INFRASTRUCTURE_PERSISTENCE_CLASS =
+      JavaClass.Predicates.resideInAPackage("..infrastructure..persistence..");
+
   private static JavaClasses importedClasses;
 
   @BeforeAll
@@ -90,8 +93,7 @@ class LayerArchitectureTests {
         .areAssignableTo(org.springframework.data.repository.Repository.class)
         .should()
         .onlyBeAccessed()
-        .byClassesThat()
-        .resideInAPackage("..infrastructure.persistence..")
+        .byClassesThat(INFRASTRUCTURE_PERSISTENCE_CLASS)
         .check(importedClasses);
   }
 }

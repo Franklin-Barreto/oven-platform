@@ -18,6 +18,7 @@ class OrderCreatedPayloadTest {
 
   @Test
   void shouldRejectNullTenantId() {
+    var items = items();
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
@@ -26,13 +27,14 @@ class OrderCreatedPayloadTest {
                     TOTAL_AMOUNT,
                     PaymentMethod.CASH,
                     OrderPaymentStatus.PAID,
-                    items()))
+                    items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("tenantId must not be null");
   }
 
   @Test
   void shouldRejectNullOrderId() {
+    var items = items();
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
@@ -41,13 +43,14 @@ class OrderCreatedPayloadTest {
                     TOTAL_AMOUNT,
                     PaymentMethod.CASH,
                     OrderPaymentStatus.PAID,
-                    items()))
+                    items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("orderId must not be null");
   }
 
   @Test
   void shouldRejectNonPositiveTotalAmount() {
+    var items = items();
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
@@ -56,27 +59,29 @@ class OrderCreatedPayloadTest {
                     BigDecimal.ZERO,
                     PaymentMethod.CASH,
                     OrderPaymentStatus.PAID,
-                    items()))
+                    items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("totalAmount must be greater than zero");
   }
 
   @Test
   void shouldRejectNullPaymentMethod() {
+    var items = items();
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
-                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, null, OrderPaymentStatus.PAID, items()))
+                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, null, OrderPaymentStatus.PAID, items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("paymentMethod must not be null");
   }
 
   @Test
   void shouldRejectNullPaymentStatus() {
+    var items = items();
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
-                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, null, items()))
+                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, null, items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("paymentStatus must not be null");
   }
@@ -106,9 +111,10 @@ class OrderCreatedPayloadTest {
 
     items.clear();
 
-    assertThat(payload.items()).hasSize(1);
-    assertThatThrownBy(() -> payload.items().clear())
-        .isInstanceOf(UnsupportedOperationException.class);
+    var payloadItems = payload.items();
+
+    assertThat(payloadItems).hasSize(1);
+    assertThatThrownBy(payloadItems::clear).isInstanceOf(UnsupportedOperationException.class);
   }
 
   private static List<OrderCreatedItemPayload> items() {
