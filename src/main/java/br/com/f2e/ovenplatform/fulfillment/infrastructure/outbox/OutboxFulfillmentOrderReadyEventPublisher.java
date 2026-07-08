@@ -6,7 +6,7 @@ import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventC
 
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentOrderReadyEventPublisher;
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderMarkedAsReadyEvent;
-import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;

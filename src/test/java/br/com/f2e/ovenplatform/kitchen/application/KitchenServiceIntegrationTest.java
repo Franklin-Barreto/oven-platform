@@ -6,10 +6,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketReadyPayload;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.outbox.OutboxKitchenTicketReadyEventPublisher;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.persistence.JpaTicketRepositoryAdapter;
+import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;

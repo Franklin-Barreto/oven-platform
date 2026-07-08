@@ -8,15 +8,15 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedPayload;
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMethod;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentStatus;
-import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OutboxOrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
+import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
+import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
@@ -103,18 +103,18 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
     verify(orderableProductProvider).findOrderableProducts(TENANT_ID, productIds);
 
-    var orderPlacedEvents = applicationEvents.stream(OrderPlacedEvent.class).toList();
+    var orderCreatedEvents = applicationEvents.stream(OrderCreatedEvent.class).toList();
 
-    assertThat(orderPlacedEvents).hasSize(1);
+    assertThat(orderCreatedEvents).hasSize(1);
 
-    var orderPlacedEvent = orderPlacedEvents.getFirst();
+    var orderCreatedEvent = orderCreatedEvents.getFirst();
 
-    assertThat(orderPlacedEvent.orderId()).isEqualTo(order.getId());
-    assertThat(orderPlacedEvent.paymentMethod()).isEqualTo(OrderPaymentMethod.CASH);
-    assertThat(orderPlacedEvent.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
-    assertThat(orderPlacedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
-    assertThat(orderPlacedEvent.items()).hasSize(fixtures.size());
-    assertThat(orderPlacedEvent.items())
+    assertThat(orderCreatedEvent.orderId()).isEqualTo(order.getId());
+    assertThat(orderCreatedEvent.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+    assertThat(orderCreatedEvent.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
+    assertThat(orderCreatedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
+    assertThat(orderCreatedEvent.items()).hasSize(fixtures.size());
+    assertThat(orderCreatedEvent.items())
         .allSatisfy(
             item -> {
               var fixture =
@@ -164,7 +164,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var updatedProductName = "Pizza Calabresa Especial";
     var originalPrice = new BigDecimal("42.00");
     var updatedPrice = new BigDecimal("55.00");
-    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     var command =
         new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 2)), paymentInfo);
 
@@ -254,7 +254,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldThrowExceptionWhenCatalogReturnNullProduct() {
     var productId = UUID.randomUUID();
-    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     CreateOrderCommand orderCommand =
         new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 1)), paymentInfo);
     assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, orderCommand))
@@ -479,7 +479,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(payload.tenantId()).isEqualTo(TENANT_ID);
     assertThat(payload.orderId()).isEqualTo(order.getId());
     assertThat(payload.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
-    assertThat(payload.paymentMethod()).isEqualTo(OrderPaymentMethod.CASH);
+    assertThat(payload.paymentMethod()).isEqualTo(PaymentMethod.CASH);
     assertThat(payload.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
     assertThat(payload.items()).hasSize(fixtures.size());
     assertThat(payload.items())
@@ -523,7 +523,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
-    var paymentInfo = new PaymentInfo(OrderPaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     return new CreateOrderCommand(
         fixtures.stream().map(OrderItemFixture::command).toList(), paymentInfo);
   }

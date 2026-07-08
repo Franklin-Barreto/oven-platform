@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.orders.application;
 
-import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedEvent;
+import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 
 public interface OrderCreatedEventPublisher {
 
-  void publish(OrderPlacedEvent event);
+  void publish(OrderCreatedEvent event);
 }
