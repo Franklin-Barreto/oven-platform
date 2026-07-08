@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox;
+package br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence;
 
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;

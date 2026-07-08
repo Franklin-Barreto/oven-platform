@@ -21,7 +21,7 @@ import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundExce
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.outbox.JpaOutboxEventRepository;
+import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
