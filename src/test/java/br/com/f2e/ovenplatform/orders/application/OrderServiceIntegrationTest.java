@@ -469,6 +469,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
     assertThat(outboxEvent.getTopic()).isEqualTo(orderTopic);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(order.getId().toString());
+    assertThat(outboxEvent.getIdempotencyKey())
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, order.getId(), ORDER_CREATED_EVENT));
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();
     assertThat(outboxEvent.getPublishedAt()).isNull();

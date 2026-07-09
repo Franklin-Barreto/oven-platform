@@ -17,4 +17,5 @@
     <include file="db/changelog/changes/db.changelog-009-create-event-publication-tables.xml" />
     <include file="db/changelog/changes/db.changelog-010-create-outbox-events.xml" />
     <include file="db/changelog/changes/db.changelog-011-create-kitchen-tickets.xml" />
+    <include file="db/changelog/changes/db.changelog-012-add-outbox-idempotency-key.xml" />
 </databaseChangeLog>

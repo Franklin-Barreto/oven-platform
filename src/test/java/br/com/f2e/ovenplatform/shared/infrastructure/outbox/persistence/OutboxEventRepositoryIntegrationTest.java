@@ -3,9 +3,11 @@ package br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
+import br.com.f2e.ovenplatform.shared.domain.outbox.PendingOutboxEvent;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.time.Instant;
 import java.util.UUID;
@@ -39,6 +41,27 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         .doesNotContain(publishedEvent.getId());
   }
 
+  @Test
+  void shouldAllowMultipleEventsWithoutIdempotencyKey() {
+    repository.save(pendingEvent());
+    repository.save(pendingEvent());
+
+    flushAndClear();
+
+    assertThat(repository.findPendingEvents(10)).hasSize(2);
+  }
+
+  @Test
+  void shouldRejectDuplicatedIdempotencyKey() {
+    var orderId = UUID.randomUUID();
+
+    repository.save(idempotentEvent(orderId));
+    repository.save(idempotentEvent(orderId));
+
+    assertThatThrownBy(this::flushAndClear)
+        .hasMessageContaining("uk_outbox_events_idempotency_key");
+  }
+
   private OutboxEvent pendingEvent() {
     var orderId = UUID.randomUUID();
     return OutboxEvent.pending(
@@ -49,5 +72,17 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
+  }
+
+  private OutboxEvent idempotentEvent(UUID orderId) {
+    return OutboxEvent.pendingIdempotently(
+        new PendingOutboxEvent(
+            AGGREGATE_TYPE,
+            orderId,
+            ORDER_CREATED_EVENT,
+            orderTopic,
+            orderId.toString(),
+            "{\"orderId\":\"%s\"}".formatted(orderId),
+            1));
   }
 }

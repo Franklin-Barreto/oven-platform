@@ -102,6 +102,9 @@ class FulfillmentServiceIntegrationTest extends DataJpaIntegrationTest {
             .findByAggregateTypeAndAggregateIdAndEventType(
                 AGGREGATE_TYPE, ORDER_ID, FULFILLMENT_ORDER_READY_EVENT)
             .orElseThrow();
+
+    assertThat(outboxEvent.getIdempotencyKey())
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, ORDER_ID, FULFILLMENT_ORDER_READY_EVENT));
     var payload = JsonUtils.fromJson(outboxEvent.getPayload(), FulfillmentOrderReadyPayload.class);
 
     assertThat(payload.readyAt()).isEqualTo(READY_AT);

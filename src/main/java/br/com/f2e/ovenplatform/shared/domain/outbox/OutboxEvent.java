@@ -14,7 +14,10 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.Instant;
+import java.util.Arrays;
 import java.util.UUID;
+import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
@@ -26,6 +29,9 @@ public class OutboxEvent {
   @Id
   @GeneratedValue(strategy = GenerationType.UUID)
   private UUID id;
+
+  @Column(unique = true, length = 150)
+  private String idempotencyKey;
 
   @Column(length = 100, nullable = false)
   private String aggregateType;
@@ -97,8 +103,42 @@ public class OutboxEvent {
         aggregateType, aggregateId, eventType, topic, messageKey, payload, payloadVersion);
   }
 
+  public static OutboxEvent pending(PendingOutboxEvent event) {
+    requireNotNull(event, "event");
+
+    return pending(
+        event.aggregateType(),
+        event.aggregateId(),
+        event.eventType(),
+        event.topic(),
+        event.messageKey(),
+        event.payload(),
+        event.payloadVersion());
+  }
+
+  public static OutboxEvent pendingIdempotently(
+      PendingOutboxEvent event, String... additionalParameters) {
+    var outbox = pending(event);
+    outbox.idempotencyKey =
+        generateIdempotencyKey(
+            event.aggregateType(), event.aggregateId(), event.eventType(), additionalParameters);
+    return outbox;
+  }
+
   public UUID getId() {
     return id;
+  }
+
+  public String getAggregateType() {
+    return aggregateType;
+  }
+
+  public UUID getAggregateId() {
+    return aggregateId;
+  }
+
+  public String getEventType() {
+    return eventType;
   }
 
   public String getTopic() {
@@ -111,6 +151,10 @@ public class OutboxEvent {
 
   public String getPayload() {
     return payload;
+  }
+
+  public String getIdempotencyKey() {
+    return idempotencyKey;
   }
 
   public int getPayloadVersion() {
@@ -143,5 +187,16 @@ public class OutboxEvent {
     this.status = OutboxEventStatus.FAILED;
     this.attempts++;
     this.lastError = error;
+  }
+
+  private static String generateIdempotencyKey(
+      String aggregateType, UUID aggregateId, String eventType, String... additionalParts) {
+    return Stream.concat(
+            Stream.of(
+                requireNotBlank(aggregateType, "aggregateType"),
+                requireNotNull(aggregateId, "aggregateId").toString(),
+                requireNotBlank(eventType, "eventType")),
+            Arrays.stream(additionalParts).map(part -> requireNotBlank(part, "idempotencyKeyPart")))
+        .collect(Collectors.joining(":"));
   }
 }

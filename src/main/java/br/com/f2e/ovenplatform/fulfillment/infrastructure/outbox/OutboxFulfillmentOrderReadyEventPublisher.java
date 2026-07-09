@@ -7,6 +7,7 @@ import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventC
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentOrderReadyEventPublisher;
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
+import br.com.f2e.ovenplatform.shared.application.outbox.EnqueueOutboxEventCommand;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
@@ -29,13 +30,14 @@ public class OutboxFulfillmentOrderReadyEventPublisher
   public void publish(FulfillmentOrderMarkedAsReadyEvent event) {
     var payload =
         new FulfillmentOrderReadyPayload(event.tenantId(), event.orderId(), event.readyAt());
-    outboxService.enqueueIfAbsent(
-        AGGREGATE_TYPE,
-        event.orderId(),
-        FULFILLMENT_ORDER_READY_EVENT,
-        fulfillmentTopic,
-        event.orderId().toString(),
-        payload,
-        PAYLOAD_VERSION);
+    outboxService.enqueueIdempotently(
+        new EnqueueOutboxEventCommand(
+            AGGREGATE_TYPE,
+            event.orderId(),
+            FULFILLMENT_ORDER_READY_EVENT,
+            fulfillmentTopic,
+            event.orderId().toString(),
+            payload,
+            PAYLOAD_VERSION));
   }
 }

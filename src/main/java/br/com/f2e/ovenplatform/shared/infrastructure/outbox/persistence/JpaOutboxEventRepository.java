@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -21,6 +22,13 @@ public class JpaOutboxEventRepository implements OutboxEventRepository {
   @Override
   public OutboxEvent save(OutboxEvent event) {
     return repository.save(event);
+  }
+
+  @Override
+  public boolean saveIfAbsent(OutboxEvent event) {
+    var insertedRows = repository.insertIfAbsent(OutboxEventInsert.from(event, Instant.now()));
+
+    return insertedRows == 1;
   }
 
   @Override
