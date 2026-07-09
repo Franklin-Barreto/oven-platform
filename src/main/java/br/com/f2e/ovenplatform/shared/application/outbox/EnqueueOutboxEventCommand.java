@@ -16,7 +16,7 @@ public record EnqueueOutboxEventCommand(
     int payloadVersion) {
 
   public EnqueueOutboxEventCommand {
-     requireNotBlank(aggregateType, "aggregateType");
+    requireNotBlank(aggregateType, "aggregateType");
     requireNotNull(aggregateId, "aggregateId");
     requireNotBlank(eventType, "eventType");
     requireNotBlank(topic, "topic");
