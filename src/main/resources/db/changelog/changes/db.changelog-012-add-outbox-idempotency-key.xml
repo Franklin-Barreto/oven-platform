@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="012-add-outbox-idempotency-key" author="franklin">
+        <addColumn tableName="outbox_events">
+            <column name="idempotency_key" type="varchar(150)">
+                <constraints nullable="true"/>
+            </column>
+        </addColumn>
+
+        <addUniqueConstraint
+                tableName="outbox_events"
+                columnNames="idempotency_key"
+                constraintName="uk_outbox_events_idempotency_key"/>
+    </changeSet>
+</databaseChangeLog>

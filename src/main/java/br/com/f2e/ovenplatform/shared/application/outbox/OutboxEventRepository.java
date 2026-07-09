@@ -8,6 +8,8 @@ import java.util.UUID;
 public interface OutboxEventRepository {
   OutboxEvent save(OutboxEvent event);
 
+  boolean saveIfAbsent(OutboxEvent event);
+
   List<OutboxEvent> saveAll(Iterable<OutboxEvent> events);
 
   Optional<OutboxEvent> findByAggregateTypeAndAggregateIdAndEventType(

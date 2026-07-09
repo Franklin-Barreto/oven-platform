@@ -140,6 +140,8 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
     assertThat(outboxEvent.getTopic()).isEqualTo(kitchenTopic);
     assertThat(outboxEvent.getMessageKey()).isEqualTo(ORDER_ID.toString());
+    assertThat(outboxEvent.getIdempotencyKey())
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, ticket.getId(), TICKET_READY_EVENT));
     assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
     assertThat(outboxEvent.getAttempts()).isZero();
     assertThat(outboxEvent.getPublishedAt()).isNull();
