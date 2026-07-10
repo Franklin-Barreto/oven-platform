@@ -11,6 +11,7 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OutboxOrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
@@ -95,6 +96,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(order.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(order.getId()).isNotNull();
     assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
+    assertThat(order.getServiceType()).isEqualTo(OrderServiceType.COUNTER);
     assertThat(order.getItems()).hasSize(fixtures.size());
     assertThat(order.getCreatedAt()).isNotNull();
     assertThat(order.getUpdatedAt()).isNotNull();
@@ -145,6 +147,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var persistedOrder = foundOrder.get();
 
     assertThat(persistedOrder.getStatus()).isEqualTo(OrderStatus.CREATED);
+    assertThat(persistedOrder.getServiceType()).isEqualTo(OrderServiceType.DELIVERY);
     assertThat(persistedOrder.getTotalAmount()).isEqualByComparingTo("1.00");
     assertThat(persistedOrder.getItems()).hasSize(1);
 
@@ -166,7 +169,10 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var updatedPrice = new BigDecimal("55.00");
     var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     var command =
-        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 2)), paymentInfo);
+        new CreateOrderCommand(
+            List.of(new CreateOrderItemCommand(productId, 2)),
+            paymentInfo,
+            OrderServiceType.COUNTER);
 
     when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(productId)))
         .thenReturn(List.of(new OrderableProduct(productId, originalProductName, originalPrice)))
@@ -256,7 +262,10 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var productId = UUID.randomUUID();
     var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     CreateOrderCommand orderCommand =
-        new CreateOrderCommand(List.of(new CreateOrderItemCommand(productId, 1)), paymentInfo);
+        new CreateOrderCommand(
+            List.of(new CreateOrderItemCommand(productId, 1)),
+            paymentInfo,
+            OrderServiceType.COUNTER);
     assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, orderCommand))
         .isInstanceOf(ProductNotAvailableForOrderingException.class)
         .hasMessage("Product is not available for ordering: %s".formatted(productId));
@@ -501,7 +510,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
-    var order = new Order(tenantId);
+    var order = new Order(tenantId, OrderServiceType.DELIVERY);
     order.addItem(UUID.randomUUID(), PRODUCT_NAME, itemQuantity, BigDecimal.ONE);
     return order;
   }
@@ -527,7 +536,9 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
     var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
     return new CreateOrderCommand(
-        fixtures.stream().map(OrderItemFixture::command).toList(), paymentInfo);
+        fixtures.stream().map(OrderItemFixture::command).toList(),
+        paymentInfo,
+        OrderServiceType.COUNTER);
   }
 
   private List<OrderableProduct> createOrderableProducts(List<OrderItemFixture> fixtures) {

@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="013-add-order-service-type" author="franklin">
+        <addColumn tableName="orders">
+            <column name="service_type" type="varchar(10)"/>
+        </addColumn>
+
+        <update tableName="orders">
+            <column name="service_type" value="COUNTER"/>
+            <where>service_type IS NULL</where>
+        </update>
+
+        <addNotNullConstraint
+                tableName="orders"
+                columnName="service_type"
+                columnDataType="varchar(10)"/>
+    </changeSet>
+</databaseChangeLog>

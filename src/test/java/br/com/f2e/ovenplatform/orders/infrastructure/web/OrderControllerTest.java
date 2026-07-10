@@ -24,6 +24,7 @@ import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
@@ -81,7 +82,7 @@ class OrderControllerTest {
 
   @Test
   void shouldCreateOrderWithItems() throws Exception {
-    var orderRequest = createOrderRequest(PRODUCT_ID, 3);
+    var orderRequest = createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, 3);
 
     var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
 
@@ -98,6 +99,7 @@ class OrderControllerTest {
             .andExpect(jsonPath("$.id").value(order.getId().toString()))
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
             .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
+            .andExpect(jsonPath("$.serviceType").value(OrderServiceType.COUNTER.name()))
             .andExpect(jsonPath("$.totalAmount").value(106.20))
             .andExpect(jsonPath("$.items").isArray())
             .andExpect(jsonPath("$.items.length()").value(1))
@@ -117,6 +119,7 @@ class OrderControllerTest {
     var command = commandCaptor.getValue();
 
     assertThat(command.items()).hasSize(1);
+    assertThat(command.serviceType()).isEqualTo(OrderServiceType.COUNTER);
     assertThat(command.items().getFirst().productId()).isEqualTo(PRODUCT_ID);
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
     assertThat(command.paymentInfo()).isNotNull();
@@ -162,6 +165,7 @@ class OrderControllerTest {
         .andExpect(jsonPath("$.id").value(ORDER_ID.toString()))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.status").value(OrderStatus.CREATED.name()))
+        .andExpect(jsonPath("$.serviceType").value(OrderServiceType.COUNTER.name()))
         .andExpect(jsonPath("$.totalAmount").value(75.90))
         .andExpect(jsonPath("$.createdAt").isEmpty())
         .andExpect(jsonPath("$.readyAt").isEmpty())
@@ -296,6 +300,8 @@ class OrderControllerTest {
         .andExpect(jsonPath(secondOrderJson + ".id").value(secondOrderId.toString()))
         .andExpect(jsonPath(secondOrderJson + ".tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath(secondOrderJson + ".status").value(OrderStatus.CREATED.name()))
+        .andExpect(
+            jsonPath(secondOrderJson + ".serviceType").value(OrderServiceType.COUNTER.name()))
         .andExpect(jsonPath(secondOrderJson + ".totalAmount").value(50.60))
         .andExpect(jsonPath(secondOrderJson + ".createdAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".readyAt").isEmpty())
@@ -329,23 +335,32 @@ class OrderControllerTest {
 
   private Order createOrder(
       UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
-    var order = withId(new Order(tenantId), orderId);
+    var order = withId(new Order(tenantId, OrderServiceType.COUNTER), orderId);
     order.addItem(productId, PRODUCT_NAME, quantity, unitPrice);
     return order;
   }
 
   private static Stream<Arguments> invalidCreateOrderRequests() {
     return Stream.of(
-        Arguments.of("items", "must not be null", createOrderRequest(null)),
+        Arguments.of("serviceType", "must not be null", createOrderRequest(null, PRODUCT_ID, 1)),
+        Arguments.of(
+            "items", "must not be null", createOrderRequest(OrderServiceType.DELIVERY, null)),
         Arguments.of(
             "items",
             "items must have at least 1 item",
-            createOrderRequest(Collections.emptyList())),
-        Arguments.of("items[0].productId", "must not be null", createOrderRequest(null, 1)),
+            createOrderRequest(OrderServiceType.COUNTER, Collections.emptyList())),
         Arguments.of(
-            "items[0].quantity", "must be greater than 0", createOrderRequest(PRODUCT_ID, 0)),
+            "items[0].productId",
+            "must not be null",
+            createOrderRequest(OrderServiceType.COUNTER, null, 1)),
         Arguments.of(
-            "items[0].quantity", "must be greater than 0", createOrderRequest(PRODUCT_ID, -1)));
+            "items[0].quantity",
+            "must be greater than 0",
+            createOrderRequest(OrderServiceType.DELIVERY, PRODUCT_ID, 0)),
+        Arguments.of(
+            "items[0].quantity",
+            "must be greater than 0",
+            createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, -1)));
   }
 
   private static Stream<Arguments> transitionEndpoints() {
@@ -360,14 +375,17 @@ class OrderControllerTest {
             "/cancel", (Consumer<OrderService>) service -> service.cancel(TENANT_ID, ORDER_ID)));
   }
 
-  private static CreateOrderRequest createOrderRequest(UUID productId, int quantity) {
+  private static CreateOrderRequest createOrderRequest(
+      OrderServiceType serviceType, UUID productId, int quantity) {
     return new CreateOrderRequest(
+        serviceType,
         List.of(new OrderItemRequest(productId, quantity)),
         new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
   }
 
-  private static CreateOrderRequest createOrderRequest(List<OrderItemRequest> items) {
+  private static CreateOrderRequest createOrderRequest(
+      OrderServiceType serviceType, List<OrderItemRequest> items) {
     return new CreateOrderRequest(
-        items, new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
+        serviceType, items, new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
   }
 }

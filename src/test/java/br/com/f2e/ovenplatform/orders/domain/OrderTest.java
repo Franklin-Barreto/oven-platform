@@ -28,6 +28,7 @@ class OrderTest {
 
     assertThat(order.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(order.getStatus()).isEqualTo(OrderStatus.CREATED);
+    assertThat(order.getServiceType()).isEqualTo(OrderServiceType.COUNTER);
     assertThat(order.getTotalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     assertThat(order.getReadyAt()).isNull();
     assertThat(order.getDeliveredAt()).isNull();
@@ -37,9 +38,16 @@ class OrderTest {
 
   @Test
   void shouldRejectNullTenantId() {
-    assertThatThrownBy(() -> new Order(null))
+    assertThatThrownBy(() -> new Order(null, OrderServiceType.COUNTER))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessageContaining("tenantId must not be null");
+  }
+
+  @Test
+  void shouldRejectNullServiceType() {
+    assertThatThrownBy(() -> new Order(TENANT_ID, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessageContaining("serviceType must not be null");
   }
 
   @Test
@@ -86,7 +94,7 @@ class OrderTest {
       int quantity,
       BigDecimal unitPrice,
       String expectedMessage) {
-    var order = new Order(TENANT_ID);
+    var order = new Order(TENANT_ID, OrderServiceType.COUNTER);
     assertThatThrownBy(() -> order.addItem(productId, productName, quantity, unitPrice))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
@@ -230,6 +238,6 @@ class OrderTest {
   }
 
   private static Order order() {
-    return new Order(TENANT_ID);
+    return new Order(TENANT_ID, OrderServiceType.COUNTER);
   }
 }

@@ -55,7 +55,7 @@ public class OrderService {
         orderableProductProvider.findOrderableProducts(tenantId, productIds).stream()
             .collect(Collectors.toMap(OrderableProduct::productId, product -> product));
 
-    var order = new Order(tenantId);
+    var order = new Order(tenantId, orderCommand.serviceType());
 
     orderCommand
         .items()

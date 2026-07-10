@@ -28,6 +28,10 @@ public class Order extends BaseEntity {
   @Column(nullable = false, length = 30)
   private OrderStatus status;
 
+  @Enumerated(EnumType.STRING)
+  @Column(nullable = false)
+  private OrderServiceType serviceType;
+
   @Column(nullable = false, precision = 19, scale = 2)
   private BigDecimal totalAmount;
 
@@ -46,9 +50,10 @@ public class Order extends BaseEntity {
   @SuppressWarnings("unused")
   protected Order() {}
 
-  public Order(UUID tenantId) {
+  public Order(UUID tenantId, OrderServiceType serviceType) {
     this.tenantId = requireNotNull(tenantId, "tenantId");
     this.status = OrderStatus.CREATED;
+    this.serviceType = requireNotNull(serviceType, "serviceType");
     this.totalAmount = BigDecimal.ZERO;
   }
 
@@ -77,6 +82,10 @@ public class Order extends BaseEntity {
 
   public OrderStatus getStatus() {
     return status;
+  }
+
+  public OrderServiceType getServiceType() {
+    return serviceType;
   }
 
   public void markAsReady(Instant occurredAt) {
