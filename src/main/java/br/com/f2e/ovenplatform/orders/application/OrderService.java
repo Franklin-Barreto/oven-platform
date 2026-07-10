@@ -117,8 +117,8 @@ public class OrderService {
   }
 
   @Transactional
-  public void markAsDelivered(UUID tenantId, UUID orderId) {
-    updateOrder(tenantId, orderId, order -> order.markAsDelivered(clock.instant()));
+  public void complete(UUID tenantId, UUID orderId) {
+    updateOrder(tenantId, orderId, order -> order.complete(clock.instant()));
   }
 
   @Transactional

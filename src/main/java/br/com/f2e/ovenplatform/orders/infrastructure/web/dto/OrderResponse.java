@@ -16,7 +16,7 @@ public record OrderResponse(
     BigDecimal totalAmount,
     Instant createdAt,
     Instant readyAt,
-    Instant deliveredAt,
+    Instant completedAt,
     Instant cancelledAt,
     List<OrderItemResponse> items) {
 
@@ -33,7 +33,7 @@ public record OrderResponse(
         order.getTotalAmount(),
         order.getCreatedAt(),
         order.getReadyAt(),
-        order.getDeliveredAt(),
+        order.getCompletedAt(),
         order.getCancelledAt(),
         OrderItemResponse.from(order.getItems()));
   }

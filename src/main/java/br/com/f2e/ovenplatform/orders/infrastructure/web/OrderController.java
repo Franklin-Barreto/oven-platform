@@ -55,10 +55,9 @@ public class OrderController {
     return ResponseEntity.noContent().build();
   }
 
-  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/mark-delivered")
-  public ResponseEntity<Void> markAsDelivered(
-      @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
-    orderService.markAsDelivered(tenantId, id);
+  @PostMapping(version = API_VERSION_VALUE, path = "/{id}/complete")
+  public ResponseEntity<Void> complete(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
+    orderService.complete(tenantId, id);
     return ResponseEntity.noContent().build();
   }
 

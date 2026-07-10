@@ -41,8 +41,8 @@ public class Order extends BaseEntity {
   @Column(name = "ready_at")
   private Instant readyAt;
 
-  @Column(name = "delivered_at")
-  private Instant deliveredAt;
+  @Column(name = "completed_at")
+  private Instant completedAt;
 
   @Column(name = "cancelled_at")
   private Instant cancelledAt;
@@ -95,10 +95,10 @@ public class Order extends BaseEntity {
     }
   }
 
-  public void markAsDelivered(Instant occurredAt) {
-    requireNotNull(occurredAt, "deliveredAt");
-    if (transitionTo(OrderStatus.DELIVERED)) {
-      deliveredAt = occurredAt;
+  public void complete(Instant occurredAt) {
+    requireNotNull(occurredAt, "completedAt");
+    if (transitionTo(OrderStatus.COMPLETED)) {
+      completedAt = occurredAt;
     }
   }
 
@@ -117,8 +117,8 @@ public class Order extends BaseEntity {
     return cancelledAt;
   }
 
-  public Instant getDeliveredAt() {
-    return deliveredAt;
+  public Instant getCompletedAt() {
+    return completedAt;
   }
 
   private boolean transitionTo(OrderStatus targetStatus) {

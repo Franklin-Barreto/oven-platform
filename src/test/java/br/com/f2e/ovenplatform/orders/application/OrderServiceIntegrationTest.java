@@ -293,7 +293,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             order -> {
               assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
               assertThat(order.getReadyAt()).isEqualTo(occurredAt);
-              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCompletedAt()).isNull();
               assertThat(order.getCancelledAt()).isNull();
             });
   }
@@ -319,7 +319,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             order -> {
               assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
               assertThat(order.getReadyAt()).isEqualTo(readyAt);
-              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCompletedAt()).isNull();
               assertThat(order.getCancelledAt()).isNull();
             });
   }
@@ -348,7 +348,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             order -> {
               assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
               assertThat(order.getReadyAt()).isEqualTo(readyAt);
-              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCompletedAt()).isNull();
               assertThat(order.getCancelledAt()).isNull();
             });
   }
@@ -365,18 +365,18 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
-  void shouldMarkOrderAsDelivered() {
+  void shouldCompleteOrder() {
 
     var readyAt = Instant.parse("2026-05-12T20:18:00Z");
-    var deliveredAt = Instant.parse("2026-05-12T20:30:00Z");
+    var completedAt = Instant.parse("2026-05-12T20:30:00Z");
 
-    when(clock.instant()).thenReturn(readyAt, deliveredAt);
+    when(clock.instant()).thenReturn(readyAt, completedAt);
 
     var savedOrder = createReadyOrder();
 
     flushAndClear();
 
-    orderService.markAsDelivered(TENANT_ID, savedOrder.getId());
+    orderService.complete(TENANT_ID, savedOrder.getId());
 
     flushAndClear();
 
@@ -387,9 +387,41 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
         .get()
         .satisfies(
             order -> {
-              assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
               assertThat(order.getReadyAt()).isEqualTo(readyAt);
-              assertThat(order.getDeliveredAt()).isEqualTo(deliveredAt);
+              assertThat(order.getCompletedAt()).isEqualTo(completedAt);
+              assertThat(order.getCancelledAt()).isNull();
+            });
+  }
+
+  @Test
+  void shouldPreserveOriginalCompletedAtWhenCompleteIsCalledAgain() {
+    var readyAt = Instant.parse("2026-05-12T20:18:00Z");
+    var completedAt = Instant.parse("2026-05-12T20:30:00Z");
+    var secondCompletedAt = Instant.parse("2026-05-12T20:45:00Z");
+
+    when(clock.instant()).thenReturn(readyAt, completedAt, secondCompletedAt);
+
+    var savedOrder = createReadyOrder();
+
+    flushAndClear();
+
+    orderService.complete(TENANT_ID, savedOrder.getId());
+    orderService.complete(TENANT_ID, savedOrder.getId());
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrder(TENANT_ID, savedOrder.getId());
+
+    assertThat(foundOrder)
+        .isPresent()
+        .get()
+        .satisfies(
+            order -> {
+              assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
+              assertThat(order.getReadyAt()).isEqualTo(readyAt);
+              assertThat(order.getCompletedAt()).isEqualTo(completedAt);
+              assertThat(order.getCompletedAt()).isNotEqualTo(secondCompletedAt);
               assertThat(order.getCancelledAt()).isNull();
             });
   }
@@ -417,7 +449,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             order -> {
               assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
               assertThat(order.getReadyAt()).isNull();
-              assertThat(order.getDeliveredAt()).isNull();
+              assertThat(order.getCompletedAt()).isNull();
               assertThat(order.getCancelledAt()).isEqualTo(occurredAt);
             });
   }
