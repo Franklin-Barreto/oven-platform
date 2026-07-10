@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.f2e.ovenplatform.e2e.context.E2eScenarioContext;
 import br.com.f2e.ovenplatform.e2e.support.E2eApiClient;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
+import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
@@ -38,6 +39,7 @@ public class OrderSteps {
 
     var request =
         new CreateOrderRequest(
+            OrderServiceType.COUNTER,
             List.of(new OrderItemRequest(productResponse.id(), quantity)),
             new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
 
