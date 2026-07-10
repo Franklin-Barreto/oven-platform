@@ -31,7 +31,7 @@ class OrderTest {
     assertThat(order.getServiceType()).isEqualTo(OrderServiceType.COUNTER);
     assertThat(order.getTotalAmount()).isEqualByComparingTo(BigDecimal.ZERO);
     assertThat(order.getReadyAt()).isNull();
-    assertThat(order.getDeliveredAt()).isNull();
+    assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isNull();
     assertThat(order.getItems()).isEmpty();
   }
@@ -130,24 +130,24 @@ class OrderTest {
   }
 
   @Test
-  void shouldThrowExceptionWhenCancellingDeliveredOrder() {
+  void shouldThrowExceptionWhenCancellingCompletedOrder() {
     var readyAt = Instant.parse("2026-05-12T20:18:00Z");
-    var deliveredAt = Instant.parse("2026-05-12T20:25:00Z");
+    var completedAt = Instant.parse("2026-05-12T20:25:00Z");
     var cancelledAt = Instant.parse("2026-05-12T20:30:00Z");
 
     var order = order();
     order.markAsReady(readyAt);
-    order.markAsDelivered(deliveredAt);
+    order.complete(completedAt);
 
     assertThatThrownBy(() -> order.cancel(cancelledAt))
         .isInstanceOf(InvalidOrderStatusTransitionException.class)
         .hasMessage(
             "Cannot transition order from %s to %s."
-                .formatted(OrderStatus.DELIVERED, OrderStatus.CANCELLED));
+                .formatted(OrderStatus.COMPLETED, OrderStatus.CANCELLED));
 
-    assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+    assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
     assertThat(order.getReadyAt()).isEqualTo(readyAt);
-    assertThat(order.getDeliveredAt()).isEqualTo(deliveredAt);
+    assertThat(order.getCompletedAt()).isEqualTo(completedAt);
     assertThat(order.getCancelledAt()).isNull();
   }
 
@@ -164,26 +164,26 @@ class OrderTest {
     assertThat(order.getStatus()).isEqualTo(OrderStatus.READY);
     assertThat(order.getReadyAt()).isEqualTo(readyAt);
     assertThat(order.getReadyAt()).isNotEqualTo(secondAttemptAt);
-    assertThat(order.getDeliveredAt()).isNull();
+    assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isNull();
   }
 
   @Test
-  void shouldKeepDeliveredTimestampWhenMarkingDeliveredOrderAsDeliveredAgain() {
+  void shouldKeepCompletedTimestampWhenCompletingCompletedOrderAgain() {
     var readyAt = Instant.parse("2026-05-12T20:18:00Z");
-    var deliveredAt = Instant.parse("2026-05-12T20:20:00Z");
+    var completedAt = Instant.parse("2026-05-12T20:20:00Z");
     var secondAttemptAt = Instant.parse("2026-05-12T20:25:00Z");
 
     var order = order();
 
     order.markAsReady(readyAt);
-    order.markAsDelivered(deliveredAt);
-    order.markAsDelivered(secondAttemptAt);
+    order.complete(completedAt);
+    order.complete(secondAttemptAt);
 
-    assertThat(order.getStatus()).isEqualTo(OrderStatus.DELIVERED);
+    assertThat(order.getStatus()).isEqualTo(OrderStatus.COMPLETED);
     assertThat(order.getReadyAt()).isEqualTo(readyAt);
-    assertThat(order.getDeliveredAt()).isEqualTo(deliveredAt);
-    assertThat(order.getDeliveredAt()).isNotEqualTo(secondAttemptAt);
+    assertThat(order.getCompletedAt()).isEqualTo(completedAt);
+    assertThat(order.getCompletedAt()).isNotEqualTo(secondAttemptAt);
     assertThat(order.getCancelledAt()).isNull();
   }
 
@@ -199,7 +199,7 @@ class OrderTest {
 
     assertThat(order.getStatus()).isEqualTo(OrderStatus.CANCELLED);
     assertThat(order.getReadyAt()).isNull();
-    assertThat(order.getDeliveredAt()).isNull();
+    assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isEqualTo(cancelledAt);
     assertThat(order.getCancelledAt()).isNotEqualTo(secondAttemptAt);
   }

@@ -11,11 +11,11 @@ public enum OrderStatus {
   READY {
     @Override
     boolean canTransitionTo(OrderStatus target) {
-      return target == DELIVERED;
+      return target == COMPLETED;
     }
   },
 
-  DELIVERED {
+  COMPLETED {
     @Override
     boolean canTransitionTo(OrderStatus target) {
       return false;

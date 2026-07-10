@@ -169,7 +169,7 @@ class OrderControllerTest {
         .andExpect(jsonPath("$.totalAmount").value(75.90))
         .andExpect(jsonPath("$.createdAt").isEmpty())
         .andExpect(jsonPath("$.readyAt").isEmpty())
-        .andExpect(jsonPath("$.deliveredAt").isEmpty())
+        .andExpect(jsonPath("$.completedAt").isEmpty())
         .andExpect(jsonPath("$.cancelledAt").isEmpty())
         .andExpect(jsonPath("$.items").isArray())
         .andExpect(jsonPath("$.items.length()").value(1))
@@ -254,6 +254,30 @@ class OrderControllerTest {
   }
 
   @Test
+  void shouldReturn404WhenOrderDoesNotExistToBeCompleted() throws Exception {
+    var fullPath = BASE_URL + "/" + ORDER_ID + "/complete";
+
+    doThrow(new ResourceNotFoundException("Order", ORDER_ID))
+        .when(orderService)
+        .complete(TENANT_ID, ORDER_ID);
+
+    mockMvc
+        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
+        .andExpect(status().isNotFound())
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.NOT_FOUND,
+                fullPath,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ApiErrorCodes.RESOURCE_NOT_FOUND,
+                "Order id: %s not found".formatted(ORDER_ID),
+                null,
+                HttpStatus.NOT_FOUND.value()));
+
+    verify(orderService).complete(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
   void shouldReturn409WhenCancellingReadyOrder() throws Exception {
     var fullPath = BASE_URL + "/" + ORDER_ID + "/cancel";
 
@@ -305,7 +329,7 @@ class OrderControllerTest {
         .andExpect(jsonPath(secondOrderJson + ".totalAmount").value(50.60))
         .andExpect(jsonPath(secondOrderJson + ".createdAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".readyAt").isEmpty())
-        .andExpect(jsonPath(secondOrderJson + ".deliveredAt").isEmpty())
+        .andExpect(jsonPath(secondOrderJson + ".completedAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".cancelledAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".items").isArray())
         .andExpect(jsonPath(secondOrderJson + ".items.length()").value(1))
@@ -369,8 +393,7 @@ class OrderControllerTest {
             "/mark-ready",
             (Consumer<OrderService>) service -> service.markAsReady(TENANT_ID, ORDER_ID)),
         Arguments.of(
-            "/mark-delivered",
-            (Consumer<OrderService>) service -> service.markAsDelivered(TENANT_ID, ORDER_ID)),
+            "/complete", (Consumer<OrderService>) service -> service.complete(TENANT_ID, ORDER_ID)),
         Arguments.of(
             "/cancel", (Consumer<OrderService>) service -> service.cancel(TENANT_ID, ORDER_ID)));
   }
