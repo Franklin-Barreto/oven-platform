@@ -62,6 +62,18 @@ public final class Preconditions {
     return trimmed;
   }
 
+  public static String requireSize(
+      String field, String fieldName, int minimumSize, int maximumSize) {
+    var trimmed = requireMinimumSize(field, fieldName, minimumSize);
+
+    if (trimmed.length() > maximumSize) {
+      throw new IllegalArgumentException(
+          "%s must have at most %d characters".formatted(fieldName, maximumSize));
+    }
+
+    return trimmed;
+  }
+
   public static <T extends Collection<?>> T requireNotEmpty(T field, String fieldName) {
     requireNotNull(field, fieldName);
 

@@ -19,9 +19,15 @@ class CustomerCommandTest {
 
   @Test
   void shouldValidateUpdateCustomerCommand() {
+    var longName = "M".repeat(81);
+
     assertThatThrownBy(() -> new UpdateCustomerCommand("M", "(11) 99999-8888", null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("name must have at least 2 characters");
+
+    assertThatThrownBy(() -> new UpdateCustomerCommand(longName, "(11) 99999-8888", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("name must have at most 80 characters");
 
     assertThatThrownBy(() -> new UpdateCustomerCommand("Maria", null, null))
         .isInstanceOf(IllegalArgumentException.class)

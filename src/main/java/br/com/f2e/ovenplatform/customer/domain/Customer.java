@@ -1,9 +1,9 @@
 package br.com.f2e.ovenplatform.customer.domain;
 
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.normalizeOptional;
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireMinimumSize;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireSize;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.CascadeType;
@@ -22,6 +22,8 @@ import java.util.UUID;
 public class Customer extends BaseEntity {
 
   private static final String PHONE_FIELD = "phone";
+  private static final int MIN_NAME_LENGTH = 2;
+  private static final int MAX_NAME_LENGTH = 80;
 
   @Column(nullable = false)
   private UUID tenantId;
@@ -56,7 +58,7 @@ public class Customer extends BaseEntity {
 
     return new Customer(
         requireNotNull(tenantId, "tenantId"),
-        requireMinimumSize(name, "name", 2),
+        requireName(name),
         requiredPhone,
         normalizeRequiredPhone(requiredPhone),
         normalizeOptional(notes));
@@ -65,7 +67,7 @@ public class Customer extends BaseEntity {
   public void update(String name, String phone, String notes) {
     var requiredPhone = requirePhone(phone);
 
-    this.name = requireMinimumSize(name, "name", 2);
+    this.name = requireName(name);
     this.phone = requiredPhone;
     this.normalizedPhone = normalizeRequiredPhone(requiredPhone);
     this.notes = normalizeOptional(notes);
@@ -93,6 +95,10 @@ public class Customer extends BaseEntity {
 
   private static String requirePhone(String phone) {
     return requireNotBlank(phone, PHONE_FIELD);
+  }
+
+  public static String requireName(String name) {
+    return requireSize(name, "name", MIN_NAME_LENGTH, MAX_NAME_LENGTH);
   }
 
   private static String normalizeRequiredPhone(String phone) {
