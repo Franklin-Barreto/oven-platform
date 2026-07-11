@@ -39,6 +39,15 @@ class CustomerTest {
   }
 
   @Test
+  void shouldRejectCustomerNameLongerThanDatabaseLimit() {
+    var name = "M".repeat(81);
+
+    assertThatThrownBy(() -> Customer.create(TENANT_ID, name, "(11) 99999-8888", null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("name must have at most 80 characters");
+  }
+
+  @Test
   void shouldAddUpdateAndRemoveAddress() {
     var customer = Customer.create(TENANT_ID, "Maria", "(11) 99999-8888", null);
     var address = withRandomId(customer.addAddress(homeAddressDetails()));

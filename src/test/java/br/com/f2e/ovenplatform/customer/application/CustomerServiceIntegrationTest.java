@@ -68,6 +68,34 @@ class CustomerServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
+  void shouldNotUpdateCustomerFromAnotherTenant() {
+    var ownerTenant = createTenant("Don Corleone Pizzeria");
+    var anotherTenant = createTenant("Soprano Pizzeria");
+    var customer = createCustomer(ownerTenant);
+    var command = new UpdateCustomerCommand("Joao", "(21) 98888-7777", null);
+    var anotherTenantId = anotherTenant.getId();
+    var customerId = customer.getId();
+
+    assertThatThrownBy(() -> customerService.update(anotherTenantId, customerId, command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Customer id: %s not found".formatted(customerId));
+  }
+
+  @Test
+  void shouldNotAddAddressToCustomerFromAnotherTenant() {
+    var ownerTenant = createTenant("Don Corleone Pizzeria");
+    var anotherTenant = createTenant("Soprano Pizzeria");
+    var customer = createCustomer(ownerTenant);
+    var command = createAddressCommand();
+    var anotherTenantId = anotherTenant.getId();
+    var customerId = customer.getId();
+
+    assertThatThrownBy(() -> customerService.addAddress(anotherTenantId, customerId, command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Customer id: %s not found".formatted(customerId));
+  }
+
+  @Test
   void shouldFindCustomerByNormalizedPhoneWithinTenant() {
     var tenant = createTenant();
     var customer = createCustomer(tenant);
