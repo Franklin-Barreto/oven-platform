@@ -26,6 +26,14 @@ public final class Preconditions {
     return trimmed;
   }
 
+  public static String normalizeOptional(String field) {
+    if (field == null || field.isBlank()) {
+      return null;
+    }
+
+    return requireNotBlank(field, "field");
+  }
+
   public static BigDecimal requirePositive(BigDecimal field, String fieldName) {
     requireNotNull(field, fieldName);
 

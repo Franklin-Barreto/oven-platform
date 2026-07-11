@@ -20,4 +20,5 @@
     <include file="db/changelog/changes/db.changelog-012-add-outbox-idempotency-key.xml" />
     <include file="db/changelog/changes/db.changelog-013-add-order-service-type.xml" />
     <include file="db/changelog/changes/db.changelog-014-normalize-order-completion-lifecycle.xml" />
+    <include file="db/changelog/changes/db.changelog-015-create-customers.xml" />
 </databaseChangeLog>
