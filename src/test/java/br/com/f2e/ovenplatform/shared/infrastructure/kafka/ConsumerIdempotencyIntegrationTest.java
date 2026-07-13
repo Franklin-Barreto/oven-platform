@@ -12,6 +12,7 @@ import br.com.f2e.ovenplatform.kitchen.application.KitchenTicketReadyEventPublis
 import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.OrderCreatedKitchenTicketConsumer;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.persistence.JpaTicketRepositoryAdapter;
+import br.com.f2e.ovenplatform.orders.application.CustomerDeliveryInfoProvider;
 import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
@@ -90,6 +91,7 @@ class ConsumerIdempotencyIntegrationTest extends DataJpaIntegrationTest {
   @MockitoBean private Clock clock;
   @MockitoBean private KitchenTicketReadyEventPublisher kitchenTicketReadyEventPublisher;
   @MockitoBean private OrderableProductProvider orderableProductProvider;
+  @MockitoBean private CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
   @MockitoBean private OrderCreatedEventPublisher orderCreatedEventPublisher;
 
   @Test

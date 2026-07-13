@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.customer.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.f2e.ovenplatform.customer.application.api.CustomerDeliveryInfoLookup;
 import br.com.f2e.ovenplatform.customer.domain.Customer;
 import br.com.f2e.ovenplatform.customer.infrastructure.persistence.JpaCustomerRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -16,13 +17,18 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 
-@Import({CustomerService.class, JpaCustomerRepositoryAdapter.class})
+@Import({
+  CustomerService.class,
+  CustomerDeliveryInfoLookupService.class,
+  JpaCustomerRepositoryAdapter.class
+})
 class CustomerServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final String CUSTOMER_NAME = "Maria";
   private static final String PHONE = "(11) 99999-8888";
 
   @Autowired private CustomerService customerService;
+  @Autowired private CustomerDeliveryInfoLookup customerDeliveryInfoLookup;
   @Autowired private SpringDataTenantRepository tenantRepository;
 
   @Test
@@ -186,6 +192,44 @@ class CustomerServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(customerService.getCustomer(tenant.getId(), customer.getId()).getAddresses())
         .isEmpty();
+  }
+
+  @Test
+  void shouldResolveDeliveryInfoForCustomerAddress() {
+    var tenant = createTenant();
+    var customer = createCustomer(tenant);
+    var withAddress =
+        customerService.addAddress(tenant.getId(), customer.getId(), createAddressCommand());
+    var address = withAddress.getAddresses().getFirst();
+
+    var deliveryInfo =
+        customerDeliveryInfoLookup.findDeliveryInfo(
+            tenant.getId(), customer.getId(), address.getId());
+
+    assertThat(deliveryInfo.customerId()).isEqualTo(customer.getId());
+    assertThat(deliveryInfo.customerName()).isEqualTo(CUSTOMER_NAME);
+    assertThat(deliveryInfo.customerPhone()).isEqualTo(PHONE);
+    assertThat(deliveryInfo.address().addressId()).isEqualTo(address.getId());
+    assertThat(deliveryInfo.address().line().addressLine1()).isEqualTo("Rua das Flores");
+    assertThat(deliveryInfo.address().location().city()).isEqualTo("Sao Paulo");
+  }
+
+  @Test
+  void shouldThrowResourceNotFoundWhenDeliveryAddressDoesNotBelongToCustomer() {
+    var tenant = createTenant();
+    var customer = createCustomer(tenant);
+    var anotherCustomer = createCustomer(tenant, "Joao", "(11) 98888-7777");
+    var anotherCustomerWithAddress =
+        customerService.addAddress(tenant.getId(), anotherCustomer.getId(), createAddressCommand());
+    var anotherAddressId = anotherCustomerWithAddress.getAddresses().getFirst().getId();
+    var tenantId = tenant.getId();
+    var customerId = customer.getId();
+
+    assertThatThrownBy(
+            () ->
+                customerDeliveryInfoLookup.findDeliveryInfo(tenantId, customerId, anotherAddressId))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("CustomerAddress id: %s not found".formatted(anotherAddressId));
   }
 
   @Test

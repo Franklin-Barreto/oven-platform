@@ -6,6 +6,7 @@ import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransit
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -47,6 +48,8 @@ public class Order extends BaseEntity {
   @Column(name = "cancelled_at")
   private Instant cancelledAt;
 
+  @Embedded private DeliveryCustomerSnapshot deliveryCustomerSnapshot;
+
   @SuppressWarnings("unused")
   protected Order() {}
 
@@ -71,6 +74,15 @@ public class Order extends BaseEntity {
     recalculateTotal();
   }
 
+  public void attachDeliveryCustomerSnapshot(DeliveryCustomerSnapshot snapshot) {
+    if (serviceType != OrderServiceType.DELIVERY) {
+      throw new IllegalStateException(
+          "delivery customer snapshot is only allowed for delivery orders");
+    }
+
+    this.deliveryCustomerSnapshot = requireNotNull(snapshot, "deliveryCustomerSnapshot");
+  }
+
   public List<OrderItem> getItems() {
     return List.copyOf(items);
   }
@@ -86,6 +98,10 @@ public class Order extends BaseEntity {
 
   public OrderServiceType getServiceType() {
     return serviceType;
+  }
+
+  public DeliveryCustomerSnapshot getDeliveryCustomerSnapshot() {
+    return deliveryCustomerSnapshot;
   }
 
   public void markAsReady(Instant occurredAt) {
