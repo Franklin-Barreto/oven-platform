@@ -18,6 +18,7 @@ public record OrderResponse(
     Instant readyAt,
     Instant completedAt,
     Instant cancelledAt,
+    DeliveryCustomerSnapshotResponse deliveryCustomerSnapshot,
     List<OrderItemResponse> items) {
 
   public OrderResponse {
@@ -35,6 +36,7 @@ public record OrderResponse(
         order.getReadyAt(),
         order.getCompletedAt(),
         order.getCancelledAt(),
+        DeliveryCustomerSnapshotResponse.from(order.getDeliveryCustomerSnapshot()),
         OrderItemResponse.from(order.getItems()));
   }
 }

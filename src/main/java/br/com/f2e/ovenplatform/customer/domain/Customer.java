@@ -80,12 +80,12 @@ public class Customer extends BaseEntity {
   }
 
   public void updateAddress(UUID addressId, CustomerAddressDetails details) {
-    var address = findAddressOrThrow(addressId);
+    var address = getAddress(addressId);
     address.update(details);
   }
 
   public void removeAddress(UUID addressId) {
-    var address = findAddressOrThrow(addressId);
+    var address = getAddress(addressId);
     addresses.remove(address);
   }
 
@@ -116,7 +116,7 @@ public class Customer extends BaseEntity {
     return normalized;
   }
 
-  private CustomerAddress findAddressOrThrow(UUID addressId) {
+  public CustomerAddress getAddress(UUID addressId) {
     requireNotNull(addressId, "addressId");
     return addresses.stream()
         .filter(address -> addressId.equals(address.getId()))

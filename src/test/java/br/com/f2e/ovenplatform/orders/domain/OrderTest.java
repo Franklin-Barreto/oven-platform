@@ -33,7 +33,28 @@ class OrderTest {
     assertThat(order.getReadyAt()).isNull();
     assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isNull();
+    assertThat(order.getDeliveryCustomerSnapshot()).isNull();
     assertThat(order.getItems()).isEmpty();
+  }
+
+  @Test
+  void shouldAttachDeliveryCustomerSnapshotToDeliveryOrder() {
+    var order = new Order(TENANT_ID, OrderServiceType.DELIVERY);
+    var snapshot = deliveryCustomerSnapshot();
+
+    order.attachDeliveryCustomerSnapshot(snapshot);
+
+    assertThat(order.getDeliveryCustomerSnapshot()).isSameAs(snapshot);
+  }
+
+  @Test
+  void shouldRejectDeliveryCustomerSnapshotForCounterOrder() {
+    var order = new Order(TENANT_ID, OrderServiceType.COUNTER);
+    var snapshot = deliveryCustomerSnapshot();
+
+    assertThatThrownBy(() -> order.attachDeliveryCustomerSnapshot(snapshot))
+        .isInstanceOf(IllegalStateException.class)
+        .hasMessage("delivery customer snapshot is only allowed for delivery orders");
   }
 
   @Test
@@ -239,5 +260,19 @@ class OrderTest {
 
   private static Order order() {
     return new Order(TENANT_ID, OrderServiceType.COUNTER);
+  }
+
+  private static DeliveryCustomerSnapshot deliveryCustomerSnapshot() {
+    return new DeliveryCustomerSnapshot(
+        new DeliveryCustomerDetails(
+            UUID.randomUUID(),
+            "Maria",
+            "(11) 99999-8888",
+            new DeliveryAddressDetails(
+                UUID.randomUUID(),
+                "Home",
+                new DeliveryAddressLine("Rua das Flores", "123", null),
+                new DeliveryAddressLocation("Centro", "Sao Paulo", "SP", "01000-000"),
+                "Portao azul")));
   }
 }

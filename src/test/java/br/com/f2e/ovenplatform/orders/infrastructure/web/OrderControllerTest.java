@@ -23,6 +23,11 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressDetails;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLine;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLocation;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryCustomerDetails;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryCustomerSnapshot;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
@@ -67,6 +72,9 @@ class OrderControllerTest {
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final UUID CUSTOMER_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID CUSTOMER_ADDRESS_ID =
+      UUID.fromString("d6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
 
   @Autowired private MockMvc mockMvc;
@@ -120,11 +128,66 @@ class OrderControllerTest {
 
     assertThat(command.items()).hasSize(1);
     assertThat(command.serviceType()).isEqualTo(OrderServiceType.COUNTER);
+    assertThat(command.customerId()).isNull();
+    assertThat(command.customerAddressId()).isNull();
     assertThat(command.items().getFirst().productId()).isEqualTo(PRODUCT_ID);
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
     assertThat(command.paymentInfo()).isNotNull();
     assertThat(command.paymentInfo().method()).isEqualTo(PaymentMethod.CASH);
     assertThat(command.paymentInfo().status()).isEqualTo(OrderPaymentStatus.PAID);
+  }
+
+  @Test
+  void shouldCreateDeliveryOrderWithCustomerAddressIdentifiers() throws Exception {
+    var orderRequest = createDeliveryOrderRequest();
+    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
+
+    when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
+
+    mockMvc
+        .perform(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(orderRequest))
+                .with(authenticatedTenantUser(TENANT_ID)))
+        .andExpect(status().isCreated());
+
+    var commandCaptor = ArgumentCaptor.forClass(CreateOrderCommand.class);
+
+    verify(orderService).createOrder(eq(TENANT_ID), commandCaptor.capture());
+
+    var command = commandCaptor.getValue();
+
+    assertThat(command.serviceType()).isEqualTo(OrderServiceType.DELIVERY);
+    assertThat(command.customerId()).isEqualTo(CUSTOMER_ID);
+    assertThat(command.customerAddressId()).isEqualTo(CUSTOMER_ADDRESS_ID);
+  }
+
+  @ParameterizedTest(name = "should return 404 when {0} is not found")
+  @MethodSource("missingDeliveryCustomerResources")
+  void shouldReturn404WhenDeliveryCustomerResourceIsNotFound(String resource, UUID resourceId)
+      throws Exception {
+    when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class)))
+        .thenThrow(new ResourceNotFoundException(resource, resourceId));
+
+    mockMvc
+        .perform(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(createDeliveryOrderRequest()))
+                .with(authenticatedTenantUser(TENANT_ID))
+                .accept(MediaType.APPLICATION_JSON))
+        .andExpectAll(
+            expectValidationErrors(
+                HttpStatus.NOT_FOUND,
+                BASE_URL,
+                HttpStatus.NOT_FOUND.getReasonPhrase(),
+                ApiErrorCodes.RESOURCE_NOT_FOUND,
+                "%s id: %s not found".formatted(resource, resourceId),
+                null,
+                HttpStatus.NOT_FOUND.value()));
+
+    verify(orderService).createOrder(eq(TENANT_ID), any(CreateOrderCommand.class));
   }
 
   @ParameterizedTest(name = "{0}")
@@ -180,6 +243,35 @@ class OrderControllerTest {
         .andExpect(jsonPath("$.items[0].subtotal").value(75.90));
 
     verify(orderService).findOrder(TENANT_ID, ORDER_ID);
+  }
+
+  @Test
+  void shouldExposeDeliveryCustomerSnapshotWhenFoundById() throws Exception {
+    var order = createDeliveryOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("25.30"));
+    order.attachDeliveryCustomerSnapshot(deliveryCustomerSnapshot());
+
+    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
+
+    mockMvc
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .andExpect(status().isOk())
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.customerId").value(CUSTOMER_ID.toString()))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.customerName").value("Maria"))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.customerPhone").value("(11) 99999-8888"))
+        .andExpect(
+            jsonPath("$.deliveryCustomerSnapshot.address.addressId")
+                .value(CUSTOMER_ADDRESS_ID.toString()))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.address.label").value("Home"))
+        .andExpect(
+            jsonPath("$.deliveryCustomerSnapshot.address.line.addressLine1")
+                .value("Rua das Flores"))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.address.line.number").value("123"))
+        .andExpect(
+            jsonPath("$.deliveryCustomerSnapshot.address.location.neighborhood").value("Centro"))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.address.location.city").value("Sao Paulo"))
+        .andExpect(jsonPath("$.deliveryCustomerSnapshot.address.location.state").value("SP"))
+        .andExpect(
+            jsonPath("$.deliveryCustomerSnapshot.address.location.postalCode").value("01000-000"));
   }
 
   @Test
@@ -364,11 +456,32 @@ class OrderControllerTest {
     return order;
   }
 
+  private Order createDeliveryOrder(
+      UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
+    var order = withId(new Order(tenantId, OrderServiceType.DELIVERY), orderId);
+    order.addItem(productId, PRODUCT_NAME, quantity, unitPrice);
+    return order;
+  }
+
+  private DeliveryCustomerSnapshot deliveryCustomerSnapshot() {
+    return new DeliveryCustomerSnapshot(
+        new DeliveryCustomerDetails(
+            CUSTOMER_ID,
+            "Maria",
+            "(11) 99999-8888",
+            new DeliveryAddressDetails(
+                CUSTOMER_ADDRESS_ID,
+                "Home",
+                new DeliveryAddressLine("Rua das Flores", "123", null),
+                new DeliveryAddressLocation("Centro", "Sao Paulo", "SP", "01000-000"),
+                "Portao azul")));
+  }
+
   private static Stream<Arguments> invalidCreateOrderRequests() {
     return Stream.of(
         Arguments.of("serviceType", "must not be null", createOrderRequest(null, PRODUCT_ID, 1)),
         Arguments.of(
-            "items", "must not be null", createOrderRequest(OrderServiceType.DELIVERY, null)),
+            "items", "must not be null", createOrderRequest(OrderServiceType.COUNTER, null)),
         Arguments.of(
             "items",
             "items must have at least 1 item",
@@ -380,11 +493,15 @@ class OrderControllerTest {
         Arguments.of(
             "items[0].quantity",
             "must be greater than 0",
-            createOrderRequest(OrderServiceType.DELIVERY, PRODUCT_ID, 0)),
+            createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, 0)),
         Arguments.of(
             "items[0].quantity",
             "must be greater than 0",
-            createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, -1)));
+            createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, -1)),
+        Arguments.of(
+            "deliveryCustomerInfoValid",
+            "customerId and customerAddressId are required for delivery orders",
+            createOrderRequest(OrderServiceType.DELIVERY, PRODUCT_ID, 1)));
   }
 
   private static Stream<Arguments> transitionEndpoints() {
@@ -396,6 +513,21 @@ class OrderControllerTest {
             "/complete", (Consumer<OrderService>) service -> service.complete(TENANT_ID, ORDER_ID)),
         Arguments.of(
             "/cancel", (Consumer<OrderService>) service -> service.cancel(TENANT_ID, ORDER_ID)));
+  }
+
+  private static Stream<Arguments> missingDeliveryCustomerResources() {
+    return Stream.of(
+        Arguments.of("Customer", CUSTOMER_ID),
+        Arguments.of("CustomerAddress", CUSTOMER_ADDRESS_ID));
+  }
+
+  private static CreateOrderRequest createDeliveryOrderRequest() {
+    return new CreateOrderRequest(
+        OrderServiceType.DELIVERY,
+        CUSTOMER_ID,
+        CUSTOMER_ADDRESS_ID,
+        List.of(new OrderItemRequest(PRODUCT_ID, 3)),
+        new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING));
   }
 
   private static CreateOrderRequest createOrderRequest(

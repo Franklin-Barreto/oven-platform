@@ -58,6 +58,9 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID ANOTHER_TENANT_ID =
       UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final UUID CUSTOMER_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID CUSTOMER_ADDRESS_ID =
+      UUID.fromString("d6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
 
   private record OrderItemFixture(
@@ -76,6 +79,10 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   @SuppressWarnings("unused")
   @MockitoBean
   private OrderableProductProvider orderableProductProvider;
+
+  @SuppressWarnings("unused")
+  @MockitoBean
+  private CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
 
   @SuppressWarnings("unused")
   @MockitoBean
@@ -104,6 +111,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertOrderItemsMatchFixtures(order, fixtures);
 
     verify(orderableProductProvider).findOrderableProducts(TENANT_ID, productIds);
+    verifyNoInteractions(customerDeliveryInfoProvider);
 
     var orderCreatedEvents = applicationEvents.stream(OrderCreatedEvent.class).toList();
 
@@ -129,6 +137,75 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
               assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
               assertThat(item.unitPrice())
                   .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
+            });
+  }
+
+  @Test
+  void shouldCreateDeliveryOrderWithCustomerSnapshot() {
+    var fixtures = createOrderItemFixtures();
+    var command = createDeliveryOrderCommand(fixtures, CUSTOMER_ID, CUSTOMER_ADDRESS_ID);
+    var orderableProducts = createOrderableProducts(fixtures);
+    var productIds = extractProductIds(command);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
+        .thenReturn(orderableProducts);
+    when(customerDeliveryInfoProvider.findCustomerDeliveryInfo(
+            TENANT_ID, CUSTOMER_ID, CUSTOMER_ADDRESS_ID))
+        .thenReturn(customerDeliveryInfo());
+
+    var order = orderService.createOrder(TENANT_ID, command);
+
+    assertThat(order.getServiceType()).isEqualTo(OrderServiceType.DELIVERY);
+    assertThat(order.getDeliveryCustomerSnapshot())
+        .satisfies(
+            snapshot -> {
+              var address = snapshot.getAddress();
+              var line = address.line();
+              var location = address.location();
+
+              assertThat(snapshot.getCustomerId()).isEqualTo(CUSTOMER_ID);
+              assertThat(snapshot.getCustomerName()).isEqualTo("Maria");
+              assertThat(snapshot.getCustomerPhone()).isEqualTo("(11) 99999-8888");
+              assertThat(address.addressId()).isEqualTo(CUSTOMER_ADDRESS_ID);
+              assertThat(line.addressLine1()).isEqualTo("Rua das Flores");
+              assertThat(line.number()).isEqualTo("123");
+              assertThat(location.neighborhood()).isEqualTo("Centro");
+              assertThat(location.city()).isEqualTo("Sao Paulo");
+              assertThat(location.state()).isEqualTo("SP");
+              assertThat(location.postalCode()).isEqualTo("01000-000");
+            });
+
+    verify(customerDeliveryInfoProvider)
+        .findCustomerDeliveryInfo(TENANT_ID, CUSTOMER_ID, CUSTOMER_ADDRESS_ID);
+  }
+
+  @Test
+  void shouldPersistDeliveryCustomerSnapshot() {
+    var fixtures = createOrderItemFixtures();
+    var command = createDeliveryOrderCommand(fixtures, CUSTOMER_ID, CUSTOMER_ADDRESS_ID);
+    var productIds = extractProductIds(command);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
+        .thenReturn(createOrderableProducts(fixtures));
+    when(customerDeliveryInfoProvider.findCustomerDeliveryInfo(
+            TENANT_ID, CUSTOMER_ID, CUSTOMER_ADDRESS_ID))
+        .thenReturn(customerDeliveryInfo());
+
+    var savedOrder = orderService.createOrder(TENANT_ID, command);
+
+    flushAndClear();
+
+    var foundOrder = orderService.findOrderWithItems(TENANT_ID, savedOrder.getId()).orElseThrow();
+
+    assertThat(foundOrder.getDeliveryCustomerSnapshot())
+        .satisfies(
+            snapshot -> {
+              var address = snapshot.getAddress();
+
+              assertThat(snapshot.getCustomerId()).isEqualTo(CUSTOMER_ID);
+              assertThat(address.addressId()).isEqualTo(CUSTOMER_ADDRESS_ID);
+              assertThat(snapshot.getCustomerName()).isEqualTo("Maria");
+              assertThat(address.line().addressLine1()).isEqualTo("Rua das Flores");
             });
   }
 
@@ -571,6 +648,30 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
         fixtures.stream().map(OrderItemFixture::command).toList(),
         paymentInfo,
         OrderServiceType.COUNTER);
+  }
+
+  private CreateOrderCommand createDeliveryOrderCommand(
+      List<OrderItemFixture> fixtures, UUID customerId, UUID customerAddressId) {
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING);
+    return new CreateOrderCommand(
+        fixtures.stream().map(OrderItemFixture::command).toList(),
+        paymentInfo,
+        OrderServiceType.DELIVERY,
+        customerId,
+        customerAddressId);
+  }
+
+  private CustomerDeliveryInfo customerDeliveryInfo() {
+    return new CustomerDeliveryInfo(
+        CUSTOMER_ID,
+        "Maria",
+        "(11) 99999-8888",
+        new CustomerDeliveryInfo.Address(
+            CUSTOMER_ADDRESS_ID,
+            "Home",
+            new CustomerDeliveryInfo.Line("Rua das Flores", "123", null),
+            new CustomerDeliveryInfo.Location("Centro", "Sao Paulo", "SP", "01000-000"),
+            "Portao azul"));
   }
 
   private List<OrderableProduct> createOrderableProducts(List<OrderItemFixture> fixtures) {

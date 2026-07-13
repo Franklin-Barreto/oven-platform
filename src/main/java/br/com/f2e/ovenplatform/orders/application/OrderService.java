@@ -3,7 +3,13 @@ package br.com.f2e.ovenplatform.orders.application;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressDetails;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLine;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLocation;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryCustomerDetails;
+import br.com.f2e.ovenplatform.orders.domain.DeliveryCustomerSnapshot;
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,18 +32,21 @@ public class OrderService {
   private final Clock clock;
   private final ApplicationEventPublisher eventPublisher;
   private final OrderCreatedEventPublisher orderCreatedEventPublisher;
+  private final CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
 
   public OrderService(
       OrderRepository orderRepository,
       OrderableProductProvider orderableProductProvider,
       Clock clock,
       ApplicationEventPublisher eventPublisher,
-      OrderCreatedEventPublisher orderCreatedEventPublisher) {
+      OrderCreatedEventPublisher orderCreatedEventPublisher,
+      CustomerDeliveryInfoProvider customerDeliveryInfoProvider) {
     this.orderRepository = orderRepository;
     this.orderableProductProvider = orderableProductProvider;
     this.clock = clock;
     this.eventPublisher = eventPublisher;
     this.orderCreatedEventPublisher = orderCreatedEventPublisher;
+    this.customerDeliveryInfoProvider = customerDeliveryInfoProvider;
   }
 
   public Order save(Order order) {
@@ -56,6 +65,7 @@ public class OrderService {
             .collect(Collectors.toMap(OrderableProduct::productId, product -> product));
 
     var order = new Order(tenantId, orderCommand.serviceType());
+    attachDeliveryCustomerSnapshotIfNeeded(tenantId, orderCommand, order);
 
     orderCommand
         .items()
@@ -89,6 +99,37 @@ public class OrderService {
     orderCreatedEventPublisher.publish(orderCreatedEvent);
 
     return savedOrder;
+  }
+
+  private void attachDeliveryCustomerSnapshotIfNeeded(
+      UUID tenantId, CreateOrderCommand orderCommand, Order order) {
+    if (orderCommand.serviceType() != OrderServiceType.DELIVERY) {
+      return;
+    }
+
+    var deliveryInfo =
+        customerDeliveryInfoProvider.findCustomerDeliveryInfo(
+            tenantId, orderCommand.customerId(), orderCommand.customerAddressId());
+    var address = deliveryInfo.address();
+    var line = address.line();
+    var location = address.location();
+
+    order.attachDeliveryCustomerSnapshot(
+        new DeliveryCustomerSnapshot(
+            new DeliveryCustomerDetails(
+                deliveryInfo.customerId(),
+                deliveryInfo.customerName(),
+                deliveryInfo.customerPhone(),
+                new DeliveryAddressDetails(
+                    address.addressId(),
+                    address.label(),
+                    new DeliveryAddressLine(line.addressLine1(), line.number(), line.complement()),
+                    new DeliveryAddressLocation(
+                        location.neighborhood(),
+                        location.city(),
+                        location.state(),
+                        location.postalCode()),
+                    address.reference()))));
   }
 
   @Transactional(readOnly = true)
