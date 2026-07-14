@@ -7,11 +7,6 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
 import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.KitchenTicketReadyConsumer;
 import br.com.f2e.ovenplatform.fulfillment.infrastructure.outbox.OutboxFulfillmentOrderReadyEventPublisher;
-import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.kitchen.application.KitchenTicketReadyEventPublisher;
-import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.OrderCreatedKitchenTicketConsumer;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.persistence.JpaTicketRepositoryAdapter;
 import br.com.f2e.ovenplatform.orders.application.CustomerDeliveryInfoProvider;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
@@ -60,10 +55,7 @@ import org.springframework.transaction.annotation.Transactional;
   JpaOrderRepositoryAdapter.class,
   JpaOutboxEventRepository.class,
   JpaPaymentRepositoryAdapter.class,
-  JpaTicketRepositoryAdapter.class,
-  KitchenService.class,
   KitchenTicketReadyConsumer.class,
-  OrderCreatedKitchenTicketConsumer.class,
   OrderCreatedPaymentConsumer.class,
   OrderService.class,
   OutboxFulfillmentOrderReadyEventPublisher.class,
@@ -80,41 +72,14 @@ class ConsumerIdempotencyIntegrationTest extends DataJpaIntegrationTest {
   private static final Instant PAID_AT = Instant.parse("2026-05-12T20:18:00Z");
   private static final Instant READY_AT = Instant.parse("2026-05-12T20:30:00Z");
 
-  @Autowired private OrderCreatedKitchenTicketConsumer kitchenConsumer;
   @Autowired private OrderCreatedPaymentConsumer paymentConsumer;
   @Autowired private KitchenTicketReadyConsumer fulfillmentConsumer;
   @Autowired private FulfillmentOrderReadyConsumer orderConsumer;
   @Autowired private OrderService orderService;
 
   @MockitoBean private Clock clock;
-  @MockitoBean private KitchenTicketReadyEventPublisher kitchenTicketReadyEventPublisher;
   @MockitoBean private OrderableProductProvider orderableProductProvider;
   @MockitoBean private CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
-
-  @Test
-  void shouldIgnoreSequentialDuplicateOrderCreatedDeliveryForKitchenTicketCreation() {
-    var orderId = UUID.randomUUID();
-    var payload = orderCreatedPayload(orderId);
-    var json = JsonUtils.toJson(payload);
-
-    kitchenConsumer.on(json);
-    kitchenConsumer.on(json);
-
-    assertThat(countKitchenTickets(orderId)).isOne();
-    assertThat(findKitchenTicketStatus(orderId)).isEqualTo(TicketStatus.RECEIVED);
-  }
-
-  @Test
-  void shouldIgnoreConcurrentDuplicateOrderCreatedDeliveryForKitchenTicketCreation()
-      throws Exception {
-    var orderId = UUID.randomUUID();
-    var json = JsonUtils.toJson(orderCreatedPayload(orderId));
-
-    runConcurrently(() -> kitchenConsumer.on(json), () -> kitchenConsumer.on(json));
-
-    assertThat(countKitchenTickets(orderId)).isOne();
-    assertThat(findKitchenTicketStatus(orderId)).isEqualTo(TicketStatus.RECEIVED);
-  }
 
   @Test
   void shouldIgnoreSequentialDuplicateOrderCreatedDeliveryForPaymentCreation() {
@@ -213,36 +178,6 @@ class ConsumerIdempotencyIntegrationTest extends DataJpaIntegrationTest {
       runnable.run();
       return null;
     };
-  }
-
-  private long countKitchenTickets(UUID orderId) {
-    return entityManager
-        .createQuery(
-            """
-            select count(ticket)
-            from Ticket ticket
-            where ticket.tenantId = :tenantId
-              and ticket.orderId = :orderId
-            """,
-            Long.class)
-        .setParameter("tenantId", TENANT_ID)
-        .setParameter("orderId", orderId)
-        .getSingleResult();
-  }
-
-  private TicketStatus findKitchenTicketStatus(UUID orderId) {
-    return entityManager
-        .createQuery(
-            """
-            select ticket.status
-            from Ticket ticket
-            where ticket.tenantId = :tenantId
-              and ticket.orderId = :orderId
-            """,
-            TicketStatus.class)
-        .setParameter("tenantId", TENANT_ID)
-        .setParameter("orderId", orderId)
-        .getSingleResult();
   }
 
   private long countPayments(UUID orderId) {

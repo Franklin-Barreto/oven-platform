@@ -153,42 +153,40 @@ class EventPublicationRegistryIntegrationTest {
 
   private void awaitStatus(UUID eventId, EventPublication.Status expected) {
     await()
-            .atMost(ASYNC_TIMEOUT)
-            .pollInterval(Duration.ofMillis(25))
-            .untilAsserted(
-                    () ->
-                            assertThat(publicationStatuses(eventId))
-                                    .contains(expected.name()));
+        .atMost(ASYNC_TIMEOUT)
+        .pollInterval(Duration.ofMillis(25))
+        .untilAsserted(() -> assertThat(publicationStatuses(eventId)).contains(expected.name()));
   }
 
   private List<String> publicationStatuses(UUID eventId) {
     return jdbc.queryForList(
-            "select status from event_publication where serialized_event like ?",
-            String.class,
-            serializedEventPattern(eventId));
+        "select status from event_publication where serialized_event like ?",
+        String.class,
+        serializedEventPattern(eventId));
   }
 
   private int completionAttempts(UUID eventId) {
     return requireNonNull(
-            jdbc.queryForObject(
-                    """
+        jdbc.queryForObject(
+            """
                     select completion_attempts
                     from event_publication
                     where serialized_event like ?
                     """,
-                    Integer.class,
-                    serializedEventPattern(eventId)),
-            "Completion attempts not found for event " + eventId);
+            Integer.class,
+            serializedEventPattern(eventId)),
+        "Completion attempts not found for event " + eventId);
   }
 
   private int publicationCount(UUID eventId) {
     return requireNonNull(
-            jdbc.queryForObject(
-                    "select count(*) from event_publication where serialized_event like ?",
-                    Integer.class,
-                    serializedEventPattern(eventId)),
-            "Publication count not returned for event " + eventId);
+        jdbc.queryForObject(
+            "select count(*) from event_publication where serialized_event like ?",
+            Integer.class,
+            serializedEventPattern(eventId)),
+        "Publication count not returned for event " + eventId);
   }
+
   private java.util.List<String> indexNames() {
     return jdbc.queryForList(
         "select indexname from pg_indexes where schemaname = current_schema() and tablename = 'event_publication'",

@@ -1,13 +1,17 @@
 package br.com.f2e.ovenplatform.kitchen.application;
 
+import static java.time.temporal.ChronoUnit.MICROS;
+
 import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.kitchen.domain.Ticket;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketItem;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Predicate;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,15 +21,13 @@ public class KitchenService {
   private static final String RESOURCE = "Ticket";
   private final TicketRepository repository;
   private final Clock clock;
-  private final KitchenTicketReadyEventPublisher readyEventPublisher;
+  private final ApplicationEventPublisher eventPublisher;
 
   public KitchenService(
-      TicketRepository repository,
-      Clock clock,
-      KitchenTicketReadyEventPublisher readyEventPublisher) {
+      TicketRepository repository, Clock clock, ApplicationEventPublisher eventPublisher) {
     this.repository = repository;
     this.clock = clock;
-    this.readyEventPublisher = readyEventPublisher;
+    this.eventPublisher = eventPublisher;
   }
 
   @Transactional
@@ -56,16 +58,16 @@ public class KitchenService {
 
   @Transactional
   public void startPreparation(UUID tenantId, UUID id) {
-    updateTicket(tenantId, id, ticket -> ticket.startPreparation(clock.instant()));
+    updateTicket(tenantId, id, ticket -> ticket.startPreparation(currentTime()));
   }
 
   @Transactional
   public void markAsReady(UUID tenantId, UUID id) {
-    var occurredAt = clock.instant();
+    var occurredAt = currentTime();
     var result = updateTicket(tenantId, id, ticket -> ticket.markAsReady(occurredAt));
 
     if (result.changed()) {
-      readyEventPublisher.publish(
+      eventPublisher.publishEvent(
           new KitchenTicketMarkedAsReadyEvent(
               result.tenantId(), result.ticketId(), result.orderId(), result.readyAt()));
     }
@@ -73,7 +75,7 @@ public class KitchenService {
 
   @Transactional
   public void cancel(UUID tenantId, UUID id) {
-    updateTicket(tenantId, id, ticket -> ticket.cancel(clock.instant()));
+    updateTicket(tenantId, id, ticket -> ticket.cancel(currentTime()));
   }
 
   private Ticket findTicketById(UUID tenantId, UUID id) {
@@ -104,5 +106,9 @@ public class KitchenService {
     var ticket = findTicketById(tenantId, id);
     var changed = action.test(ticket);
     return TicketUpdateResult.from(ticket, changed);
+  }
+
+  private Instant currentTime() {
+    return clock.instant().truncatedTo(MICROS);
   }
 }

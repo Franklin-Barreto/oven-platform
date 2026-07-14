@@ -6,8 +6,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.OrderCreatedKitchenTicketConsumer;
+import br.com.f2e.ovenplatform.payment.application.PaymentService;
+import br.com.f2e.ovenplatform.payment.infrastructure.kafka.OrderCreatedPaymentConsumer;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.test.KafkaTestContainerConfiguration;
 import java.time.Duration;
 import java.util.List;
@@ -37,7 +37,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
       KafkaTestContainerConfiguration.class,
       KafkaTopicConfiguration.class,
       KafkaConsumerErrorHandlingConfiguration.class,
-      OrderCreatedKitchenTicketConsumer.class,
+      OrderCreatedPaymentConsumer.class,
       KafkaConsumerErrorHandlingIntegrationTest.TestConfig.class
     })
 @ImportAutoConfiguration({KafkaAutoConfiguration.class, JacksonAutoConfiguration.class})
@@ -50,10 +50,8 @@ class KafkaConsumerErrorHandlingIntegrationTest {
   private String orderTopic;
 
   @Autowired private ConfluentKafkaContainer kafkaContainer;
-
   @Autowired private KafkaTemplate<String, String> kafkaTemplate;
-
-  @Autowired private KitchenService kitchenService;
+  @Autowired private PaymentService paymentService;
 
   @Test
   void shouldSendMessageToDeadLetterTopicWithoutRetryingIllegalArgumentException()
@@ -62,8 +60,8 @@ class KafkaConsumerErrorHandlingIntegrationTest {
     var payload = orderCreatedPayload(orderId);
 
     doThrow(new IllegalArgumentException("Invalid order contract"))
-        .when(kitchenService)
-        .createTicketFromOrder(any());
+        .when(paymentService)
+        .registerPaymentFromOrder(any());
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
       consumer.subscribe(List.of(orderTopic + DEAD_LETTER_TOPIC_SUFFIX));
@@ -77,7 +75,7 @@ class KafkaConsumerErrorHandlingIntegrationTest {
       assertThat(deadLetterRecord.value()).isEqualTo(payload);
     }
 
-    verify(kitchenService).createTicketFromOrder(any());
+    verify(paymentService).registerPaymentFromOrder(any());
   }
 
   private ConsumerRecord<String, String> pollRecord(
@@ -137,8 +135,8 @@ class KafkaConsumerErrorHandlingIntegrationTest {
   static class TestConfig {
 
     @Bean
-    KitchenService kitchenService() {
-      return mock(KitchenService.class);
+    PaymentService paymentService() {
+      return mock(PaymentService.class);
     }
   }
 }
