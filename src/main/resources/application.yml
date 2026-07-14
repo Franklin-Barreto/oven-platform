@@ -26,6 +26,14 @@ spring:
       auto-offset-reset: earliest
       key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
       value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
+  modulith:
+    events:
+      completion-mode: update
+      republish-outstanding-events-on-restart: true
+      staleness:
+        published: 10m
+        processing: 10m
+        resubmission: 10m
   mvc:
     apiversion:
       default: 1.0
@@ -36,6 +44,16 @@ jwt:
   secret: ${JWT_SECRET}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
 oven:
+  events:
+    publication:
+      maintenance:
+        enabled: true
+        fixed-delay: 1m
+        retry-min-age: 30s
+        retry-batch-size: 100
+        retry-max-in-flight: 10
+        retry-max-attempts: 5
+        completed-retention: 7d
   kafka:
     consumer:
       retry:

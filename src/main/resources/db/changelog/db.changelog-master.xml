@@ -22,4 +22,5 @@
     <include file="db/changelog/changes/db.changelog-014-normalize-order-completion-lifecycle.xml" />
     <include file="db/changelog/changes/db.changelog-015-create-customers.xml" />
     <include file="db/changelog/changes/db.changelog-016-add-order-delivery-customer-snapshot.xml" />
+    <include file="db/changelog/changes/db.changelog-017-align-event-publication-schema.xml" />
 </databaseChangeLog>
