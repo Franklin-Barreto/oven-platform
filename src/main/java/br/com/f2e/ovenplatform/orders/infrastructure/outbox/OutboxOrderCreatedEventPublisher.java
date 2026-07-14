@@ -4,17 +4,17 @@ import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstan
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
 import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.PAYLOAD_VERSION;
 
-import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.EnqueueOutboxEventCommand;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublisher {
+public class OutboxOrderCreatedEventPublisher {
 
   private final OutboxService outboxService;
   private final String orderTopic;
@@ -25,8 +25,8 @@ public class OutboxOrderCreatedEventPublisher implements OrderCreatedEventPublis
     this.orderTopic = orderTopic;
   }
 
-  @Override
-  public void publish(OrderCreatedEvent event) {
+  @ApplicationModuleListener(id = "orders-order-created-outbox-publisher")
+  void publish(OrderCreatedEvent event) {
     var payload =
         new OrderCreatedPayload(
             event.tenantId(),

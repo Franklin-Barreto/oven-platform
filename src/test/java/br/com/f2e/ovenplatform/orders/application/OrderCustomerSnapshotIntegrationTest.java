@@ -12,12 +12,9 @@ import br.com.f2e.ovenplatform.customer.application.UpdateCustomerCommand;
 import br.com.f2e.ovenplatform.customer.infrastructure.persistence.JpaCustomerRepositoryAdapter;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.infrastructure.customer.CustomerDeliveryInfoLookupProvider;
-import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OutboxOrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
-import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
-import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
@@ -38,9 +35,6 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 @Import({
   OrderService.class,
   JpaOrderRepositoryAdapter.class,
-  OutboxService.class,
-  JpaOutboxEventRepository.class,
-  OutboxOrderCreatedEventPublisher.class,
   CustomerService.class,
   CustomerDeliveryInfoLookupService.class,
   JpaCustomerRepositoryAdapter.class,
@@ -79,7 +73,7 @@ class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
     var command =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(PRODUCT_ID, 1)),
-            new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING),
             OrderServiceType.DELIVERY,
             customer.getId(),
             addressId);

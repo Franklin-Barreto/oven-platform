@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.orders.application;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
@@ -13,18 +11,11 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaid
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
-import br.com.f2e.ovenplatform.orders.infrastructure.outbox.OutboxOrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
-import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
-import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
-import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -35,7 +26,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.jackson.autoconfigure.JacksonAutoConfiguration;
 import org.springframework.context.annotation.Import;
@@ -44,13 +34,7 @@ import org.springframework.test.context.event.ApplicationEvents;
 import org.springframework.test.context.event.RecordApplicationEvents;
 
 @ImportAutoConfiguration(JacksonAutoConfiguration.class)
-@Import({
-  OrderService.class,
-  JpaOrderRepositoryAdapter.class,
-  OutboxService.class,
-  JpaOutboxEventRepository.class,
-  OutboxOrderCreatedEventPublisher.class
-})
+@Import({OrderService.class, JpaOrderRepositoryAdapter.class})
 @RecordApplicationEvents
 class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
@@ -66,15 +50,11 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   private record OrderItemFixture(
       CreateOrderItemCommand command, OrderableProduct orderableProduct) {}
 
-  @Value("${oven.kafka.topics.orders}")
-  private String orderTopic;
-
   @SuppressWarnings("SpringJavaInjectionPointsAutowiringInspection")
   @Autowired
   private ApplicationEvents applicationEvents;
 
   @Autowired private OrderService orderService;
-  @Autowired private OutboxEventRepository outboxEventRepository;
 
   @SuppressWarnings("unused")
   @MockitoBean
@@ -121,7 +101,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(orderCreatedEvent.orderId()).isEqualTo(order.getId());
     assertThat(orderCreatedEvent.paymentMethod()).isEqualTo(PaymentMethod.CASH);
-    assertThat(orderCreatedEvent.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
+    assertThat(orderCreatedEvent.paymentStatus()).isEqualTo(PaymentStatus.PAID);
     assertThat(orderCreatedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
     assertThat(orderCreatedEvent.items()).hasSize(fixtures.size());
     assertThat(orderCreatedEvent.items())
@@ -244,7 +224,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var updatedProductName = "Pizza Calabresa Especial";
     var originalPrice = new BigDecimal("42.00");
     var updatedPrice = new BigDecimal("55.00");
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
     var command =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(productId, 2)),
@@ -337,7 +317,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldThrowExceptionWhenCatalogReturnNullProduct() {
     var productId = UUID.randomUUID();
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
     CreateOrderCommand orderCommand =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(productId, 1)),
@@ -564,60 +544,6 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(events).isEmpty();
   }
 
-  @Test
-  void shouldCreatePendingOutboxEventWhenOrderIsCreated() {
-    var fixtures = createOrderItemFixtures();
-    var command = createOrderCommand(fixtures);
-    var orderableProducts = createOrderableProducts(fixtures);
-    var productIds = extractProductIds(command);
-
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
-        .thenReturn(orderableProducts);
-
-    var order = orderService.createOrder(TENANT_ID, command);
-
-    flushAndClear();
-
-    var outboxEvent =
-        outboxEventRepository
-            .findByAggregateTypeAndAggregateIdAndEventType(
-                AGGREGATE_TYPE, order.getId(), ORDER_CREATED_EVENT)
-            .orElseThrow();
-
-    assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo(orderTopic);
-    assertThat(outboxEvent.getMessageKey()).isEqualTo(order.getId().toString());
-    assertThat(outboxEvent.getIdempotencyKey())
-        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, order.getId(), ORDER_CREATED_EVENT));
-    assertThat(outboxEvent.getPayloadVersion()).isEqualTo(1);
-    assertThat(outboxEvent.getAttempts()).isZero();
-    assertThat(outboxEvent.getPublishedAt()).isNull();
-    assertThat(outboxEvent.getLastError()).isNull();
-
-    var payload = JsonUtils.fromJson(outboxEvent.getPayload(), OrderCreatedPayload.class);
-
-    assertThat(payload.tenantId()).isEqualTo(TENANT_ID);
-    assertThat(payload.orderId()).isEqualTo(order.getId());
-    assertThat(payload.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
-    assertThat(payload.paymentMethod()).isEqualTo(PaymentMethod.CASH);
-    assertThat(payload.paymentStatus()).isEqualTo(OrderPaymentStatus.PAID);
-    assertThat(payload.items()).hasSize(fixtures.size());
-    assertThat(payload.items())
-        .allSatisfy(
-            item -> {
-              var fixture =
-                  fixtures.stream()
-                      .filter(candidate -> candidate.command().productId().equals(item.productId()))
-                      .findFirst()
-                      .orElseThrow();
-
-              assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
-              assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
-              assertThat(item.unitPrice())
-                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
-            });
-  }
-
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
     var order = new Order(tenantId, OrderServiceType.DELIVERY);
     order.addItem(UUID.randomUUID(), PRODUCT_NAME, itemQuantity, BigDecimal.ONE);
@@ -643,7 +569,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
     return new CreateOrderCommand(
         fixtures.stream().map(OrderItemFixture::command).toList(),
         paymentInfo,
@@ -652,7 +578,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private CreateOrderCommand createDeliveryOrderCommand(
       List<OrderItemFixture> fixtures, UUID customerId, UUID customerAddressId) {
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING);
     return new CreateOrderCommand(
         fixtures.stream().map(OrderItemFixture::command).toList(),
         paymentInfo,

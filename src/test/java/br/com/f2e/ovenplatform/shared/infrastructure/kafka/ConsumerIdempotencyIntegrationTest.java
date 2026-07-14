@@ -13,7 +13,6 @@ import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.kafka.OrderCreatedKitchenTicketConsumer;
 import br.com.f2e.ovenplatform.kitchen.infrastructure.persistence.JpaTicketRepositoryAdapter;
 import br.com.f2e.ovenplatform.orders.application.CustomerDeliveryInfoProvider;
-import br.com.f2e.ovenplatform.orders.application.OrderCreatedEventPublisher;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
 import br.com.f2e.ovenplatform.orders.domain.Order;
@@ -28,11 +27,10 @@ import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepo
 import br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants;
 import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
 import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
@@ -92,7 +90,6 @@ class ConsumerIdempotencyIntegrationTest extends DataJpaIntegrationTest {
   @MockitoBean private KitchenTicketReadyEventPublisher kitchenTicketReadyEventPublisher;
   @MockitoBean private OrderableProductProvider orderableProductProvider;
   @MockitoBean private CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
-  @MockitoBean private OrderCreatedEventPublisher orderCreatedEventPublisher;
 
   @Test
   void shouldIgnoreSequentialDuplicateOrderCreatedDeliveryForKitchenTicketCreation() {
@@ -185,7 +182,7 @@ class ConsumerIdempotencyIntegrationTest extends DataJpaIntegrationTest {
         orderId,
         TOTAL_AMOUNT,
         PaymentMethod.CASH,
-        OrderPaymentStatus.PAID,
+        br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus.PAID,
         List.of(new OrderCreatedItemPayload(PRODUCT_ID, "Pizza Portuguesa", 2, UNIT_PRICE)));
   }
 
