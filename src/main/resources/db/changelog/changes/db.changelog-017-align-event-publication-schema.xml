@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="017-align-event-publication-schema" author="franklin">
+        <comment>
+            Align the existing event publication table with the PostgreSQL schema expected by
+            Spring Modulith 2.0 while preserving timestamps previously stored without a zone as UTC.
+        </comment>
+
+        <sql dbms="postgresql">
+            ALTER TABLE event_publication
+                ALTER COLUMN publication_date TYPE TIMESTAMP WITH TIME ZONE
+                    USING publication_date AT TIME ZONE 'UTC',
+                ALTER COLUMN completion_date TYPE TIMESTAMP WITH TIME ZONE
+                    USING completion_date AT TIME ZONE 'UTC',
+                ALTER COLUMN last_resubmission_date TYPE TIMESTAMP WITH TIME ZONE
+                    USING last_resubmission_date AT TIME ZONE 'UTC';
+        </sql>
+
+        <createIndex
+                indexName="event_publication_by_completion_date_idx"
+                tableName="event_publication">
+            <column name="completion_date"/>
+        </createIndex>
+
+        <sql dbms="postgresql">
+            CREATE INDEX event_publication_serialized_event_hash_idx
+                ON event_publication USING hash (serialized_event);
+        </sql>
+
+        <rollback>
+            <dropIndex
+                    indexName="event_publication_serialized_event_hash_idx"
+                    tableName="event_publication"/>
+            <dropIndex
+                    indexName="event_publication_by_completion_date_idx"
+                    tableName="event_publication"/>
+            <sql dbms="postgresql">
+                ALTER TABLE event_publication
+                    ALTER COLUMN publication_date TYPE TIMESTAMP
+                        USING publication_date AT TIME ZONE 'UTC',
+                    ALTER COLUMN completion_date TYPE TIMESTAMP
+                        USING completion_date AT TIME ZONE 'UTC',
+                    ALTER COLUMN last_resubmission_date TYPE TIMESTAMP
+                        USING last_resubmission_date AT TIME ZONE 'UTC';
+            </sql>
+        </rollback>
+    </changeSet>
+</databaseChangeLog>
