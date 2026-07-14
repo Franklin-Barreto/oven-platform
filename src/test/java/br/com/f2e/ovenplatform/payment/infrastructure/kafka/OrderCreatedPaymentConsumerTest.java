@@ -5,11 +5,10 @@ import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.application.RegisterPaymentCommand;
-import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
 import java.util.List;
@@ -46,7 +45,7 @@ class OrderCreatedPaymentConsumerTest {
             ORDER_ID,
             TOTAL_AMOUNT,
             PaymentMethod.CASH,
-            OrderPaymentStatus.PAID,
+            PaymentStatus.PAID,
             List.of(
                 new OrderCreatedItemPayload(
                     PRODUCT_ID, "Pizza Portuguesa", 2, new BigDecimal("60.00"))));
@@ -64,6 +63,7 @@ class OrderCreatedPaymentConsumerTest {
     assertThat(command.amount()).isEqualByComparingTo(TOTAL_AMOUNT);
     assertThat(command.paymentMethod())
         .isEqualTo(br.com.f2e.ovenplatform.payment.domain.PaymentMethod.CASH);
-    assertThat(command.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+    assertThat(command.paymentStatus())
+        .isEqualTo(br.com.f2e.ovenplatform.payment.domain.PaymentStatus.PAID);
   }
 }

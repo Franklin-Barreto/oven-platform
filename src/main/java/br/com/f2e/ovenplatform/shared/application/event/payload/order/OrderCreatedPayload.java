@@ -4,7 +4,8 @@ import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.req
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
@@ -14,7 +15,7 @@ public record OrderCreatedPayload(
     UUID orderId,
     BigDecimal totalAmount,
     PaymentMethod paymentMethod,
-    OrderPaymentStatus paymentStatus,
+    PaymentStatus paymentStatus,
     List<OrderCreatedItemPayload> items) {
 
   public OrderCreatedPayload {

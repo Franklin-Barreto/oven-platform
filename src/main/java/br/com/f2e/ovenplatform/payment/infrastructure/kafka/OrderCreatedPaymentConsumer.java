@@ -5,7 +5,6 @@ import br.com.f2e.ovenplatform.payment.application.RegisterPaymentCommand;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -37,7 +36,7 @@ public class OrderCreatedPaymentConsumer {
             orderCreatedPayload.orderId(),
             orderCreatedPayload.totalAmount(),
             toPaymentMethod(orderCreatedPayload.paymentMethod().name()),
-            toPaymentStatus(orderCreatedPayload.paymentStatus()));
+            toPaymentStatus(orderCreatedPayload.paymentStatus().name()));
 
     try {
       paymentService.registerPaymentFromOrder(command);
@@ -49,11 +48,11 @@ public class OrderCreatedPaymentConsumer {
     }
   }
 
-  private static PaymentStatus toPaymentStatus(OrderPaymentStatus status) {
-    return PaymentStatus.valueOf(status.name());
-  }
-
   private static PaymentMethod toPaymentMethod(String method) {
     return PaymentMethod.valueOf(method);
+  }
+
+  private static PaymentStatus toPaymentStatus(String status) {
+    return PaymentStatus.valueOf(status);
   }
 }

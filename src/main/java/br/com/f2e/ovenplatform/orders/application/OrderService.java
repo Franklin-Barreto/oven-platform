@@ -31,7 +31,6 @@ public class OrderService {
   private final OrderableProductProvider orderableProductProvider;
   private final Clock clock;
   private final ApplicationEventPublisher eventPublisher;
-  private final OrderCreatedEventPublisher orderCreatedEventPublisher;
   private final CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
 
   public OrderService(
@@ -39,13 +38,11 @@ public class OrderService {
       OrderableProductProvider orderableProductProvider,
       Clock clock,
       ApplicationEventPublisher eventPublisher,
-      OrderCreatedEventPublisher orderCreatedEventPublisher,
       CustomerDeliveryInfoProvider customerDeliveryInfoProvider) {
     this.orderRepository = orderRepository;
     this.orderableProductProvider = orderableProductProvider;
     this.clock = clock;
     this.eventPublisher = eventPublisher;
-    this.orderCreatedEventPublisher = orderCreatedEventPublisher;
     this.customerDeliveryInfoProvider = customerDeliveryInfoProvider;
   }
 
@@ -96,7 +93,6 @@ public class OrderService {
             savedOrder.getItems().stream().map(OrderPlacedItem::from).toList());
 
     eventPublisher.publishEvent(orderCreatedEvent);
-    orderCreatedEventPublisher.publish(orderCreatedEvent);
 
     return savedOrder;
   }

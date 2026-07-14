@@ -3,7 +3,8 @@ package br.com.f2e.ovenplatform.shared.application.event.payload.order;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
@@ -22,12 +23,7 @@ class OrderCreatedPayloadTest {
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
-                    null,
-                    ORDER_ID,
-                    TOTAL_AMOUNT,
-                    PaymentMethod.CASH,
-                    OrderPaymentStatus.PAID,
-                    items))
+                    null, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, PaymentStatus.PAID, items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("tenantId must not be null");
   }
@@ -38,12 +34,7 @@ class OrderCreatedPayloadTest {
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
-                    TENANT_ID,
-                    null,
-                    TOTAL_AMOUNT,
-                    PaymentMethod.CASH,
-                    OrderPaymentStatus.PAID,
-                    items))
+                    TENANT_ID, null, TOTAL_AMOUNT, PaymentMethod.CASH, PaymentStatus.PAID, items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("orderId must not be null");
   }
@@ -58,7 +49,7 @@ class OrderCreatedPayloadTest {
                     ORDER_ID,
                     BigDecimal.ZERO,
                     PaymentMethod.CASH,
-                    OrderPaymentStatus.PAID,
+                    PaymentStatus.PAID,
                     items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("totalAmount must be greater than zero");
@@ -70,7 +61,7 @@ class OrderCreatedPayloadTest {
     assertThatThrownBy(
             () ->
                 new OrderCreatedPayload(
-                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, null, OrderPaymentStatus.PAID, items))
+                    TENANT_ID, ORDER_ID, TOTAL_AMOUNT, null, PaymentStatus.PAID, items))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("paymentMethod must not be null");
   }
@@ -95,7 +86,7 @@ class OrderCreatedPayloadTest {
                     ORDER_ID,
                     TOTAL_AMOUNT,
                     PaymentMethod.CASH,
-                    OrderPaymentStatus.PAID,
+                    PaymentStatus.PAID,
                     List.of()))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("items must have at least 1 item");
@@ -107,7 +98,7 @@ class OrderCreatedPayloadTest {
 
     var payload =
         new OrderCreatedPayload(
-            TENANT_ID, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, OrderPaymentStatus.PAID, items);
+            TENANT_ID, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, PaymentStatus.PAID, items);
 
     items.clear();
 

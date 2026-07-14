@@ -34,9 +34,9 @@ import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.domain.exception.InvalidOrderStatusTransitionException;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
@@ -134,7 +134,7 @@ class OrderControllerTest {
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
     assertThat(command.paymentInfo()).isNotNull();
     assertThat(command.paymentInfo().method()).isEqualTo(PaymentMethod.CASH);
-    assertThat(command.paymentInfo().status()).isEqualTo(OrderPaymentStatus.PAID);
+    assertThat(command.paymentInfo().status()).isEqualTo(PaymentStatus.PAID);
   }
 
   @Test
@@ -527,7 +527,7 @@ class OrderControllerTest {
         CUSTOMER_ID,
         CUSTOMER_ADDRESS_ID,
         List.of(new OrderItemRequest(PRODUCT_ID, 3)),
-        new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING));
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING));
   }
 
   private static CreateOrderRequest createOrderRequest(
@@ -535,12 +535,12 @@ class OrderControllerTest {
     return new CreateOrderRequest(
         serviceType,
         List.of(new OrderItemRequest(productId, quantity)),
-        new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
   }
 
   private static CreateOrderRequest createOrderRequest(
       OrderServiceType serviceType, List<OrderItemRequest> items) {
     return new CreateOrderRequest(
-        serviceType, items, new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PAID));
+        serviceType, items, new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
   }
 }

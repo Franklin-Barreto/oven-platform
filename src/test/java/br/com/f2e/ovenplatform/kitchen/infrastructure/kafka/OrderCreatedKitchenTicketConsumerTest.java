@@ -5,10 +5,10 @@ import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.kitchen.application.CreateTicketCommand;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedItemPayload;
 import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderCreatedPayload;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
 import java.util.List;
@@ -51,7 +51,7 @@ class OrderCreatedKitchenTicketConsumerTest {
             ORDER_ID,
             BigDecimal.valueOf(120),
             PaymentMethod.CASH,
-            OrderPaymentStatus.PAID,
+            PaymentStatus.PAID,
             List.of(
                 createdItemPayload(PRODUCT_ID, PRODUCT_NAME, 2, UNIT_PRICE),
                 createdItemPayload(SECOND_PRODUCT_ID, SECOND_PRODUCT_NAME, 1, UNIT_PRICE)));

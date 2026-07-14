@@ -3,8 +3,8 @@ package br.com.f2e.ovenplatform.orders.application;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
-import br.com.f2e.ovenplatform.shared.application.event.payload.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.event.payload.order.OrderPaymentStatus;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -15,7 +15,7 @@ class CreateOrderCommandTest {
   void shouldRequireCustomerIdForDeliveryOrder() {
     var productId = UUID.randomUUID();
     var customerAddressId = UUID.randomUUID();
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING);
     var items = List.of(new CreateOrderItemCommand(productId, 1));
 
     assertThatThrownBy(
@@ -30,7 +30,7 @@ class CreateOrderCommandTest {
   void shouldRequireCustomerAddressIdForDeliveryOrder() {
     var productId = UUID.randomUUID();
     var customerId = UUID.randomUUID();
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, OrderPaymentStatus.PENDING);
+    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING);
     var items = List.of(new CreateOrderItemCommand(productId, 1));
 
     assertThatThrownBy(
