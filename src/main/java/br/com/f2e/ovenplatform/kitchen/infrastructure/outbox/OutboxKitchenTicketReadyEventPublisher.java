@@ -4,16 +4,16 @@ import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConst
 import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.PAYLOAD_VERSION;
 import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
 
-import br.com.f2e.ovenplatform.kitchen.application.KitchenTicketReadyEventPublisher;
 import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.EnqueueOutboxEventCommand;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OutboxKitchenTicketReadyEventPublisher implements KitchenTicketReadyEventPublisher {
+public class OutboxKitchenTicketReadyEventPublisher {
 
   private final OutboxService outboxService;
   private final String kitchenTopic;
@@ -24,8 +24,8 @@ public class OutboxKitchenTicketReadyEventPublisher implements KitchenTicketRead
     this.kitchenTopic = kitchenTopic;
   }
 
-  @Override
-  public void publish(KitchenTicketMarkedAsReadyEvent event) {
+  @ApplicationModuleListener(id = "kitchen-ticket-ready-outbox-publisher")
+  void publish(KitchenTicketMarkedAsReadyEvent event) {
     var payload =
         new KitchenTicketReadyPayload(
             event.tenantId(), event.ticketId(), event.orderId(), event.readyAt());

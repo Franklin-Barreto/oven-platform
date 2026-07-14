@@ -193,7 +193,9 @@ class OutboxOrderCreatedEventPublisherIntegrationTest {
             """
             select count(*)
             from event_publication
-            where serialized_event like ? and status = 'COMPLETED'
+            where listener_id = 'orders-order-created-outbox-publisher'
+              and serialized_event like ?
+              and status = 'COMPLETED'
             """,
             Integer.class,
             serializedEventPattern(orderId)),
