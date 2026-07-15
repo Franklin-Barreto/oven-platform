@@ -1,0 +1,13 @@
+apiVersion: 1
+
+providers:
+  - name: oven-platform
+    orgId: 1
+    folder: Oven Platform
+    folderUid: oven-platform
+    type: file
+    disableDeletion: false
+    updateIntervalSeconds: 30
+    allowUiUpdates: false
+    options:
+      path: /var/lib/grafana/dashboards

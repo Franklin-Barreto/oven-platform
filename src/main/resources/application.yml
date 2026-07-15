@@ -45,3 +45,23 @@ oven:
         retry-max-in-flight: 10
         retry-max-attempts: 5
         completed-retention: 7d
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+  metrics:
+    tags:
+      application: ${spring.application.name}
+      environment: ${OVEN_ENVIRONMENT:local}
+
+    distribution:
+      slo:
+        "[http.server.requests]":
+          - 50ms
+          - 100ms
+          - 200ms
+          - 300ms
+          - 500ms
+          - 1s
