@@ -16,28 +16,15 @@ public class KafkaTopicConfiguration {
   private static final String DEAD_LETTER_TOPIC_SUFFIX = "-dlt";
 
   private final String fulfillmentTopic;
-  private final String kitchenTopic;
 
   public KafkaTopicConfiguration(
-      @Value("${oven.kafka.topics.kitchen}") String kitchenTopic,
       @Value("${oven.kafka.topics.fulfillment}") String fulfillmentTopic) {
-    this.kitchenTopic = kitchenTopic;
     this.fulfillmentTopic = fulfillmentTopic;
-  }
-
-  @Bean
-  NewTopic kitchenEventsTopic() {
-    return topic(kitchenTopic);
   }
 
   @Bean
   NewTopic fulfillmentEventsTopic() {
     return topic(fulfillmentTopic);
-  }
-
-  @Bean
-  NewTopic kitchenEventsDeadLetterTopic() {
-    return deadLetterTopic(kitchenTopic);
   }
 
   @Bean

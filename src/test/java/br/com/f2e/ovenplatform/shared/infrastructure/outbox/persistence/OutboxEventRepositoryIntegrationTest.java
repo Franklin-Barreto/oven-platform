@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence;
 
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -19,8 +19,8 @@ import org.springframework.context.annotation.Import;
 @Import(JpaOutboxEventRepository.class)
 class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
-  @Value("${oven.kafka.topics.kitchen}")
-  private String kitchenTopic;
+  @Value("${oven.kafka.topics.fulfillment}")
+  private String fulfillmentTopic;
 
   @Autowired private OutboxEventRepository repository;
 
@@ -67,8 +67,8 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
     return OutboxEvent.pending(
         AGGREGATE_TYPE,
         orderId,
-        TICKET_READY_EVENT,
-        kitchenTopic,
+        FULFILLMENT_ORDER_READY_EVENT,
+        fulfillmentTopic,
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
@@ -79,8 +79,8 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         new PendingOutboxEvent(
             AGGREGATE_TYPE,
             orderId,
-            TICKET_READY_EVENT,
-            kitchenTopic,
+            FULFILLMENT_ORDER_READY_EVENT,
+            fulfillmentTopic,
             orderId.toString(),
             "{\"orderId\":\"%s\"}".formatted(orderId),
             1));

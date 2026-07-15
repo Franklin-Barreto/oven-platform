@@ -4,17 +4,16 @@ import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventC
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.PAYLOAD_VERSION;
 
-import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentOrderReadyEventPublisher;
 import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderMarkedAsReadyEvent;
 import br.com.f2e.ovenplatform.shared.application.event.payload.FulfillmentOrderReadyPayload;
 import br.com.f2e.ovenplatform.shared.application.outbox.EnqueueOutboxEventCommand;
 import br.com.f2e.ovenplatform.shared.application.outbox.OutboxService;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.modulith.events.ApplicationModuleListener;
 import org.springframework.stereotype.Component;
 
 @Component
-public class OutboxFulfillmentOrderReadyEventPublisher
-    implements FulfillmentOrderReadyEventPublisher {
+public class OutboxFulfillmentOrderReadyEventPublisher {
 
   private final OutboxService outboxService;
   private final String fulfillmentTopic;
@@ -26,7 +25,7 @@ public class OutboxFulfillmentOrderReadyEventPublisher
     this.fulfillmentTopic = fulfillmentTopic;
   }
 
-  @Override
+  @ApplicationModuleListener(id = "fulfillment-order-ready-outbox-publisher")
   public void publish(FulfillmentOrderMarkedAsReadyEvent event) {
     var payload =
         new FulfillmentOrderReadyPayload(event.tenantId(), event.orderId(), event.readyAt());

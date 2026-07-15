@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
@@ -47,8 +47,8 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
   private static final Instant NOW = Instant.parse("2026-06-29T12:00:00Z");
 
-  @Value("${oven.kafka.topics.kitchen}")
-  private String kitchenTopic;
+  @Value("${oven.kafka.topics.fulfillment}")
+  private String fulfillmentTopic;
 
   @Autowired private ConfluentKafkaContainer kafkaContainer;
 
@@ -65,20 +65,20 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
         OutboxEvent.pending(
             AGGREGATE_TYPE,
             orderId,
-            TICKET_READY_EVENT,
-            kitchenTopic,
+            FULFILLMENT_ORDER_READY_EVENT,
+            fulfillmentTopic,
             orderId.toString(),
             payload,
             1));
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
-      consumer.subscribe(List.of(kitchenTopic));
+      consumer.subscribe(List.of(fulfillmentTopic));
 
       outboxPublisher.publishPendingEvents();
 
       var rec = pollRecord(consumer, orderId.toString(), Duration.ofSeconds(10));
 
-      assertThat(rec.topic()).isEqualTo(kitchenTopic);
+      assertThat(rec.topic()).isEqualTo(fulfillmentTopic);
       assertThat(rec.key()).isEqualTo(orderId.toString());
       assertThat(rec.value()).isEqualTo(payload);
     }
@@ -86,7 +86,7 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
     var publishedEvent =
         repository
             .findByAggregateTypeAndAggregateIdAndEventType(
-                AGGREGATE_TYPE, orderId, TICKET_READY_EVENT)
+                AGGREGATE_TYPE, orderId, FULFILLMENT_ORDER_READY_EVENT)
             .orElseThrow();
 
     assertThat(publishedEvent.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
