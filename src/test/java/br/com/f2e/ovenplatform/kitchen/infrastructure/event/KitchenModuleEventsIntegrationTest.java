@@ -1,24 +1,16 @@
 package br.com.f2e.ovenplatform.kitchen.infrastructure.event;
 
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
 import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
-import br.com.f2e.ovenplatform.kitchen.application.CreateTicketCommand;
-import br.com.f2e.ovenplatform.kitchen.application.CreateTicketItemCommand;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
-import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
-import br.com.f2e.ovenplatform.shared.application.outbox.OutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
-import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
-import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
@@ -26,7 +18,6 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
@@ -52,12 +43,8 @@ class KitchenModuleEventsIntegrationTest {
 
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private KitchenService kitchenService;
-  @Autowired private OutboxEventRepository outboxEventRepository;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private PlatformTransactionManager transactionManager;
-
-  @Value("${oven.kafka.topics.kitchen}")
-  private String kitchenTopic;
 
   @BeforeEach
   void cleanPublicationsAndTickets() {
@@ -95,47 +82,6 @@ class KitchenModuleEventsIntegrationTest {
             });
   }
 
-  @Test
-  void shouldPublishOneCanonicalReadyEventAndOneLegacyOutboxRecord() {
-    var ticket = kitchenService.createTicketFromOrder(createTicketCommand());
-
-    kitchenService.startPreparation(TENANT_ID, ticket.getId());
-    kitchenService.markAsReady(TENANT_ID, ticket.getId());
-    var readyAt = kitchenService.findById(TENANT_ID, ticket.getId()).getReadyAt();
-
-    await()
-        .atMost(ASYNC_TIMEOUT)
-        .untilAsserted(
-            () ->
-                assertThat(
-                        outboxEventRepository.findByAggregateTypeAndAggregateIdAndEventType(
-                            AGGREGATE_TYPE, ticket.getId(), TICKET_READY_EVENT))
-                    .isPresent());
-    awaitCompletedPublication("kitchen-ticket-ready-outbox-publisher", ticket.getId(), 1);
-
-    kitchenService.markAsReady(TENANT_ID, ticket.getId());
-
-    var outboxEvent =
-        outboxEventRepository
-            .findByAggregateTypeAndAggregateIdAndEventType(
-                AGGREGATE_TYPE, ticket.getId(), TICKET_READY_EVENT)
-            .orElseThrow();
-
-    assertThat(outboxEvent.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
-    assertThat(outboxEvent.getTopic()).isEqualTo(kitchenTopic);
-    assertThat(outboxEvent.getMessageKey()).isEqualTo(ORDER_ID.toString());
-    assertThat(legacyOutboxRecordCount(ticket.getId())).isOne();
-    assertThat(completedPublicationCount("kitchen-ticket-ready-outbox-publisher", ticket.getId()))
-        .isOne();
-
-    var payload = JsonUtils.fromJson(outboxEvent.getPayload(), KitchenTicketReadyPayload.class);
-
-    assertThat(payload.tenantId()).isEqualTo(TENANT_ID);
-    assertThat(payload.ticketId()).isEqualTo(ticket.getId());
-    assertThat(payload.orderId()).isEqualTo(ORDER_ID);
-    assertThat(payload.readyAt()).isEqualTo(readyAt);
-  }
-
   private void publishInTransaction(OrderCreatedEvent event) {
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(_ -> eventPublisher.publishEvent(event));
@@ -151,13 +97,6 @@ class KitchenModuleEventsIntegrationTest {
         List.of(new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", 2, new BigDecimal("60.00"))));
   }
 
-  private CreateTicketCommand createTicketCommand() {
-    return new CreateTicketCommand(
-        TENANT_ID,
-        ORDER_ID,
-        List.of(new CreateTicketItemCommand(PRODUCT_ID, "Pizza Portuguesa", 2)));
-  }
-
   private int ticketCount(UUID orderId) {
     return requireNonNull(
         jdbc.queryForObject(
@@ -166,21 +105,6 @@ class KitchenModuleEventsIntegrationTest {
             TENANT_ID,
             orderId),
         "Kitchen ticket count not returned for order " + orderId);
-  }
-
-  private int legacyOutboxRecordCount(UUID ticketId) {
-    return requireNonNull(
-        jdbc.queryForObject(
-            """
-            select count(*)
-            from outbox_events
-            where aggregate_type = ? and aggregate_id = ? and event_type = ?
-            """,
-            Integer.class,
-            AGGREGATE_TYPE,
-            ticketId,
-            TICKET_READY_EVENT),
-        "Legacy outbox record count not returned for ticket " + ticketId);
   }
 
   private void awaitCompletedPublication(String listenerId, UUID eventId, int expectedCount) {

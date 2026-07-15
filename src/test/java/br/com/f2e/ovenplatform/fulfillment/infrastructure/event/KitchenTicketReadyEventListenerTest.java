@@ -1,12 +1,11 @@
-package br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka;
+package br.com.f2e.ovenplatform.fulfillment.infrastructure.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
 import br.com.f2e.ovenplatform.fulfillment.application.PreparationReadyCommand;
-import br.com.f2e.ovenplatform.shared.application.event.payload.KitchenTicketReadyPayload;
-import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import br.com.f2e.ovenplatform.kitchen.application.event.KitchenTicketMarkedAsReadyEvent;
 import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -17,7 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
-class KitchenTicketReadyConsumerTest {
+class KitchenTicketReadyEventListenerTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID TICKET_ID = UUID.fromString("b7210129-f1d5-4942-8d0a-b144e518aecc");
@@ -26,19 +25,16 @@ class KitchenTicketReadyConsumerTest {
 
   @Mock private FulfillmentService fulfillmentService;
 
-  private KitchenTicketReadyConsumer consumer;
+  private KitchenTicketReadyEventListener listener;
 
   @BeforeEach
   void setUp() {
-    consumer = new KitchenTicketReadyConsumer(fulfillmentService, JsonUtils.getObjectMapper());
+    listener = new KitchenTicketReadyEventListener(fulfillmentService);
   }
 
   @Test
-  void shouldHandleKitchenTicketReadyPayloadAsPreparationReadyCommand() {
-    var payload = new KitchenTicketReadyPayload(TENANT_ID, TICKET_ID, ORDER_ID, READY_AT);
-    var json = JsonUtils.toJson(payload);
-
-    consumer.on(json);
+  void shouldHandleKitchenTicketReadyEventAsPreparationReadyCommand() {
+    listener.on(new KitchenTicketMarkedAsReadyEvent(TENANT_ID, TICKET_ID, ORDER_ID, READY_AT));
 
     var commandCaptor = ArgumentCaptor.forClass(PreparationReadyCommand.class);
     verify(fulfillmentService).handlePreparationReady(commandCaptor.capture());

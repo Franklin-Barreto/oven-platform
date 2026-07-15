@@ -6,8 +6,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
-import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.KitchenTicketReadyConsumer;
+import br.com.f2e.ovenplatform.orders.application.OrderService;
+import br.com.f2e.ovenplatform.orders.infrastructure.kafka.FulfillmentOrderReadyConsumer;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.test.KafkaTestContainerConfiguration;
 import java.time.Duration;
 import java.util.List;
@@ -37,7 +37,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
       KafkaTestContainerConfiguration.class,
       KafkaTopicConfiguration.class,
       KafkaConsumerErrorHandlingConfiguration.class,
-      KitchenTicketReadyConsumer.class,
+      FulfillmentOrderReadyConsumer.class,
       KafkaConsumerErrorHandlingIntegrationTest.TestConfig.class
     })
 @ImportAutoConfiguration({KafkaAutoConfiguration.class, JacksonAutoConfiguration.class})
@@ -46,36 +46,36 @@ class KafkaConsumerErrorHandlingIntegrationTest {
 
   private static final String DEAD_LETTER_TOPIC_SUFFIX = "-dlt";
 
-  @Value("${oven.kafka.topics.kitchen}")
-  private String kitchenTopic;
+  @Value("${oven.kafka.topics.fulfillment}")
+  private String fulfillmentTopic;
 
   @Autowired private ConfluentKafkaContainer kafkaContainer;
   @Autowired private KafkaTemplate<String, String> kafkaTemplate;
-  @Autowired private FulfillmentService fulfillmentService;
+  @Autowired private OrderService orderService;
 
   @Test
   void shouldSendMessageToDeadLetterTopicWithoutRetryingIllegalArgumentException()
       throws Exception {
     var orderId = UUID.randomUUID();
-    var payload = kitchenTicketReadyPayload(orderId);
+    var payload = fulfillmentOrderReadyPayload(orderId);
 
-    doThrow(new IllegalArgumentException("Invalid kitchen contract"))
-        .when(fulfillmentService)
-        .handlePreparationReady(any());
+    doThrow(new IllegalArgumentException("Invalid fulfillment contract"))
+        .when(orderService)
+        .markAsReady(any(), any(), any());
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
-      consumer.subscribe(List.of(kitchenTopic + DEAD_LETTER_TOPIC_SUFFIX));
+      consumer.subscribe(List.of(fulfillmentTopic + DEAD_LETTER_TOPIC_SUFFIX));
 
-      kafkaTemplate.send(kitchenTopic, orderId.toString(), payload).get(10, TimeUnit.SECONDS);
+      kafkaTemplate.send(fulfillmentTopic, orderId.toString(), payload).get(10, TimeUnit.SECONDS);
 
       var deadLetterRecord = pollRecord(consumer, orderId.toString(), Duration.ofSeconds(10));
 
-      assertThat(deadLetterRecord.topic()).isEqualTo(kitchenTopic + DEAD_LETTER_TOPIC_SUFFIX);
+      assertThat(deadLetterRecord.topic()).isEqualTo(fulfillmentTopic + DEAD_LETTER_TOPIC_SUFFIX);
       assertThat(deadLetterRecord.key()).isEqualTo(orderId.toString());
       assertThat(deadLetterRecord.value()).isEqualTo(payload);
     }
 
-    verify(fulfillmentService).handlePreparationReady(any());
+    verify(orderService).markAsReady(any(), any(), any());
   }
 
   private ConsumerRecord<String, String> pollRecord(
@@ -109,11 +109,10 @@ class KafkaConsumerErrorHandlingIntegrationTest {
         StringDeserializer.class);
   }
 
-  private String kitchenTicketReadyPayload(UUID orderId) {
+  private String fulfillmentOrderReadyPayload(UUID orderId) {
     return """
         {
           "tenantId": "a6210129-f1d5-4942-8d0a-b144e518aecc",
-          "ticketId": "b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234",
           "orderId": "%s",
           "readyAt": "2026-07-14T20:00:00Z"
         }
@@ -126,8 +125,8 @@ class KafkaConsumerErrorHandlingIntegrationTest {
   static class TestConfig {
 
     @Bean
-    FulfillmentService fulfillmentService() {
-      return mock(FulfillmentService.class);
+    OrderService orderService() {
+      return mock(OrderService.class);
     }
   }
 }
