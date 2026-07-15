@@ -32,7 +32,13 @@ public class SecurityConfig {
         .csrf(AbstractHttpConfigurer::disable)
         .authorizeHttpRequests(
             authorize ->
-                authorize.requestMatchers("/auth/login").permitAll().anyRequest().authenticated());
+                authorize
+                    .requestMatchers(
+                        "/auth/login", "/actuator/health", "/actuator/info", "/actuator/prometheus")
+                    .permitAll()
+                    .anyRequest()
+                    .authenticated());
+
     return httpSecurity.build();
   }
 

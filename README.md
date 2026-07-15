@@ -416,8 +416,13 @@ This is the only internal durable event mechanism. The custom `outbox_events` ta
 The tracked local Compose setup provides:
 
 - PostgreSQL on port `5432`
+- Prometheus on port `9090`
+- Grafana on port `3000`
 
 No message broker is required to run the application locally.
+
+See [Local observability](docs/observability.md) for startup instructions, URLs, credentials,
+dashboard provisioning, metric conventions, and the intended production security boundary.
 
 ---
 
