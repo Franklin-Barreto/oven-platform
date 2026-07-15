@@ -28,10 +28,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(
     properties = {
       "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
-      "oven.events.publication.maintenance.enabled=false",
-      "oven.outbox.publishing.enabled=false",
-      "spring.kafka.admin.auto-create=false",
-      "spring.kafka.listener.auto-startup=false"
+      "oven.events.publication.maintenance.enabled=false"
     })
 @Import(PostgresTestContainerConfiguration.class)
 class KitchenModuleEventsIntegrationTest {
@@ -49,7 +46,6 @@ class KitchenModuleEventsIntegrationTest {
   @BeforeEach
   void cleanPublicationsAndTickets() {
     jdbc.update("delete from event_publication");
-    jdbc.update("delete from outbox_events");
     jdbc.update("delete from kitchen_ticket_items");
     jdbc.update("delete from kitchen_tickets");
   }

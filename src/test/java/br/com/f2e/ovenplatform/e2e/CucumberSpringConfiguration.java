@@ -9,9 +9,6 @@ import org.springframework.context.annotation.Import;
 @CucumberContextConfiguration
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
-    properties = {
-      "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
-      "spring.kafka.listener.auto-startup=false"
-    })
+    properties = "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123")
 @Import(PostgresTestContainerConfiguration.class)
 class CucumberSpringConfiguration {}

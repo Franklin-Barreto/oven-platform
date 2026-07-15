@@ -39,10 +39,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(
     properties = {
       "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
-      "oven.events.publication.maintenance.enabled=false",
-      "oven.outbox.publishing.enabled=false",
-      "spring.kafka.admin.auto-create=false",
-      "spring.kafka.listener.auto-startup=false"
+      "oven.events.publication.maintenance.enabled=false"
     })
 @Import(PostgresTestContainerConfiguration.class)
 class OrdersReadinessModuleEventsIntegrationTest {
@@ -61,9 +58,8 @@ class OrdersReadinessModuleEventsIntegrationTest {
   @MockitoBean private OrderableProductProvider orderableProductProvider;
 
   @BeforeEach
-  void cleanPublicationsOutboxPaymentsTicketsAndOrders() {
+  void cleanPublicationsPaymentsTicketsAndOrders() {
     jdbc.update("delete from event_publication");
-    jdbc.update("delete from outbox_events");
     jdbc.update("delete from payments");
     jdbc.update("delete from kitchen_ticket_items");
     jdbc.update("delete from kitchen_tickets");
@@ -72,7 +68,7 @@ class OrdersReadinessModuleEventsIntegrationTest {
   }
 
   @Test
-  void shouldPropagateOrderCreationThroughKitchenReadinessWithoutKafka() {
+  void shouldPropagateOrderCreationThroughKitchenReadiness() {
     when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(PRODUCT_ID)))
         .thenReturn(List.of(new OrderableProduct(PRODUCT_ID, "Pizza Portuguesa", UNIT_PRICE)));
 
@@ -97,7 +93,6 @@ class OrdersReadinessModuleEventsIntegrationTest {
 
     awaitCompletedPublication("fulfillment-kitchen-ticket-ready-listener", order.getId(), 1);
     awaitCompletedPublication("orders-fulfillment-order-ready-listener", order.getId(), 1);
-    assertThat(outboxCount()).isZero();
   }
 
   @Test
@@ -143,12 +138,6 @@ class OrdersReadinessModuleEventsIntegrationTest {
             TENANT_ID,
             orderId),
         "Kitchen ticket count not returned for order " + orderId);
-  }
-
-  private int outboxCount() {
-    return requireNonNull(
-        jdbc.queryForObject("select count(*) from outbox_events", Integer.class),
-        "Outbox count not returned");
   }
 
   private void awaitCompletedPublication(String listenerId, UUID orderId, int expectedCount) {

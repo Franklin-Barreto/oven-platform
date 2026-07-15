@@ -34,10 +34,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @SpringBootTest(
     classes = EventPublicationRegistryIntegrationTest.TestApplication.class,
-    properties = {
-      "oven.events.publication.maintenance.enabled=false",
-      "spring.kafka.listener.auto-startup=false"
-    })
+    properties = "oven.events.publication.maintenance.enabled=false")
 @Import(PostgresTestContainerConfiguration.class)
 class EventPublicationRegistryIntegrationTest {
 
@@ -105,6 +102,23 @@ class EventPublicationRegistryIntegrationTest {
         .contains(
             "event_publication_by_completion_date_idx",
             "event_publication_serialized_event_hash_idx");
+  }
+
+  @Test
+  void shouldRemoveLegacyOutboxTable() {
+    var legacyTableCount =
+        requireNonNull(
+            jdbc.queryForObject(
+                """
+                select count(*)
+                from information_schema.tables
+                where table_schema = current_schema()
+                  and table_name = 'outbox_events'
+                """,
+                Integer.class),
+            "Legacy outbox table count not returned");
+
+    assertThat(legacyTableCount).isZero();
   }
 
   @Test

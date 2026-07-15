@@ -32,16 +32,16 @@ This project currently does not use formal versioned releases. Changes are group
 - Lifecycle timestamps for order readiness, delivery, and cancellation.
 - Invalid order transition protection.
 - Order creation with required initial payment information.
-- Order-created integration event publication through the outbox.
+- Durable order-created application event publication through Spring Modulith.
 - Fulfillment-order-ready consumption to mark orders as ready.
 - Kitchen module.
 - Kitchen ticket creation from order-created events.
 - Kitchen ticket lookup by order id.
 - Kitchen ticket preparation workflow.
-- Kitchen-ticket-ready integration event publication through the outbox.
+- Durable kitchen-ticket-ready application event publication through Spring Modulith.
 - Fulfillment module.
 - Kitchen-ticket-ready consumption in Fulfillment.
-- Fulfillment-order-ready integration event publication through the outbox.
+- Durable fulfillment-order-ready application event publication through Spring Modulith.
 - Initial Payment module.
 - `Payment` aggregate.
 - `PaymentMethod` and `PaymentStatus`.
@@ -51,18 +51,9 @@ This project currently does not use formal versioned releases. Changes are group
 - Application use case to mark an order payment as paid by tenant and order.
 - Application-managed `paidAt` handling using `Clock`.
 - Liquibase migration for payments.
-- Shared integration event payload contracts.
-- Shared outbox domain model and application services.
-- Kafka outbox event publisher.
-- Scheduled outbox event publisher.
-- Configurable outbox publishing enablement and fixed delay.
-- Configurable Kafka topics and consumer groups.
-- Local Kafka and Kafka UI support through Compose.
-- Kafka topic auto-creation support for local/development environments.
-- Dead-letter topic creation for configured Kafka topics.
-- Configurable Kafka consumer retry interval and max retry count.
-- Kafka consumer error handling with `IllegalArgumentException` classified as non-retryable.
-- Kafka/Testcontainers coverage for consumer dead-letter handling.
+- Typed internal application event contracts.
+- PostgreSQL-backed Spring Modulith event publication registry.
+- Configurable recovery and retention maintenance for durable event publications.
 - Global API error response contract.
 - Stable API error codes.
 - Shared `ResourceNotFoundException`.
@@ -81,11 +72,9 @@ This project currently does not use formal versioned releases. Changes are group
 
 - Order creation now requires payment information.
 - Order totals remain owned by Orders and are not accepted from the frontend.
-- Module communication moved toward shared Kafka integration payloads instead of Spring Modulith application events.
-- Payments are created from order-created Kafka events instead of direct API calls.
-- Kitchen and Payment consumers now translate shared integration payloads into local application commands.
-- Event publisher ports now represent module-specific integration publishing boundaries implemented by outbox adapters.
-- Outbox persistence adapters were moved under `shared.infrastructure.outbox.persistence`.
+- Internal module communication uses typed Spring Modulith application events.
+- Payments are created from durable order-created application events instead of direct API calls.
+- Kitchen and Payment listeners translate publishing-module event contracts into local application commands.
 - Business timestamps such as `paidAt`, `readyAt`, `deliveredAt`, and `cancelledAt` are handled by application/domain flows instead of database defaults.
 - Web request/response DTOs for Orders were organized under the web DTO package.
 - Architecture tests were tightened to prevent `shared` from depending on business modules.
@@ -97,8 +86,13 @@ This project currently does not use formal versioned releases. Changes are group
 - Prevented paid payments from being created without `paidAt`.
 - Prevented pending payments from receiving a paid timestamp during creation.
 - Prevented repeated paid-payment commands from overwriting the original `paidAt`.
-- Prevented shared integration payload contracts from depending on module-specific domain types.
-- Prevented invalid Kafka consumer use-case failures from being retried before dead-letter recovery.
+- Prevented internal event contracts from depending on transport-specific payloads.
+
+### Removed
+
+- Internal Kafka producer, consumer, retry, topic, and test infrastructure.
+- Custom internal outbox domain, persistence, scheduler, and publisher infrastructure.
+- The legacy `outbox_events` table through a forward-only Liquibase migration.
 
 ---
 
