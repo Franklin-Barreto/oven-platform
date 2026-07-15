@@ -11,11 +11,9 @@ oven:
         max-retries: 3
     topics:
       auto-create: true
-      orders: order-events
       kitchen: kitchen-events
       fulfillment: fulfillment-events
     consumer-groups:
       orders: oven-platform-orders-test
       kitchen: oven-platform-kitchen-test
       fulfillment: oven-platform-fulfillment-test
-      payment: oven-platform-payment-test

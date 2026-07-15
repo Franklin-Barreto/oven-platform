@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -25,7 +25,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class OutboxPublisherTest {
 
   private static final Instant NOW = Instant.parse("2026-06-28T20:00:00Z");
-  private static final String ORDER_TOPIC = "order-events";
+  private static final String KITCHEN_TOPIC = "kitchen-events";
 
   @Mock private OutboxEventRepository repository;
   @Mock private OutboxEventPublisher eventPublisher;
@@ -88,8 +88,8 @@ class OutboxPublisherTest {
     return OutboxEvent.pending(
         AGGREGATE_TYPE,
         orderId,
-        ORDER_CREATED_EVENT,
-        ORDER_TOPIC,
+        TICKET_READY_EVENT,
+        KITCHEN_TOPIC,
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
