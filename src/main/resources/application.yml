@@ -59,11 +59,6 @@ oven:
       retry:
         interval: 1s
         max-retries: 3
-    topics:
-      auto-create: true
-      fulfillment: fulfillment-events
-    consumer-groups:
-      orders: oven-platform-orders
   outbox:
     publishing:
       enabled: true

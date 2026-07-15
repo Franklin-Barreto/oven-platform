@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
@@ -25,7 +23,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class OutboxPublisherTest {
 
   private static final Instant NOW = Instant.parse("2026-06-28T20:00:00Z");
-  private static final String FULFILLMENT_TOPIC = "fulfillment-events";
+  private static final String AGGREGATE_TYPE = "TEST_AGGREGATE";
+  private static final String EVENT_TYPE = "test.event";
+  private static final String TEST_TOPIC = "test-events";
 
   @Mock private OutboxEventRepository repository;
   @Mock private OutboxEventPublisher eventPublisher;
@@ -88,8 +88,8 @@ class OutboxPublisherTest {
     return OutboxEvent.pending(
         AGGREGATE_TYPE,
         orderId,
-        FULFILLMENT_ORDER_READY_EVENT,
-        FULFILLMENT_TOPIC,
+        EVENT_TYPE,
+        TEST_TOPIC,
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);

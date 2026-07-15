@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -13,14 +11,14 @@ import java.time.Instant;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Import;
 
 @Import(JpaOutboxEventRepository.class)
 class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
-  @Value("${oven.kafka.topics.fulfillment}")
-  private String fulfillmentTopic;
+  private static final String AGGREGATE_TYPE = "TEST_AGGREGATE";
+  private static final String EVENT_TYPE = "test.event";
+  private static final String TEST_TOPIC = "test-events";
 
   @Autowired private OutboxEventRepository repository;
 
@@ -67,8 +65,8 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
     return OutboxEvent.pending(
         AGGREGATE_TYPE,
         orderId,
-        FULFILLMENT_ORDER_READY_EVENT,
-        fulfillmentTopic,
+        EVENT_TYPE,
+        TEST_TOPIC,
         orderId.toString(),
         "{\"orderId\":\"%s\"}".formatted(orderId),
         1);
@@ -79,8 +77,8 @@ class OutboxEventRepositoryIntegrationTest extends DataJpaIntegrationTest {
         new PendingOutboxEvent(
             AGGREGATE_TYPE,
             orderId,
-            FULFILLMENT_ORDER_READY_EVENT,
-            fulfillmentTopic,
+            EVENT_TYPE,
+            TEST_TOPIC,
             orderId.toString(),
             "{\"orderId\":\"%s\"}".formatted(orderId),
             1));

@@ -1,13 +1,10 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEventStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.KafkaOutboxEventPublisher;
-import br.com.f2e.ovenplatform.shared.infrastructure.kafka.KafkaTopicConfiguration;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.test.KafkaTestContainerConfiguration;
 import br.com.f2e.ovenplatform.shared.infrastructure.outbox.persistence.JpaOutboxEventRepository;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
@@ -18,37 +15,35 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import org.apache.kafka.clients.admin.NewTopic;
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.consumer.ConsumerRecord;
 import org.apache.kafka.clients.consumer.KafkaConsumer;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
 import org.springframework.boot.kafka.autoconfigure.KafkaAutoConfiguration;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
-import org.springframework.test.context.TestPropertySource;
+import org.springframework.kafka.config.TopicBuilder;
 import org.testcontainers.kafka.ConfluentKafkaContainer;
 
 @Import({
   KafkaTestContainerConfiguration.class,
   OutboxPublisher.class,
   KafkaOutboxEventPublisher.class,
-  KafkaTopicConfiguration.class,
   JpaOutboxEventRepository.class,
   OutboxPublisherKafkaIntegrationTest.TestConfig.class
 })
 @ImportAutoConfiguration(KafkaAutoConfiguration.class)
-@TestPropertySource(properties = "oven.kafka.topics.auto-create=true")
 class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
   private static final Instant NOW = Instant.parse("2026-06-29T12:00:00Z");
-
-  @Value("${oven.kafka.topics.fulfillment}")
-  private String fulfillmentTopic;
+  private static final String AGGREGATE_TYPE = "TEST_AGGREGATE";
+  private static final String EVENT_TYPE = "test.event";
+  private static final String TEST_TOPIC = "test-events";
 
   @Autowired private ConfluentKafkaContainer kafkaContainer;
 
@@ -63,30 +58,23 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
 
     repository.save(
         OutboxEvent.pending(
-            AGGREGATE_TYPE,
-            orderId,
-            FULFILLMENT_ORDER_READY_EVENT,
-            fulfillmentTopic,
-            orderId.toString(),
-            payload,
-            1));
+            AGGREGATE_TYPE, orderId, EVENT_TYPE, TEST_TOPIC, orderId.toString(), payload, 1));
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
-      consumer.subscribe(List.of(fulfillmentTopic));
+      consumer.subscribe(List.of(TEST_TOPIC));
 
       outboxPublisher.publishPendingEvents();
 
       var rec = pollRecord(consumer, orderId.toString(), Duration.ofSeconds(10));
 
-      assertThat(rec.topic()).isEqualTo(fulfillmentTopic);
+      assertThat(rec.topic()).isEqualTo(TEST_TOPIC);
       assertThat(rec.key()).isEqualTo(orderId.toString());
       assertThat(rec.value()).isEqualTo(payload);
     }
 
     var publishedEvent =
         repository
-            .findByAggregateTypeAndAggregateIdAndEventType(
-                AGGREGATE_TYPE, orderId, FULFILLMENT_ORDER_READY_EVENT)
+            .findByAggregateTypeAndAggregateIdAndEventType(AGGREGATE_TYPE, orderId, EVENT_TYPE)
             .orElseThrow();
 
     assertThat(publishedEvent.getStatus()).isEqualTo(OutboxEventStatus.PUBLISHED);
@@ -132,6 +120,11 @@ class OutboxPublisherKafkaIntegrationTest extends DataJpaIntegrationTest {
     @Bean
     Clock clock() {
       return Clock.fixed(NOW, ZoneOffset.UTC);
+    }
+
+    @Bean
+    NewTopic testEventsTopic() {
+      return TopicBuilder.name(TEST_TOPIC).partitions(1).replicas(1).build();
     }
   }
 }
