@@ -1,7 +1,5 @@
 package br.com.f2e.ovenplatform.shared.domain.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -10,7 +8,9 @@ import org.junit.jupiter.api.Test;
 
 class OutboxEventTest {
 
-  private static final String FULFILLMENT_TOPIC = "fulfillment-events";
+  private static final String AGGREGATE_TYPE = "TEST_AGGREGATE";
+  private static final String EVENT_TYPE = "test.event";
+  private static final String TEST_TOPIC = "test-events";
 
   @Test
   void shouldCreatePendingEventWithoutIdempotencyKey() {
@@ -20,8 +20,8 @@ class OutboxEventTest {
         OutboxEvent.pending(
             AGGREGATE_TYPE,
             orderId,
-            FULFILLMENT_ORDER_READY_EVENT,
-            FULFILLMENT_TOPIC,
+            EVENT_TYPE,
+            TEST_TOPIC,
             orderId.toString(),
             "{\"orderId\":\"%s\"}".formatted(orderId),
             1);
@@ -37,11 +37,10 @@ class OutboxEventTest {
 
     var event =
         OutboxEvent.pendingIdempotently(
-            pendingEvent(
-                orderId, FULFILLMENT_ORDER_READY_EVENT, "{\"orderId\":\"%s\"}".formatted(orderId)));
+            pendingEvent(orderId, EVENT_TYPE, "{\"orderId\":\"%s\"}".formatted(orderId)));
 
     assertThat(event.getIdempotencyKey())
-        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, FULFILLMENT_ORDER_READY_EVENT));
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, EVENT_TYPE));
   }
 
   @Test
@@ -69,6 +68,6 @@ class OutboxEventTest {
 
   private PendingOutboxEvent pendingEvent(UUID orderId, String eventType, String payload) {
     return new PendingOutboxEvent(
-        AGGREGATE_TYPE, orderId, eventType, FULFILLMENT_TOPIC, orderId.toString(), payload, 1);
+        AGGREGATE_TYPE, orderId, eventType, TEST_TOPIC, orderId.toString(), payload, 1);
   }
 }

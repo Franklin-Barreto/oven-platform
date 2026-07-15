@@ -1,8 +1,5 @@
 package br.com.f2e.ovenplatform.shared.application.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.FULFILLMENT_ORDER_READY_EVENT;
-import static br.com.f2e.ovenplatform.shared.application.event.FulfillmentEventConstants.PAYLOAD_VERSION;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.shared.domain.outbox.OutboxEvent;
@@ -29,7 +26,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
 
-  private static final String FULFILLMENT_TOPIC = "fulfillment-events";
+  private static final String AGGREGATE_TYPE = "TEST_AGGREGATE";
+  private static final String EVENT_TYPE = "test.event";
+  private static final String TEST_TOPIC = "test-events";
+  private static final int PAYLOAD_VERSION = 1;
   private static final Instant READY_AT = Instant.parse("2026-05-12T20:30:00Z");
 
   @Autowired private OutboxService outboxService;
@@ -39,8 +39,8 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
   void shouldReturnFalseWhenIdempotentEventAlreadyExists() {
     var orderId = UUID.randomUUID();
 
-    var firstResult = enqueueFulfillmentOrderReady(orderId, READY_AT);
-    var secondResult = enqueueFulfillmentOrderReady(orderId, Instant.parse("2026-05-12T20:45:00Z"));
+    var firstResult = enqueueEvent(orderId, READY_AT);
+    var secondResult = enqueueEvent(orderId, Instant.parse("2026-05-12T20:45:00Z"));
 
     assertThat(firstResult).isTrue();
     assertThat(secondResult).isFalse();
@@ -49,7 +49,7 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
     var event = findOutboxEvent(orderId);
 
     assertThat(event.getIdempotencyKey())
-        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, FULFILLMENT_ORDER_READY_EVENT));
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, EVENT_TYPE));
     assertThat(event.getPayload()).contains(READY_AT.toString());
   }
 
@@ -89,19 +89,18 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
     start.await();
 
     return Boolean.TRUE.equals(
-        new TransactionTemplate(transactionManager)
-            .execute(_ -> enqueueFulfillmentOrderReady(orderId, readyAt)));
+        new TransactionTemplate(transactionManager).execute(_ -> enqueueEvent(orderId, readyAt)));
   }
 
-  private boolean enqueueFulfillmentOrderReady(UUID orderId, Instant readyAt) {
+  private boolean enqueueEvent(UUID orderId, Instant readyAt) {
     return outboxService.enqueueIdempotently(
         new EnqueueOutboxEventCommand(
             AGGREGATE_TYPE,
             orderId,
-            FULFILLMENT_ORDER_READY_EVENT,
-            FULFILLMENT_TOPIC,
+            EVENT_TYPE,
+            TEST_TOPIC,
             orderId.toString(),
-            new FulfillmentOrderReadyTestPayload(orderId, readyAt),
+            new TestPayload(orderId, readyAt),
             PAYLOAD_VERSION));
   }
 
@@ -118,7 +117,7 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
             Long.class)
         .setParameter("aggregateType", AGGREGATE_TYPE)
         .setParameter("aggregateId", orderId)
-        .setParameter("eventType", FULFILLMENT_ORDER_READY_EVENT)
+        .setParameter("eventType", EVENT_TYPE)
         .getSingleResult();
   }
 
@@ -135,7 +134,7 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
             OutboxEvent.class)
         .setParameter("aggregateType", AGGREGATE_TYPE)
         .setParameter("aggregateId", orderId)
-        .setParameter("eventType", FULFILLMENT_ORDER_READY_EVENT)
+        .setParameter("eventType", EVENT_TYPE)
         .getSingleResult();
   }
 
@@ -147,5 +146,5 @@ class OutboxServiceIntegrationTest extends DataJpaIntegrationTest {
     }
   }
 
-  private record FulfillmentOrderReadyTestPayload(UUID orderId, Instant readyAt) {}
+  private record TestPayload(UUID orderId, Instant readyAt) {}
 }

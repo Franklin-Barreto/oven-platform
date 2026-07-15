@@ -9,8 +9,3 @@ oven:
       retry:
         interval: 10ms
         max-retries: 3
-    topics:
-      auto-create: true
-      fulfillment: fulfillment-events
-    consumer-groups:
-      orders: oven-platform-orders-test
