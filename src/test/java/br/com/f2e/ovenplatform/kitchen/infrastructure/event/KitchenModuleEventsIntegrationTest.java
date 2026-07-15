@@ -75,12 +75,10 @@ class KitchenModuleEventsIntegrationTest {
 
     await().atMost(ASYNC_TIMEOUT).untilAsserted(() -> assertThat(ticketCount(ORDER_ID)).isOne());
     awaitCompletedPublication("kitchen-order-created-listener", ORDER_ID, 1);
-    awaitCompletedPublication("orders-order-created-outbox-publisher", ORDER_ID, 1);
 
     publishInTransaction(event);
 
     awaitCompletedPublication("kitchen-order-created-listener", ORDER_ID, 2);
-    awaitCompletedPublication("orders-order-created-outbox-publisher", ORDER_ID, 2);
 
     var ticket = kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID);
 

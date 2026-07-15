@@ -61,14 +61,12 @@ oven:
         max-retries: 3
     topics:
       auto-create: true
-      orders: order-events
       kitchen: kitchen-events
       fulfillment: fulfillment-events
     consumer-groups:
       orders: oven-platform-orders
       kitchen: oven-platform-kitchen
       fulfillment: oven-platform-fulfillment
-      payment: oven-platform-payment
   outbox:
     publishing:
       enabled: true

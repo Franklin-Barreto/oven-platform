@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.shared.domain.outbox;
 
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.AGGREGATE_TYPE;
-import static br.com.f2e.ovenplatform.shared.application.event.OrderEventConstants.ORDER_CREATED_EVENT;
+import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.AGGREGATE_TYPE;
+import static br.com.f2e.ovenplatform.shared.application.event.KitchenEventConstants.TICKET_READY_EVENT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 
 class OutboxEventTest {
 
-  private static final String ORDER_TOPIC = "order-events";
+  private static final String KITCHEN_TOPIC = "kitchen-events";
 
   @Test
   void shouldCreatePendingEventWithoutIdempotencyKey() {
@@ -20,8 +20,8 @@ class OutboxEventTest {
         OutboxEvent.pending(
             AGGREGATE_TYPE,
             orderId,
-            ORDER_CREATED_EVENT,
-            ORDER_TOPIC,
+            TICKET_READY_EVENT,
+            KITCHEN_TOPIC,
             orderId.toString(),
             "{\"orderId\":\"%s\"}".formatted(orderId),
             1);
@@ -37,10 +37,10 @@ class OutboxEventTest {
 
     var event =
         OutboxEvent.pendingIdempotently(
-            pendingEvent(orderId, ORDER_CREATED_EVENT, "{\"orderId\":\"%s\"}".formatted(orderId)));
+            pendingEvent(orderId, TICKET_READY_EVENT, "{\"orderId\":\"%s\"}".formatted(orderId)));
 
     assertThat(event.getIdempotencyKey())
-        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, ORDER_CREATED_EVENT));
+        .isEqualTo("%s:%s:%s".formatted(AGGREGATE_TYPE, orderId, TICKET_READY_EVENT));
   }
 
   @Test
@@ -68,6 +68,6 @@ class OutboxEventTest {
 
   private PendingOutboxEvent pendingEvent(UUID orderId, String eventType, String payload) {
     return new PendingOutboxEvent(
-        AGGREGATE_TYPE, orderId, eventType, ORDER_TOPIC, orderId.toString(), payload, 1);
+        AGGREGATE_TYPE, orderId, eventType, KITCHEN_TOPIC, orderId.toString(), payload, 1);
   }
 }

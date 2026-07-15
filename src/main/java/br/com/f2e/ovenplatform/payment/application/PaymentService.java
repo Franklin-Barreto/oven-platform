@@ -21,6 +21,12 @@ public class PaymentService {
 
   @Transactional
   public void registerPaymentFromOrder(RegisterPaymentCommand paymentCommand) {
+    if (paymentRepository
+        .findByTenantIdAndOrderId(paymentCommand.tenantId(), paymentCommand.orderId())
+        .isPresent()) {
+      return;
+    }
+
     var payment =
         switch (paymentCommand.paymentStatus()) {
           case PAID ->

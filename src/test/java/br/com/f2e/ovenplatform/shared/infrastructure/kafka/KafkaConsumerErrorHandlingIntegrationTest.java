@@ -6,8 +6,8 @@ import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 
-import br.com.f2e.ovenplatform.payment.application.PaymentService;
-import br.com.f2e.ovenplatform.payment.infrastructure.kafka.OrderCreatedPaymentConsumer;
+import br.com.f2e.ovenplatform.fulfillment.application.FulfillmentService;
+import br.com.f2e.ovenplatform.fulfillment.infrastructure.kafka.KitchenTicketReadyConsumer;
 import br.com.f2e.ovenplatform.shared.infrastructure.kafka.test.KafkaTestContainerConfiguration;
 import java.time.Duration;
 import java.util.List;
@@ -37,7 +37,7 @@ import org.testcontainers.kafka.ConfluentKafkaContainer;
       KafkaTestContainerConfiguration.class,
       KafkaTopicConfiguration.class,
       KafkaConsumerErrorHandlingConfiguration.class,
-      OrderCreatedPaymentConsumer.class,
+      KitchenTicketReadyConsumer.class,
       KafkaConsumerErrorHandlingIntegrationTest.TestConfig.class
     })
 @ImportAutoConfiguration({KafkaAutoConfiguration.class, JacksonAutoConfiguration.class})
@@ -46,36 +46,36 @@ class KafkaConsumerErrorHandlingIntegrationTest {
 
   private static final String DEAD_LETTER_TOPIC_SUFFIX = "-dlt";
 
-  @Value("${oven.kafka.topics.orders}")
-  private String orderTopic;
+  @Value("${oven.kafka.topics.kitchen}")
+  private String kitchenTopic;
 
   @Autowired private ConfluentKafkaContainer kafkaContainer;
   @Autowired private KafkaTemplate<String, String> kafkaTemplate;
-  @Autowired private PaymentService paymentService;
+  @Autowired private FulfillmentService fulfillmentService;
 
   @Test
   void shouldSendMessageToDeadLetterTopicWithoutRetryingIllegalArgumentException()
       throws Exception {
     var orderId = UUID.randomUUID();
-    var payload = orderCreatedPayload(orderId);
+    var payload = kitchenTicketReadyPayload(orderId);
 
-    doThrow(new IllegalArgumentException("Invalid order contract"))
-        .when(paymentService)
-        .registerPaymentFromOrder(any());
+    doThrow(new IllegalArgumentException("Invalid kitchen contract"))
+        .when(fulfillmentService)
+        .handlePreparationReady(any());
 
     try (var consumer = new KafkaConsumer<String, String>(consumerProperties())) {
-      consumer.subscribe(List.of(orderTopic + DEAD_LETTER_TOPIC_SUFFIX));
+      consumer.subscribe(List.of(kitchenTopic + DEAD_LETTER_TOPIC_SUFFIX));
 
-      kafkaTemplate.send(orderTopic, orderId.toString(), payload).get(10, TimeUnit.SECONDS);
+      kafkaTemplate.send(kitchenTopic, orderId.toString(), payload).get(10, TimeUnit.SECONDS);
 
       var deadLetterRecord = pollRecord(consumer, orderId.toString(), Duration.ofSeconds(10));
 
-      assertThat(deadLetterRecord.topic()).isEqualTo(orderTopic + DEAD_LETTER_TOPIC_SUFFIX);
+      assertThat(deadLetterRecord.topic()).isEqualTo(kitchenTopic + DEAD_LETTER_TOPIC_SUFFIX);
       assertThat(deadLetterRecord.key()).isEqualTo(orderId.toString());
       assertThat(deadLetterRecord.value()).isEqualTo(payload);
     }
 
-    verify(paymentService).registerPaymentFromOrder(any());
+    verify(fulfillmentService).handlePreparationReady(any());
   }
 
   private ConsumerRecord<String, String> pollRecord(
@@ -109,22 +109,13 @@ class KafkaConsumerErrorHandlingIntegrationTest {
         StringDeserializer.class);
   }
 
-  private String orderCreatedPayload(UUID orderId) {
+  private String kitchenTicketReadyPayload(UUID orderId) {
     return """
         {
           "tenantId": "a6210129-f1d5-4942-8d0a-b144e518aecc",
+          "ticketId": "b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234",
           "orderId": "%s",
-          "totalAmount": 120.00,
-          "paymentMethod": "CARD",
-          "paymentStatus": "PENDING",
-          "items": [
-            {
-              "productId": "b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234",
-              "productName": "Pizza Portuguesa",
-              "quantity": 2,
-              "unitPrice": 60.00
-            }
-          ]
+          "readyAt": "2026-07-14T20:00:00Z"
         }
         """
         .formatted(orderId);
@@ -135,8 +126,8 @@ class KafkaConsumerErrorHandlingIntegrationTest {
   static class TestConfig {
 
     @Bean
-    PaymentService paymentService() {
-      return mock(PaymentService.class);
+    FulfillmentService fulfillmentService() {
+      return mock(FulfillmentService.class);
     }
   }
 }
