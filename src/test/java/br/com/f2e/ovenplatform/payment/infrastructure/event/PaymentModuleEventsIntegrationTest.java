@@ -37,10 +37,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(
     properties = {
       "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
-      "oven.events.publication.maintenance.enabled=false",
-      "oven.outbox.publishing.enabled=false",
-      "spring.kafka.admin.auto-create=false",
-      "spring.kafka.listener.auto-startup=false"
+      "oven.events.publication.maintenance.enabled=false"
     })
 @Import(PostgresTestContainerConfiguration.class)
 class PaymentModuleEventsIntegrationTest {
@@ -71,7 +68,7 @@ class PaymentModuleEventsIntegrationTest {
   }
 
   @Test
-  void shouldRegisterPaymentWhenOrderIsCreatedWithoutKafka() {
+  void shouldRegisterPaymentWhenOrderIsCreated() {
     when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(PRODUCT_ID)))
         .thenReturn(List.of(new OrderableProduct(PRODUCT_ID, "Pizza Portuguesa", UNIT_PRICE)));
 
@@ -85,7 +82,6 @@ class PaymentModuleEventsIntegrationTest {
     assertThat(payment.getMethod()).isEqualTo(PaymentMethod.CASH);
     assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
     assertThat(payment.getPaidAt()).isNotNull();
-    assertThat(legacyOrderCreatedOutboxCount(order.getId())).isZero();
   }
 
   @Test
@@ -166,19 +162,6 @@ class PaymentModuleEventsIntegrationTest {
             listenerId,
             serializedEventPattern(orderId)),
         "Completed publication count not returned for order " + orderId);
-  }
-
-  private int legacyOrderCreatedOutboxCount(UUID orderId) {
-    return requireNonNull(
-        jdbc.queryForObject(
-            """
-            select count(*)
-            from outbox_events
-            where aggregate_id = ? and event_type = 'order.created'
-            """,
-            Integer.class,
-            orderId),
-        "Legacy outbox count not returned for order " + orderId);
   }
 
   private String serializedEventPattern(UUID orderId) {

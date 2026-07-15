@@ -17,15 +17,6 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
       connection-timeout: 30000
-  kafka:
-    producer:
-      acks: all
-      properties:
-        enable.idempotence: true
-    consumer:
-      auto-offset-reset: earliest
-      key-deserializer: org.apache.kafka.common.serialization.StringDeserializer
-      value-deserializer: org.apache.kafka.common.serialization.StringDeserializer
   modulith:
     events:
       completion-mode: update
@@ -54,12 +45,3 @@ oven:
         retry-max-in-flight: 10
         retry-max-attempts: 5
         completed-retention: 7d
-  kafka:
-    consumer:
-      retry:
-        interval: 1s
-        max-retries: 3
-  outbox:
-    publishing:
-      enabled: true
-      fixed-delay: 5s
