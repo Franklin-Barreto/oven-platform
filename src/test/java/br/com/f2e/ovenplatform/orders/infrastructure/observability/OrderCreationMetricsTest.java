@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 
 class OrderCreationMetricsTest {
 
-  private static final String OVEN_ORDERS_CREATED = "oven.orders.created";
+  private static final String OVEN_ORDERS_CREATED = "oven.orders.creation.successes";
   private static final String OVEN_ORDERS_CREATION_FAILURES = "oven.orders.creation.failures";
   private static final String OVEN_ORDERS_CREATION = "oven.orders.creation";
   private SimpleMeterRegistry simpleMeterRegistry;

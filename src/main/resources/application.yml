@@ -57,6 +57,12 @@ management:
       environment: ${OVEN_ENVIRONMENT:local}
 
     distribution:
+      percentiles-histogram:
+        "[oven.orders.creation]": true
+      minimum-expected-value:
+        "[oven.orders.creation]": 1ms
+      maximum-expected-value:
+        "[oven.orders.creation]": 5s
       slo:
         "[http.server.requests]":
           - 50ms

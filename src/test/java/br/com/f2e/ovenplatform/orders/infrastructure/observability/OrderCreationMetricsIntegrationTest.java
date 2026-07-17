@@ -46,7 +46,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(propagation = Propagation.NOT_SUPPORTED)
 class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
 
-  private static final String CREATED_METRIC = "oven.orders.created";
+  private static final String CREATED_METRIC = "oven.orders.creation.successes";
   private static final String CREATION_FAILURES_METRIC = "oven.orders.creation.failures";
   private static final String CREATION_TIMER = "oven.orders.creation";
 

@@ -16,7 +16,7 @@ public class OrderCreationMetrics {
   public OrderCreationMetrics(MeterRegistry registry) {
     this.registry = registry;
     this.successCounter =
-        Counter.builder("oven.orders.created")
+        Counter.builder("oven.orders.creation.successes")
             .description("Number of orders successfully created and committed")
             .register(registry);
     this.failureCounter =
