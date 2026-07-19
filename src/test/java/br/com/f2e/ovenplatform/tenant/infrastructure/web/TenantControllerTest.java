@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.tenant.infrastructure.web;
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -11,16 +12,20 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import br.com.f2e.ovenplatform.tenant.application.TenantService;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Status;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.web.dto.CreateTenantRequest;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.util.Optional;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -33,7 +38,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @ActiveProfiles("test")
 @WebMvcTest(TenantController.class)
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class TenantControllerTest {
 
   private static final String BASE_URL = "/tenants";
@@ -43,6 +48,16 @@ class TenantControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private TenantService tenantService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @Test
   void shouldCreateTenantAndReturn201WithLocationAndBody() throws Exception {

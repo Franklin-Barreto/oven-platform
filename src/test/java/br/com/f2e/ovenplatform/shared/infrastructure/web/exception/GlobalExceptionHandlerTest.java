@@ -2,12 +2,14 @@ package br.com.f2e.ovenplatform.shared.infrastructure.web.exception;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes.VALIDATION_ERROR;
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.Tracer;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -22,42 +24,51 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 @ExtendWith(MockitoExtension.class)
 class GlobalExceptionHandlerTest {
 
-  private TraceContext traceContext;
   private GlobalExceptionHandler handler;
+
   @Mock private MessageSource messageSource;
+  @Mock private Tracer tracer;
+  @Mock private Span span;
+  @Mock private io.micrometer.tracing.TraceContext traceContext;
+
   private MockHttpServletRequest request;
 
   @BeforeEach
   void setUp() {
-    traceContext = new TraceContext();
-    handler = new GlobalExceptionHandler(messageSource, traceContext);
+    ApiErrorResponseFactory responseFactory = new ApiErrorResponseFactory(tracer);
+    handler = new GlobalExceptionHandler(messageSource, responseFactory);
     request = new MockHttpServletRequest();
   }
 
   @Test
-  void shouldIncludeTraceIdFromContextInErrorResponse() {
-    traceContext.setTraceId("abc-123");
-    var exception =
+  void shouldIncludeCurrentTraceIdInErrorResponse() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+
+    var response =
         handler.illegalArgumentHandler(new IllegalArgumentException("exception"), request);
-    var apiErrorResponse = exception.getBody();
-    assertNotNull(apiErrorResponse);
-    assertEquals("abc-123", apiErrorResponse.traceId());
+
+    assertNotNull(response.getBody());
+    assertEquals("abc-123", response.getBody().traceId());
   }
 
   @Test
-  void shouldGenerateFallbackTraceIdWhenContextIsEmpty() {
-    var exception =
+  void shouldReturnNullTraceIdWhenThereIsNoCurrentSpan() {
+    var response =
         handler.illegalArgumentHandler(new IllegalArgumentException("exception"), request);
-    var apiErrorResponse = exception.getBody();
-    assertNotNull(apiErrorResponse);
-    assertFalse(apiErrorResponse.traceId().isBlank());
-    assertNotNull(apiErrorResponse.traceId());
+
+    assertNotNull(response.getBody());
+    assertNull(response.getBody().traceId());
   }
 
   @Test
   void shouldBuildErrorResponseWithExpectedFields() {
 
     when(messageSource.getMessage(any(FieldError.class), any())).thenReturn("invalid field");
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
 
     var target = new Object();
     var objectName = "request";

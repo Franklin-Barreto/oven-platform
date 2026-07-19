@@ -1,18 +1,18 @@
 # Local observability
 
-Oven Platform exposes application metrics through Spring Boot Actuator and Micrometer. The local
-observability stack stores those metrics in Prometheus and visualizes them in Grafana.
+Oven Platform exposes application metrics and distributed traces through Spring Boot Actuator,
+Micrometer, and OpenTelemetry. The local observability stack stores metrics in Prometheus, stores
+traces in Tempo, and uses Grafana to explore both signals.
 
 ```text
 Oven Platform
-  -> /actuator/prometheus
-  -> Prometheus
-  -> Grafana
-  -> Oven Platform Overview dashboard
+  -> /actuator/prometheus -> Prometheus -> Grafana dashboards
+  -> OTLP/HTTP -> Tempo -> Grafana Explore
 ```
 
-Prometheus and Grafana are optional operational dependencies. They query the application; the
-application does not connect to either service and must remain runnable when they are unavailable.
+Prometheus, Tempo, and Grafana are optional operational dependencies. Trace export is asynchronous:
+Tempo being unavailable may produce exporter warnings, but must not block application requests or
+change business outcomes. Metrics continue to use Prometheus; the OTLP metrics exporter is disabled.
 
 ## Start the local environment
 
@@ -53,6 +53,8 @@ automatically resumes scraping after the application becomes available.
 | Prometheus | `http://localhost:9090` | PromQL queries |
 | Prometheus targets | `http://localhost:9090/targets` | Scrape status and errors |
 | Grafana | `http://localhost:3000` | Dashboards and metric exploration |
+| Tempo API | `http://localhost:3200` | Local trace storage and query API |
+| OTLP/HTTP receiver | `http://localhost:4318/v1/traces` | Application trace ingestion |
 
 Grafana uses `GRAFANA_ADMIN_USER` and `GRAFANA_ADMIN_PASSWORD` from `.env`. The values in
 `.env.example` are local defaults only and must not be reused outside local development.
@@ -72,7 +74,7 @@ Stop the containers while preserving their data:
 docker compose down
 ```
 
-Remove the containers and all local Prometheus and Grafana data:
+Remove the containers and all local Prometheus, Tempo, and Grafana data:
 
 ```shell
 docker compose down --volumes
@@ -80,6 +82,75 @@ docker compose down --volumes
 
 The second command is destructive. Grafana recreates its datasource and dashboards from the
 version-controlled provisioning files the next time it starts.
+
+## Distributed tracing
+
+Spring Boot creates the server span for each HTTP request and exports sampled traces through
+OpenTelemetry OTLP/HTTP. Spring Modulith adds spans for application-module invocations and event
+listeners, making the order-creation flow visible without custom tracing code:
+
+```text
+POST /orders
+  -> Orders.create
+     -> Kitchen event listener
+     -> Payment event listener
+```
+
+Open Grafana, select **Explore**, and choose the `Tempo` datasource. `{}` finds recent traces. Useful
+TraceQL filters include:
+
+```traceql
+{ resource.service.name = "oven-platform" }
+{ name = "http post /orders" }
+{ status = error }
+```
+
+Select a result to inspect its spans, duration, status, attributes, and events. Copy its trace ID to
+correlate the request with application logs. Spring Boot puts the current trace and span identifiers
+in its supported logging context; centralized log storage and a direct Grafana logs-to-traces link
+are outside the local stack. W3C `traceparent` is the propagation contract. The application does not
+generate or accept a custom `X-Trace-Id` correlation contract.
+
+The `Orders.create` span covers validation, persistence, event publication, and the surrounding
+transaction boundary. The current stack does not emit separate JDBC/Hibernate spans, so it cannot
+attribute part of that duration precisely to SQL. Add supported database instrumentation in a
+separate change before using traces to make database-level latency claims; a span merely wrapped
+around `repository.save` would be misleading because Hibernate may defer SQL until flush or commit.
+
+### Asynchronous events and retries
+
+Kitchen and Payment consume the order-created event asynchronously. Their spans may outlive the HTTP
+response and run concurrently, so child durations must not be added to obtain the request duration.
+Context propagated during immediate event delivery can keep these listeners in the originating
+trace. A later retry or recovery may start a different trace when the original context is no longer
+available. Trace IDs are operational metadata and must not be persisted in business events merely
+to force both executions into the same trace.
+
+### Sampling and privacy
+
+`OVEN_TRACING_SAMPLING_PROBABILITY` controls the probability that a trace is sampled. The local
+default is `1.0` so every request can be studied. Production must choose a lower value based on
+traffic, storage capacity, incident-response needs, and privacy requirements rather than inheriting
+the local default.
+
+Use stable, low-cardinality span names such as normalized HTTP routes, module names, and operations.
+Do not add request or response bodies, secrets, tokens, exception messages containing user input,
+or tenant, order, customer, user, payment, and delivery identifiers as span attributes. In
+particular, `orderId` is excluded by default; add identifiers only after an explicit operational and
+privacy review.
+
+The API error response uses the active Micrometer trace when one exists. If no span is active, its
+`traceId` is `null`; the application does not invent a fallback identifier that Tempo cannot resolve.
+
+### Trace configuration
+
+| Variable | Local default | Purpose |
+| --- | --- | --- |
+| `OTEL_EXPORTER_OTLP_ENDPOINT` | `http://localhost:4318/v1/traces` | OTLP/HTTP trace destination |
+| `OVEN_TRACING_SAMPLING_PROBABILITY` | `1.0` | Fraction of traces sampled, from `0.0` to `1.0` |
+
+After changing either variable, restart the Spring Boot application. Restarting only the Compose
+services does not reload application tracing configuration.
 
 ## Metric conventions
 
@@ -245,3 +316,8 @@ Compose scope.
   and verify the files under `observability/grafana/provisioning`.
 - If HTTP metrics are absent, send at least one request to the application and wait for the next
   scrape interval.
+- If the Tempo datasource is absent, verify the datasource provisioning file and restart Grafana.
+- If Tempo returns no traces, restart the application after exporting `.env`, send a request, and
+  inspect `docker compose logs tempo` plus the application logs for OTLP export errors.
+- If a trace has no Kitchen or Payment span, allow asynchronous processing to finish and check for a
+  separate retry trace when the event was recovered after its original context was lost.

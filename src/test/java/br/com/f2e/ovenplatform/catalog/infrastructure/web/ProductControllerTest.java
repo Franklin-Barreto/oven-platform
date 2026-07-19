@@ -5,6 +5,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -20,14 +21,18 @@ import br.com.f2e.ovenplatform.catalog.application.CatalogService;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -42,7 +47,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = {ProductController.class})
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class ProductControllerTest {
 
   private static final String BASE_URL = "/products";
@@ -57,6 +62,16 @@ class ProductControllerTest {
 
   @MockitoBean private CatalogService catalogService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @AfterEach
   void tearDown() {

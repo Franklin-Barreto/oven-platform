@@ -9,6 +9,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHea
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -37,10 +38,13 @@ import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
@@ -49,6 +53,7 @@ import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -65,7 +70,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = OrderController.class)
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class OrderControllerTest {
 
   private static final String BASE_URL = "/orders";
@@ -82,6 +87,16 @@ class OrderControllerTest {
   @MockitoBean private OrderService orderService;
   @MockitoBean private JwtService jwtService;
   @MockitoBean private ApplicationEventPublisher eventPublisher;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @AfterEach
   void tearDown() {

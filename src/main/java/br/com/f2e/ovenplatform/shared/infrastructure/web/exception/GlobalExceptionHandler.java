@@ -1,11 +1,8 @@
 package br.com.f2e.ovenplatform.shared.infrastructure.web.exception;
 
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import jakarta.servlet.http.HttpServletRequest;
-import java.util.List;
 import java.util.NoSuchElementException;
-import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.context.MessageSource;
 import org.springframework.context.i18n.LocaleContextHolder;
@@ -23,22 +20,19 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 public class GlobalExceptionHandler {
 
   private final MessageSource messageSource;
-  private final TraceContext traceContext;
+  private final ApiErrorResponseFactory responseFactory;
 
-  public GlobalExceptionHandler(MessageSource messageSource, TraceContext traceContext) {
+  public GlobalExceptionHandler(
+      MessageSource messageSource, ApiErrorResponseFactory responseFactory) {
     this.messageSource = messageSource;
-    this.traceContext = traceContext;
+    this.responseFactory = responseFactory;
   }
 
   @ExceptionHandler(IllegalArgumentException.class)
   public ResponseEntity<ApiErrorResponse> illegalArgumentHandler(
       IllegalArgumentException exception, HttpServletRequest request) {
-    return error(
-        HttpStatus.BAD_REQUEST,
-        ApiErrorCodes.INVALID_ARGUMENT,
-        resolveTraceIdForErrorResponse(traceContext),
-        exception.getMessage(),
-        request);
+    return responseFactory.create(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_ARGUMENT, exception.getMessage(), request);
   }
 
   @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -52,30 +46,21 @@ public class GlobalExceptionHandler {
                   return ApiErrorItem.of(ApiErrorCodes.VALIDATION_ERROR, error.getField(), message);
                 })
             .toList();
-    return error(
-        HttpStatus.BAD_REQUEST, resolveTraceIdForErrorResponse(traceContext), errors, request);
+    return responseFactory.create(HttpStatus.BAD_REQUEST, errors, request);
   }
 
   @ExceptionHandler(NoSuchElementException.class)
   public ResponseEntity<ApiErrorResponse> notFoundHandler(
       NoSuchElementException exception, HttpServletRequest request) {
-    return error(
-        HttpStatus.NOT_FOUND,
-        ApiErrorCodes.RESOURCE_NOT_FOUND,
-        resolveTraceIdForErrorResponse(traceContext),
-        exception.getMessage(),
-        request);
+    return responseFactory.create(
+        HttpStatus.NOT_FOUND, ApiErrorCodes.RESOURCE_NOT_FOUND, exception.getMessage(), request);
   }
 
   @ExceptionHandler(ResourceNotFoundException.class)
   public ResponseEntity<ApiErrorResponse> notFoundResource(
       ResourceNotFoundException exception, HttpServletRequest request) {
-    return error(
-        HttpStatus.NOT_FOUND,
-        ApiErrorCodes.RESOURCE_NOT_FOUND,
-        resolveTraceIdForErrorResponse(traceContext),
-        exception.getMessage(),
-        request);
+    return responseFactory.create(
+        HttpStatus.NOT_FOUND, ApiErrorCodes.RESOURCE_NOT_FOUND, exception.getMessage(), request);
   }
 
   @ExceptionHandler(DataIntegrityViolationException.class)
@@ -87,10 +72,9 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(MissingRequestHeaderException.class)
   public ResponseEntity<ApiErrorResponse> missingHeaderHandler(
       MissingRequestHeaderException exception, HttpServletRequest request) {
-    return error(
+    return responseFactory.create(
         HttpStatus.BAD_REQUEST,
         ApiErrorCodes.MISSING_REQUEST_HEADER,
-        resolveTraceIdForErrorResponse(traceContext),
         exception.getMessage(),
         request);
   }
@@ -98,23 +82,15 @@ public class GlobalExceptionHandler {
   @ExceptionHandler(InvalidApiVersionException.class)
   public ResponseEntity<ApiErrorResponse> invalidApiVersionHandler(
       InvalidApiVersionException exception, HttpServletRequest request) {
-    return error(
-        HttpStatus.BAD_REQUEST,
-        ApiErrorCodes.INVALID_API_VERSION,
-        resolveTraceIdForErrorResponse(traceContext),
-        exception.getMessage(),
-        request);
+    return responseFactory.create(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_API_VERSION, exception.getMessage(), request);
   }
 
   @ExceptionHandler(NotAcceptableApiVersionException.class)
   public ResponseEntity<ApiErrorResponse> notAcceptableApiVersionHandler(
       NotAcceptableApiVersionException exception, HttpServletRequest request) {
-    return error(
-        HttpStatus.BAD_REQUEST,
-        ApiErrorCodes.INVALID_API_VERSION,
-        resolveTraceIdForErrorResponse(traceContext),
-        exception.getMessage(),
-        request);
+    return responseFactory.create(
+        HttpStatus.BAD_REQUEST, ApiErrorCodes.INVALID_API_VERSION, exception.getMessage(), request);
   }
 
   private String getConstraintName(DataIntegrityViolationException exception) {
@@ -131,56 +107,33 @@ public class GlobalExceptionHandler {
     return null;
   }
 
-  private ResponseEntity<ApiErrorResponse> error(
-      HttpStatus status, String code, String traceId, String message, HttpServletRequest request) {
-    return ResponseEntity.status(status)
-        .body(ApiErrorResponse.of(status, code, traceId, message, request.getRequestURI()));
-  }
-
-  private ResponseEntity<ApiErrorResponse> error(
-      HttpStatus status, String traceId, List<ApiErrorItem> errors, HttpServletRequest request) {
-    return ResponseEntity.status(status)
-        .body(ApiErrorResponse.of(status, traceId, errors, request.getRequestURI()));
-  }
-
   private ResponseEntity<ApiErrorResponse> handleConstraintViolation(
       String constraintName, HttpServletRequest request) {
     return switch (constraintName) {
       case "uk_users_tenant_id_email" ->
-          error(
+          responseFactory.create(
               HttpStatus.CONFLICT,
               ApiErrorCodes.DUPLICATE_USER_EMAIL,
-              resolveTraceIdForErrorResponse(traceContext),
               "A user with this email already exists.",
               request);
 
       case "fk_users_tenant_id" ->
-          error(
-              HttpStatus.NOT_FOUND,
-              ApiErrorCodes.TENANT_NOT_FOUND,
-              resolveTraceIdForErrorResponse(traceContext),
-              "Tenant not found.",
-              request);
+          responseFactory.create(
+              HttpStatus.NOT_FOUND, ApiErrorCodes.TENANT_NOT_FOUND, "Tenant not found.", request);
 
       case "uk_tenant_memberships_tenant_id_user_id" ->
-          error(
+          responseFactory.create(
               HttpStatus.CONFLICT,
               ApiErrorCodes.DUPLICATED_USER_TENANT,
-              resolveTraceIdForErrorResponse(traceContext),
               "User already belongs to the tenant",
               request);
 
       case null, default ->
-          error(
+          responseFactory.create(
               HttpStatus.CONFLICT,
               ApiErrorCodes.DATA_INTEGRITY_VIOLATION,
-              resolveTraceIdForErrorResponse(traceContext),
               "Data integrity violation.",
               request);
     };
-  }
-
-  private String resolveTraceIdForErrorResponse(TraceContext traceContext) {
-    return traceContext.findTraceId().orElse(UUID.randomUUID().toString());
   }
 }
