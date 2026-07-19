@@ -5,6 +5,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -27,12 +28,16 @@ import br.com.f2e.ovenplatform.customer.domain.CustomerAddressDetails;
 import br.com.f2e.ovenplatform.customer.domain.CustomerAddressLocation;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -44,7 +49,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(controllers = {CustomerController.class})
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class CustomerControllerTest {
 
   private static final String BASE_URL = "/customers";
@@ -56,6 +61,16 @@ class CustomerControllerTest {
 
   @MockitoBean private CustomerService customerService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @AfterEach
   void tearDown() {

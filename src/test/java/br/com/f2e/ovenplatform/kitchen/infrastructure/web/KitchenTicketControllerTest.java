@@ -5,6 +5,7 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -21,13 +22,17 @@ import br.com.f2e.ovenplatform.kitchen.domain.TicketItem;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.kitchen.domain.exception.InvalidTicketStatusTransitionException;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
@@ -40,7 +45,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @WebMvcTest(KitchenTicketController.class)
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class KitchenTicketControllerTest {
 
   private static final String BASE_URL = "/kitchen/";
@@ -56,6 +61,16 @@ class KitchenTicketControllerTest {
 
   @MockitoBean private KitchenService kitchenService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @Test
   void shouldListTickets() throws Exception {

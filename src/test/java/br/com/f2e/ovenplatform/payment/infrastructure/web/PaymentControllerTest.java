@@ -4,6 +4,7 @@ import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.Secu
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,14 +16,18 @@ import br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
-import br.com.f2e.ovenplatform.shared.infrastructure.tracing.TraceContext;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import io.micrometer.tracing.Span;
+import io.micrometer.tracing.TraceContext;
+import io.micrometer.tracing.Tracer;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -36,7 +41,7 @@ import org.springframework.test.web.servlet.MockMvc;
 
 @ActiveProfiles("test")
 @WebMvcTest(controllers = PaymentController.class)
-@Import({TraceContext.class})
+@Import({ApiErrorResponseFactory.class})
 class PaymentControllerTest {
 
   private static final String BASE_URL = "/payments";
@@ -47,6 +52,16 @@ class PaymentControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private PaymentService paymentService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private Tracer tracer;
+  @MockitoBean private Span span;
+  @MockitoBean private TraceContext traceContext;
+
+  @BeforeEach
+  void setUp() {
+    doReturn(span).when(tracer).currentSpan();
+    when(span.context()).thenReturn(traceContext);
+    when(traceContext.traceId()).thenReturn("abc-123");
+  }
 
   @AfterEach
   void tearDown() {
