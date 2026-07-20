@@ -37,6 +37,8 @@ jwt:
 oven:
   events:
     publication:
+      monitoring:
+        fixed-delay: 1m
       maintenance:
         enabled: true
         fixed-delay: 1m

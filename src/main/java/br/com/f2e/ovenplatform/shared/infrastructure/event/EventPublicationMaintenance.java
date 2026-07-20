@@ -20,27 +20,50 @@ public class EventPublicationMaintenance {
   private final FailedEventPublications failedPublications;
   private final CompletedEventPublications completedPublications;
   private final EventPublicationMaintenanceProperties properties;
+  private final EventPublicationMaintenanceMetrics metrics;
 
-  public EventPublicationMaintenance(
+  EventPublicationMaintenance(
       FailedEventPublications failedPublications,
       CompletedEventPublications completedPublications,
-      EventPublicationMaintenanceProperties properties) {
+      EventPublicationMaintenanceProperties properties,
+      EventPublicationMaintenanceMetrics metrics) {
     this.failedPublications = failedPublications;
     this.completedPublications = completedPublications;
     this.properties = properties;
+    this.metrics = metrics;
   }
 
   @Scheduled(fixedDelayString = "${oven.events.publication.maintenance.fixed-delay}")
   void maintainPublications() {
-    failedPublications.resubmit(
-        ResubmissionOptions.defaults()
-            .withMinAge(properties.retryMinAge())
-            .withBatchSize(properties.retryBatchSize())
-            .withMaxInFlight(properties.retryMaxInFlight())
-            .withFilter(
-                publication ->
-                    publication.getCompletionAttempts() < properties.retryMaxAttempts()));
+    resubmitFailedPublications();
+    deleteCompletedPublications();
+  }
 
-    completedPublications.deletePublicationsOlderThan(properties.completedRetention());
+  private void resubmitFailedPublications() {
+    try {
+      failedPublications.resubmit(
+          ResubmissionOptions.defaults()
+              .withMinAge(properties.retryMinAge())
+              .withBatchSize(properties.retryBatchSize())
+              .withMaxInFlight(properties.retryMaxInFlight())
+              .withFilter(
+                  publication ->
+                      publication.getCompletionAttempts() < properties.retryMaxAttempts()));
+
+      metrics.recordResubmissionSuccess();
+    } catch (RuntimeException exception) {
+      metrics.recordResubmissionFailure();
+      throw exception;
+    }
+  }
+
+  private void deleteCompletedPublications() {
+    try {
+      completedPublications.deletePublicationsOlderThan(properties.completedRetention());
+      metrics.recordCleanupSuccess();
+    } catch (RuntimeException exception) {
+      metrics.recordCleanupFailure();
+      throw exception;
+    }
   }
 }
