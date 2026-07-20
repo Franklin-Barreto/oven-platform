@@ -4,6 +4,7 @@ import static java.util.Objects.requireNonNull;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 
+import br.com.f2e.ovenplatform.shared.infrastructure.config.TimeConfig;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
 import java.time.Duration;
 import java.util.List;
@@ -34,7 +35,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 @SpringBootTest(
     classes = EventPublicationRegistryIntegrationTest.TestApplication.class,
     properties = "oven.events.publication.maintenance.enabled=false")
-@Import(PostgresTestContainerConfiguration.class)
+@Import({PostgresTestContainerConfiguration.class, TimeConfig.class})
 class EventPublicationRegistryIntegrationTest {
 
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(10);

@@ -43,7 +43,14 @@ class ManagementEndpointsIntegrationTest {
         .perform(get("/actuator/prometheus"))
         .andExpect(status().isOk())
         .andExpect(content().contentTypeCompatibleWith(MediaType.TEXT_PLAIN))
-        .andExpect(content().string(containsString("jvm_memory_used_bytes")));
+        .andExpect(content().string(containsString("jvm_memory_used_bytes")))
+        .andExpect(content().string(containsString("oven_events_publications_incomplete")))
+        .andExpect(content().string(containsString("oven_events_publications_failed")))
+        .andExpect(
+            content()
+                .string(containsString("oven_events_publications_oldest_incomplete_age_seconds")))
+        .andExpect(content().string(containsString("oven_events_publications_resubmissions_total")))
+        .andExpect(content().string(containsString("oven_events_publications_cleanup_total")));
   }
 
   @Test

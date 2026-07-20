@@ -171,6 +171,141 @@ cardinality:
 Prefer bounded dimensions such as operation, outcome, HTTP method, normalized route, status class,
 service type, and deployment environment.
 
+## Durable event publication metrics
+
+Spring Modulith persists one durable publication for each transactional module listener. A business
+transaction can therefore commit successfully while Kitchen, Payment, Orders, or Fulfillment work
+remains pending. HTTP metrics describe the committed request, while the publication metrics below
+describe the current asynchronous backlog and the executions that maintain it.
+
+| Micrometer name | Prometheus series | Meaning |
+| --- | --- | --- |
+| `oven.events.publications.incomplete` | `oven_events_publications_incomplete` | Publications without a completion date |
+| `oven.events.publications.failed` | `oven_events_publications_failed` | Incomplete publications currently in the Modulith `FAILED` state |
+| `oven.events.publications.oldest.incomplete.age` | `oven_events_publications_oldest_incomplete_age_seconds` | Age in seconds of the oldest incomplete publication |
+| `oven.events.publications.resubmissions` | `oven_events_publications_resubmissions_total{result="success|failure"}` | Scheduled resubmission executions by outcome |
+| `oven.events.publications.cleanup` | `oven_events_publications_cleanup_total{result="success|failure"}` | Scheduled completed-publication cleanup executions by outcome |
+
+The gauges have no event, listener, aggregate, order, or tenant labels. Maintenance counters use
+only the bounded `result=success|failure` tag in addition to the global application and environment
+tags. No event payload is read or exported.
+
+An incomplete publication is any row whose `completion_date` is null, regardless of whether its
+current status is `PUBLISHED`, `PROCESSING`, `FAILED`, or `RESUBMITTED`. The failed gauge is a subset
+of the incomplete gauge. When there is no backlog, both the incomplete count and oldest age are
+zero. A zero age is an operational convention that avoids confusing an empty backlog with missing
+Prometheus data.
+
+### Spring Modulith 2.0.3 measurement boundaries
+
+The project uses Spring Modulith 2.0.3 with the JPA event publication repository and completion mode
+`update`. The available framework APIs have the following boundaries:
+
+- `EventPublicationRegistry.findIncompletePublications()` returns the correct incomplete set, but
+  materializes every publication and can deserialize payloads. Its cost grows with the backlog.
+- `EventPublicationRepository.countByStatus(Status)` is implemented efficiently by the current JPA
+  repository, but it cannot calculate the oldest publication and counting every non-completed
+  state would require several queries plus an exhaustive status list.
+- the JPA schema exposes a reliable `FAILED` state, so the failed gauge is measured directly;
+- `FailedEventPublications.resubmit(...)` and
+  `CompletedEventPublications.deletePublicationsOlderThan(...)` return `void`. A successful counter
+  increment therefore means that the maintenance call returned without an exception. It does not
+  claim how many publications were recovered or deleted;
+- the framework does not expose an accurate deleted-publication count, so
+  `oven.events.publications.completed.deleted` is deliberately not published.
+
+The framework's open [listener invocation metrics proposal](https://github.com/spring-projects/spring-modulith/issues/1076)
+counts listener success and error invocations. That is complementary to registry gauges: invocation
+counters describe historical attempts, while backlog and age describe durable work that is still
+pending. Re-evaluate the custom maintenance counters when a stable upstream implementation becomes
+available in a future Modulith upgrade.
+
+### Snapshot query and collection cost
+
+The framework does not provide one aggregate API for backlog count, failed count, and oldest
+publication date. `JdbcPublicationBacklogReader` therefore performs one isolated, read-only query
+against the Liquibase-owned `event_publication` table:
+
+```sql
+select count(*) as incomplete_count,
+       count(*) filter (where status = 'FAILED') as failed_count,
+       min(publication_date) as oldest_publication_date
+from event_publication
+where completion_date is null;
+```
+
+The query projects only aggregate values and never selects `serialized_event`. PostgreSQL can use
+the existing completion-date index to locate incomplete rows, but an exact count necessarily visits
+the matching backlog entries. The application runs this query once per configured monitoring
+interval (one minute by default), stores one immutable snapshot in memory, and serves Prometheus
+scrapes from that snapshot. It does not execute SQL once per gauge or once per scrape.
+
+If snapshot collection fails, the monitor logs the failure and preserves the last successful
+snapshot. It never changes publication state and runs independently from retry and cleanup. On a
+fresh process that has not completed a successful collection yet, gauges retain their initial zero
+values; application logs must be checked when the database or collection path is unhealthy.
+
+Configure the collection interval with:
+
+```yaml
+oven:
+  events:
+    publication:
+      monitoring:
+        fixed-delay: 1m
+```
+
+### Expected healthy local behavior
+
+With no outstanding listener work, the three gauges are zero. When maintenance is enabled, the
+successful resubmission and cleanup counters normally increase once per maintenance execution even
+when there are no eligible rows; they count executions, not affected publications. Failure counters
+remain unchanged.
+
+Inspect the exposed series locally:
+
+```shell
+curl --silent http://localhost:8080/actuator/prometheus \
+  | rg 'oven_events_publications_(incomplete|failed|oldest|resubmissions|cleanup)'
+```
+
+Useful PromQL checks before the Grafana dashboard is available:
+
+```promql
+oven_events_publications_incomplete
+oven_events_publications_failed
+oven_events_publications_oldest_incomplete_age_seconds
+sum by (result) (rate(oven_events_publications_resubmissions_total[5m]))
+sum by (result) (rate(oven_events_publications_cleanup_total[5m]))
+```
+
+### Investigate a growing backlog
+
+1. Confirm that the Prometheus target is `UP` and check application logs for snapshot collection,
+   listener, resubmission, or database failures.
+2. Compare incomplete count, failed count, and oldest age. A growing age confirms that at least one
+   publication is not recovering; a growing count shows new work accumulating as well.
+3. Inspect bounded registry state without selecting payloads:
+
+   ```sql
+   select status, count(*), min(publication_date) as oldest
+   from event_publication
+   where completion_date is null
+   group by status
+   order by status;
+   ```
+
+4. Correlate the affected time window with listener logs and Modulith traces. A failed count of zero
+   does not prove health: publications can be stuck in another incomplete state.
+5. Verify `oven.events.publication.maintenance` settings and whether resubmission failure counters
+   are increasing. Confirm database connectivity before restarting the application.
+6. Do not edit or replay registry rows manually. Preserve payload privacy and use the configured
+   recovery path. Escalate persistent Kitchen or Payment gaps as business-impacting incidents.
+
+Alert thresholds and the specific order-to-Kitchen one-minute SLA remain separate follow-up work.
+They require a bounded business-flow signal and notification routing; the generic registry metrics
+implemented here are intentionally alert-ready but do not define paging policy.
+
 ## Histograms, SLOs, and percentiles
 
 Histogram buckets and percentiles have a storage and query cost. Do not enable them globally.

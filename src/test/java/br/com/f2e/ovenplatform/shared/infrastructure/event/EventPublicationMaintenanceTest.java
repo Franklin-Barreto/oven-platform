@@ -2,10 +2,13 @@ package br.com.f2e.ovenplatform.shared.infrastructure.event;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.time.Duration;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -29,8 +32,13 @@ class EventPublicationMaintenanceTest {
     var failedPublications = mock(FailedEventPublications.class);
     var completedPublications = mock(CompletedEventPublications.class);
     var properties = properties();
+    var meterRegistry = new SimpleMeterRegistry();
     var maintenance =
-        new EventPublicationMaintenance(failedPublications, completedPublications, properties);
+        new EventPublicationMaintenance(
+            failedPublications,
+            completedPublications,
+            properties,
+            new EventPublicationMaintenanceMetrics(meterRegistry));
     var optionsCaptor = ArgumentCaptor.forClass(ResubmissionOptions.class);
 
     maintenance.maintainPublications();
@@ -47,6 +55,58 @@ class EventPublicationMaintenanceTest {
     var exhausted = publicationWithAttempts(5);
 
     assertThat(options.getFilter()).accepts(retryable).rejects(exhausted);
+    assertThat(counterValue(meterRegistry, "oven.events.publications.resubmissions", "success"))
+        .isOne();
+    assertThat(counterValue(meterRegistry, "oven.events.publications.resubmissions", "failure"))
+        .isZero();
+    assertThat(counterValue(meterRegistry, "oven.events.publications.cleanup", "success")).isOne();
+    assertThat(counterValue(meterRegistry, "oven.events.publications.cleanup", "failure")).isZero();
+  }
+
+  @Test
+  void shouldRecordAndPropagateResubmissionFailure() {
+    var failedPublications = mock(FailedEventPublications.class);
+    var completedPublications = mock(CompletedEventPublications.class);
+    var meterRegistry = new SimpleMeterRegistry();
+    var failure = new IllegalStateException("Resubmission failed");
+    var maintenance =
+        new EventPublicationMaintenance(
+            failedPublications,
+            completedPublications,
+            properties(),
+            new EventPublicationMaintenanceMetrics(meterRegistry));
+
+    doThrow(failure).when(failedPublications).resubmit(org.mockito.ArgumentMatchers.any());
+
+    assertThatThrownBy(maintenance::maintainPublications).isSameAs(failure);
+
+    assertThat(counterValue(meterRegistry, "oven.events.publications.resubmissions", "failure"))
+        .isOne();
+    assertThat(counterValue(meterRegistry, "oven.events.publications.resubmissions", "success"))
+        .isZero();
+    verifyNoInteractions(completedPublications);
+  }
+
+  @Test
+  void shouldRecordAndPropagateCleanupFailure() {
+    var failedPublications = mock(FailedEventPublications.class);
+    var completedPublications = mock(CompletedEventPublications.class);
+    var meterRegistry = new SimpleMeterRegistry();
+    var failure = new IllegalStateException("Cleanup failed");
+    var maintenance =
+        new EventPublicationMaintenance(
+            failedPublications,
+            completedPublications,
+            properties(),
+            new EventPublicationMaintenanceMetrics(meterRegistry));
+
+    doThrow(failure).when(completedPublications).deletePublicationsOlderThan(COMPLETED_RETENTION);
+
+    assertThatThrownBy(maintenance::maintainPublications).isSameAs(failure);
+
+    assertThat(counterValue(meterRegistry, "oven.events.publications.resubmissions", "success"))
+        .isOne();
+    assertThat(counterValue(meterRegistry, "oven.events.publications.cleanup", "failure")).isOne();
   }
 
   @ParameterizedTest(name = "rejects invalid maintenance configuration: {0}")
@@ -94,5 +154,9 @@ class EventPublicationMaintenanceTest {
     var publication = mock(EventPublication.class);
     when(publication.getCompletionAttempts()).thenReturn(attempts);
     return publication;
+  }
+
+  private static double counterValue(SimpleMeterRegistry registry, String name, String result) {
+    return registry.get(name).tag("result", result).counter().count();
   }
 }
