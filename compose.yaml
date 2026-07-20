@@ -50,6 +50,7 @@ services:
       - grafana-data:/var/lib/grafana
       - ./observability/grafana/provisioning/datasources:/etc/grafana/provisioning/datasources:ro
       - ./observability/grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards:ro
+      - ./observability/grafana/provisioning/alerting:/etc/grafana/provisioning/alerting:ro
       - ./observability/grafana/dashboards:/var/lib/grafana/dashboards:ro
     healthcheck:
       test:
@@ -74,6 +75,13 @@ services:
     volumes:
       - ./observability/tempo/tempo.yml:/etc/tempo/tempo.yml:ro
       - tempo-data:/var/tempo
+
+  webhook-receiver:
+    image: mendhak/http-https-echo:41
+    environment:
+      ECHO_BACK_TO_CLIENT: "false"
+    ports:
+      - "8090:8080"
 
 volumes:
   prometheus-data:

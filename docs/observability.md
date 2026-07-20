@@ -302,9 +302,140 @@ sum by (result) (rate(oven_events_publications_cleanup_total[5m]))
 6. Do not edit or replay registry rows manually. Preserve payload privacy and use the configured
    recovery path. Escalate persistent Kitchen or Payment gaps as business-impacting incidents.
 
-Alert thresholds and the specific order-to-Kitchen one-minute SLA remain separate follow-up work.
-They require a bounded business-flow signal and notification routing; the generic registry metrics
-implemented here are intentionally alert-ready but do not define paging policy.
+### Stale durable publication alert
+
+Grafana evaluates the provisioned `DurableEventPublicationStale` rule every 10 seconds. The rule
+uses the current platform-wide value of:
+
+```promql
+max(
+  oven_events_publications_oldest_incomplete_age_seconds{
+    application="oven-platform"
+  }
+)
+```
+
+The alert enters `Firing` as soon as the oldest incomplete publication is at least 60 seconds old.
+There is no additional pending period: the publication age itself is the waiting period. The
+backlog snapshot and Prometheus scrape are refreshed every 15 seconds, so state transitions are
+not instantaneous.
+
+The rule uses bounded labels only:
+
+```text
+severity=critical
+service=oven-platform
+category=durable-event-publication
+```
+
+`No Data` is treated as `Normal`, because an absent metric does not prove that a stale publication
+exists. Query failures remain in the Grafana `Error` state and must not be reported as stale event
+publications. Application or Prometheus availability requires a separate alert.
+
+This alert is intentionally platform-wide. It cannot identify a Kitchen, Payment, Orders, or
+Fulfillment failure and must not be presented as proof that a specific business flow failed. Its
+annotations and webhook payload do not contain publication payloads, publication IDs, listener
+IDs, order IDs, tenant IDs, or other business identifiers.
+
+The local rule sends notifications directly to the provisioned `local-webhook` contact point. The
+receiver is a disposable development tool: it logs requests but does not store them. Both firing
+and resolved notifications are enabled. Production notification routing and paging remain outside
+the local Compose scope.
+
+### Validate local alert delivery
+
+Validate the Compose model before starting the observability services:
+
+```shell
+docker compose config --quiet
+```
+
+Start Grafana, Prometheus, and the local receiver, then follow the receiver logs:
+
+```shell
+docker compose up --detach prometheus grafana webhook-receiver
+docker compose logs --follow webhook-receiver
+```
+
+In another terminal, confirm that the receiver accepts a request through its host port:
+
+```shell
+curl --fail-with-body \
+  --request POST \
+  --header 'Content-Type: application/json' \
+  --data '{"message":"webhook test"}' \
+  http://localhost:8090/grafana-alerts
+```
+
+The request must appear in the receiver logs. Grafana uses the Docker-network URL
+`http://webhook-receiver:8080/grafana-alerts`, not `localhost:8090`.
+
+Open Grafana at `http://localhost:3000`, then verify:
+
+1. `local-webhook` appears as a provisioned contact point.
+2. `DurableEventPublicationStale` appears as a provisioned rule in the `Oven Platform` folder.
+3. The rule belongs to the `durable-event-publications` evaluation group.
+4. The rule is `Normal` when the publication backlog is empty.
+
+Inspect `docker compose logs grafana` if either provisioned resource is missing or Grafana reports
+an invalid alerting configuration.
+
+### Validate the alert with a synthetic publication
+
+Use this procedure only against the local development database. Temporarily start the application
+with publication maintenance disabled so the retry and cleanup job does not interfere with the
+synthetic row:
+
+```shell
+OVEN_EVENTS_PUBLICATION_MAINTENANCE_ENABLED=false ./mvnw spring-boot:run
+```
+
+Insert a recognizable incomplete publication without a real event payload or business identifier:
+
+```sql
+delete from event_publication
+where id = '00000000-0000-0000-0000-000000000189';
+
+insert into event_publication (
+    id,
+    publication_date,
+    listener_id,
+    serialized_event,
+    event_type,
+    status
+)
+values (
+    '00000000-0000-0000-0000-000000000189',
+    now() - interval '2 minutes',
+    'local-alert-validation-listener',
+    '{}',
+    'local.alert.ValidationEvent',
+    'FAILED'
+);
+```
+
+Allow one backlog refresh, Prometheus scrape, and Grafana evaluation cycle. Then confirm:
+
+1. `Oldest Incomplete Publication Age` is above 60 seconds.
+2. `DurableEventPublicationStale` is `Firing`.
+3. The receiver logs contain a firing notification with the expected bounded labels.
+4. The webhook does not contain event payloads or business identifiers.
+
+Remove only the synthetic row by its fixed ID:
+
+```sql
+delete from event_publication
+where id = '00000000-0000-0000-0000-000000000189';
+```
+
+After the next refresh, scrape, and evaluation cycles, verify that the rule returns to `Normal` and
+the receiver receives a resolved notification. Stop the application and start it normally again so
+publication maintenance is re-enabled.
+
+If the alert remains `Normal` while the row exists, check the application metric endpoint, the
+Prometheus target, the alert query preview, and the configured evaluation group in that order. If
+the alert becomes `Firing` but no webhook arrives, test the receiver directly and confirm that the
+contact point uses the Docker service name rather than `localhost`.
 
 ## Histograms, SLOs, and percentiles
 

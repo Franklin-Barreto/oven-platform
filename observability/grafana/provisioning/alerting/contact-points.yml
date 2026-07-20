@@ -1,0 +1,10 @@
+apiVersion: 1
+contactPoints:
+  - orgId: 1
+    name: local-webhook
+    receivers:
+      - uid: afspdtzx3d1j4f
+        type: webhook
+        settings:
+          url: http://webhook-receiver:8080/grafana-alerts
+        disableResolveMessage: false

@@ -38,7 +38,7 @@ oven:
   events:
     publication:
       monitoring:
-        fixed-delay: 1m
+        fixed-delay: 15s
       maintenance:
         enabled: true
         fixed-delay: 1m
