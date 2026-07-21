@@ -63,7 +63,11 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
       var userId = UUID.fromString(claims.getSubject());
       var membership = membershipAuthenticationService.loadActiveMembership(userId, tenantId);
       var authenticatedUser =
-          new AuthenticatedUser(membership.tenantId(), membership.userId(), membership.roles());
+          new AuthenticatedUser(
+              membership.tenantId(),
+              membership.userId(),
+              membership.roles(),
+              membership.permissions());
       var authenticated = getAuthenticated(authenticatedUser);
       securityContext.setAuthentication(authenticated);
 
@@ -82,8 +86,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static UsernamePasswordAuthenticationToken getAuthenticated(
       AuthenticatedUser authenticatedUser) {
     var authorities =
-        authenticatedUser.roles().stream()
-            .map(role -> new SimpleGrantedAuthority(role.name()))
+        authenticatedUser.permissions().stream()
+            .map(permission -> new SimpleGrantedAuthority(permission.name()))
             .toList();
     return new UsernamePasswordAuthenticationToken(authenticatedUser, null, authorities);
   }

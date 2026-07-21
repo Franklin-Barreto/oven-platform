@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.mock;
 
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
@@ -87,7 +88,9 @@ class CurrentTenantIdArgumentResolverTest {
 
   private static void authenticateTenantUser() {
     var role = TenantMembershipRole.ATTENDANT;
-    var authenticatedUser = new AuthenticatedUser(TENANT_ID, USER_ID, Set.of(role));
+    var authenticatedUser =
+        new AuthenticatedUser(
+            TENANT_ID, USER_ID, Set.of(role), Set.of(TenantPermission.ORDER_READ));
 
     var authentication =
         new UsernamePasswordAuthenticationToken(
