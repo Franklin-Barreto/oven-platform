@@ -3,28 +3,32 @@ package br.com.f2e.ovenplatform.e2e.support;
 import br.com.f2e.ovenplatform.identity.application.TenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.application.UserRepository;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.tenant.application.TenantRepository;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import io.cucumber.spring.ScenarioScope;
+import java.util.Set;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 @Component
 @ScenarioScope
-public class OwnerUserSeed {
+public class IdentityUserSeed {
 
   private static final String OWNER_EMAIL = "owner@oven.test";
   private static final String OWNER_PASSWORD = "1234567";
+  private static final String STAFF_EMAIL = "staff@oven.test";
+  private static final String STAFF_PASSWORD = "1234567";
 
   private final TenantRepository tenantRepository;
   private final UserRepository userRepository;
   private final TenantMembershipRepository tenantMembershipRepository;
   private final PasswordEncoder passwordEncoder;
 
-  public OwnerUserSeed(
+  public IdentityUserSeed(
       TenantRepository tenantRepository,
       UserRepository userRepository,
       TenantMembershipRepository tenantMembershipRepository,
@@ -36,13 +40,25 @@ public class OwnerUserSeed {
   }
 
   @Transactional
-  public SeededOwnerUser seedOwnerForTenant(String tenantName) {
+  public SeededUser seedOwnerForTenant(String tenantName) {
     var tenant = ensureTenant(tenantName);
-    var user = ensureUser();
+    var user = ensureUser(OWNER_EMAIL, OWNER_PASSWORD);
 
     ensureOwnerMembership(user, tenant);
 
-    return new SeededOwnerUser(tenant.getId(), user.getEmail(), OWNER_PASSWORD);
+    return new SeededUser(tenant.getId(), user.getEmail(), OWNER_PASSWORD);
+  }
+
+  @Transactional
+  public SeededUser seedStaffForTenant(String tenantName, Set<TenantMembershipRole> roles) {
+    var tenant = ensureTenant(tenantName);
+    var user = ensureUser(STAFF_EMAIL, STAFF_PASSWORD);
+
+    if (!tenantMembershipRepository.existsByUserIdAndTenantId(user.getId(), tenant.getId())) {
+      tenantMembershipRepository.save(TenantMembership.staff(user, tenant.getId(), roles));
+    }
+
+    return new SeededUser(tenant.getId(), user.getEmail(), STAFF_PASSWORD);
   }
 
   private Tenant ensureTenant(String tenantName) {
@@ -51,12 +67,10 @@ public class OwnerUserSeed {
         .orElseGet(() -> tenantRepository.save(new Tenant(tenantName, Plan.MVP)));
   }
 
-  private User ensureUser() {
+  private User ensureUser(String email, String password) {
     return userRepository
-        .findByEmail(OWNER_EMAIL)
-        .orElseGet(
-            () ->
-                userRepository.save(new User(OWNER_EMAIL, passwordEncoder.encode(OWNER_PASSWORD))));
+        .findByEmail(email)
+        .orElseGet(() -> userRepository.save(new User(email, passwordEncoder.encode(password))));
   }
 
   private void ensureOwnerMembership(User user, Tenant tenant) {

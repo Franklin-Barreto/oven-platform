@@ -9,6 +9,7 @@ import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,6 +27,7 @@ public class IdentityController {
     this.identityService = identityService;
   }
 
+  @PreAuthorize("hasAuthority('TEAM_MANAGE')")
   @PostMapping(version = "1.0")
   public ResponseEntity<TenantUserResponse> createUser(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody UserRequest userRequest) {
@@ -41,6 +43,7 @@ public class IdentityController {
     return ResponseEntity.created(uri).body(userResponse);
   }
 
+  @PreAuthorize("hasAuthority('TEAM_READ')")
   @GetMapping(value = "/{id}", version = "1.0")
   public ResponseEntity<TenantUserResponse> findByIdAndTenantId(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {

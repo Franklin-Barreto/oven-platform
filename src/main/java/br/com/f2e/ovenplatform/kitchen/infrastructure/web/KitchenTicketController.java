@@ -8,6 +8,7 @@ import br.com.f2e.ovenplatform.kitchen.infrastructure.web.dto.TicketResponse;
 import java.util.List;
 import java.util.UUID;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,12 +26,14 @@ public class KitchenTicketController {
     this.service = service;
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/" + TICKETS)
   public ResponseEntity<List<TicketResponse>> list(@CurrentTenantId UUID tenantId) {
     var response = service.list(tenantId).stream().map(TicketResponse::from).toList();
     return ResponseEntity.ok(response);
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}")
   public ResponseEntity<TicketResponse> findById(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
@@ -38,6 +41,7 @@ public class KitchenTicketController {
     return ResponseEntity.ok(response);
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_OPERATE')")
   @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/start-preparation")
   public ResponseEntity<Void> startPreparation(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
@@ -45,18 +49,21 @@ public class KitchenTicketController {
     return ResponseEntity.noContent().build();
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_OPERATE')")
   @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/mark-ready")
   public ResponseEntity<Void> markAsReady(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     service.markAsReady(tenantId, id);
     return ResponseEntity.noContent().build();
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_OPERATE')")
   @PostMapping(version = API_VERSION_VALUE, path = "/" + TICKETS + "/{id}/cancel")
   public ResponseEntity<Void> cancel(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     service.cancel(tenantId, id);
     return ResponseEntity.noContent().build();
   }
 
+  @PreAuthorize("hasAuthority('KITCHEN_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/orders/{orderId}/ticket")
   public ResponseEntity<TicketResponse> findByOrderId(
       @CurrentTenantId UUID tenantId, @PathVariable UUID orderId) {

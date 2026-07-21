@@ -1,7 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -10,27 +9,19 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.f2e.ovenplatform.identity.application.AuthService;
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.auth.LoginRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
-import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -38,27 +29,13 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.ResultMatcher;
 
 @WebMvcTest(AuthenticationController.class)
-@Import({ApiErrorResponseFactory.class})
-class AuthenticationControllerTest {
+class AuthenticationControllerTest extends AbstractControllerTest {
 
   private static final String URL = "/auth/login";
-  private static final UUID TENANT_ID = UUID.randomUUID();
 
   @Autowired private MockMvc mockMvc;
 
   @MockitoBean private AuthService authService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
 
   @Test
   void shouldLoginWithTenantIdAndReturnJwtToken() throws Exception {

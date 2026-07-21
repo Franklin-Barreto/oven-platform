@@ -5,9 +5,9 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -15,8 +15,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
 import br.com.f2e.ovenplatform.kitchen.domain.Ticket;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketItem;
@@ -24,55 +24,33 @@ import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
 import br.com.f2e.ovenplatform.kitchen.domain.exception.InvalidTicketStatusTransitionException;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import java.util.List;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
 import org.jetbrains.annotations.NotNull;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(KitchenTicketController.class)
-@Import({ApiErrorResponseFactory.class})
-class KitchenTicketControllerTest {
+class KitchenTicketControllerTest extends AbstractControllerTest {
 
   private static final String BASE_URL = "/kitchen/";
   private static final String TICKETS_URL = "/kitchen/tickets";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID TICKET_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
   private static final int VALID_QUANTITY = 2;
 
-  @Autowired private MockMvc mockMvc;
-
   @MockitoBean private KitchenService kitchenService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
 
   @Test
   void shouldListTickets() throws Exception {
@@ -81,7 +59,11 @@ class KitchenTicketControllerTest {
     when(kitchenService.list(TENANT_ID)).thenReturn(List.of(ticket));
 
     mockMvc
-        .perform(get(TICKETS_URL).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(
+            get(TICKETS_URL)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$").isNotEmpty())
@@ -104,7 +86,11 @@ class KitchenTicketControllerTest {
     when(kitchenService.findByIdWithItems(TENANT_ID, TICKET_ID)).thenReturn(createTicket());
 
     mockMvc
-        .perform(get(TICKETS_URL + "/" + TICKET_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(
+            get(TICKETS_URL + "/" + TICKET_ID)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isNotEmpty())
         .andExpect(jsonPath("$.id").value(TICKET_ID.toString()))
@@ -128,7 +114,11 @@ class KitchenTicketControllerTest {
 
     var fullpath = TICKETS_URL + "/" + TICKET_ID;
     mockMvc
-        .perform(get(fullpath).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(
+            get(fullpath)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
         .andExpect(status().isNotFound())
         .andExpectAll(
             expectValidationErrors(
@@ -152,7 +142,9 @@ class KitchenTicketControllerTest {
     mockMvc
         .perform(
             post(TICKETS_URL + "/" + TICKET_ID + endpoint)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_OPERATE))
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isNoContent())
         .andExpect(content().string(""));
@@ -173,7 +165,9 @@ class KitchenTicketControllerTest {
     mockMvc
         .perform(
             post(fullPath)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_OPERATE))
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isNotFound())
         .andExpectAll(
@@ -208,7 +202,9 @@ class KitchenTicketControllerTest {
     mockMvc
         .perform(
             post(fullPath)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_OPERATE))
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isConflict())
         .andExpectAll(
@@ -232,7 +228,9 @@ class KitchenTicketControllerTest {
     mockMvc
         .perform(
             get(BASE_URL + "orders/" + ORDER_ID + "/ticket")
-                .with(authenticatedTenantUser(TENANT_ID)))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isNotEmpty())
         .andExpect(jsonPath("$.id").value(TICKET_ID.toString()))
@@ -256,7 +254,11 @@ class KitchenTicketControllerTest {
 
     var fullpath = BASE_URL + "orders/" + ORDER_ID + "/ticket";
     mockMvc
-        .perform(get(fullpath).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(
+            get(fullpath)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
         .andExpect(status().isNotFound())
         .andExpectAll(
             expectValidationErrors(
@@ -269,6 +271,43 @@ class KitchenTicketControllerTest {
                 HttpStatus.NOT_FOUND.value()));
 
     verify(kitchenService).findByOrderIdWithItems(TENANT_ID, ORDER_ID);
+  }
+
+  @ParameterizedTest
+  @MethodSource("kitchenProtectedRequests")
+  void shouldReturnForbiddenWhenKitchenPermissionIsMissing(MockHttpServletRequestBuilder request)
+      throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(kitchenService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    mockMvc.perform(get(TICKETS_URL)).andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(kitchenService);
+  }
+
+  private static Stream<Arguments> kitchenProtectedRequests() {
+    return Stream.of(
+        Arguments.of(get(TICKETS_URL)),
+        Arguments.of(get(TICKETS_URL + "/" + TICKET_ID)),
+        Arguments.of(get(BASE_URL + "orders/" + ORDER_ID + "/ticket")),
+        Arguments.of(
+            post(TICKETS_URL + "/" + TICKET_ID + "/start-preparation")
+                .header(API_VERSION_HEADER, API_VERSION_VALUE)),
+        Arguments.of(
+            post(TICKETS_URL + "/" + TICKET_ID + "/mark-ready")
+                .header(API_VERSION_HEADER, API_VERSION_VALUE)),
+        Arguments.of(
+            post(TICKETS_URL + "/" + TICKET_ID + "/cancel")
+                .header(API_VERSION_HEADER, API_VERSION_VALUE)));
   }
 
   private static Stream<Arguments> ticketCommands() {

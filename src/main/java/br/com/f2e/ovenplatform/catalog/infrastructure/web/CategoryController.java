@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class CategoryController {
     this.categoryService = categoryService;
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @PostMapping(version = API_VERSION_VALUE)
   public ResponseEntity<CategoryResponse> create(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody CreateCategoryRequest categoryRequest) {
@@ -38,6 +40,7 @@ public class CategoryController {
     return ResponseEntity.created(uri).body(category);
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_READ')")
   @GetMapping(version = API_VERSION_VALUE)
   public ResponseEntity<List<CategoryResponse>> list(@CurrentTenantId UUID tenantId) {
     var categories =
@@ -46,6 +49,7 @@ public class CategoryController {
     return ResponseEntity.ok(categories);
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @PatchMapping(version = API_VERSION_VALUE, path = "/{id}")
   public ResponseEntity<CategoryResponse> update(
       @CurrentTenantId UUID tenantId,
@@ -57,6 +61,7 @@ public class CategoryController {
     return ResponseEntity.ok(CategoryResponse.from(category));
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @DeleteMapping(version = API_VERSION_VALUE, path = "/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {

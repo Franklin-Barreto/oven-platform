@@ -4,7 +4,6 @@ import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.Secu
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_HEADER;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -14,68 +13,39 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.identity.application.CreateTenantUserCommand;
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.application.TenantUserResult;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.dto.user.UserRequest;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.util.NoSuchElementException;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.hibernate.exception.ConstraintViolationException;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(IdentityController.class)
-@Import({ApiErrorResponseFactory.class})
-class IdentityControllerTest {
+class IdentityControllerTest extends AbstractControllerTest {
 
   private static final String EMAIL = "user.email@outlook.com";
   private static final String PASSWORD = "1234";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID USER_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final String BASE_URL = "/users";
 
-  @Autowired private MockMvc mockMvc;
   @MockitoBean private IdentityService identityService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
-
-  @AfterEach
-  void tearDown() {
-    SecurityContextHolder.clearContext();
-  }
 
   @Test
   void shouldCreateUserSuccessfully() throws Exception {
@@ -93,7 +63,9 @@ class IdentityControllerTest {
                 post(BASE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(userRequest))
-                    .with(authenticatedTenantUser(TENANT_ID))
+                    .with(
+                        authenticatedTenantUser(
+                            TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_MANAGE))
                     .accept(MediaType.APPLICATION_JSON))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.status").value(TenantMembershipStatus.ACTIVE.name()))
@@ -113,7 +85,9 @@ class IdentityControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -136,7 +110,9 @@ class IdentityControllerTest {
     mockMvc
         .perform(
             get(BASE_URL + "/%s".formatted(USER_ID))
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.status").value(TenantMembershipStatus.ACTIVE.name()))
@@ -155,7 +131,9 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .contentType(MediaType.APPLICATION_JSON)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -174,7 +152,11 @@ class IdentityControllerTest {
 
     mockMvc
         .perform(
-            get(getUrl).accept(MediaType.APPLICATION_JSON).with(authenticatedTenantUser(TENANT_ID)))
+            get(getUrl)
+                .accept(MediaType.APPLICATION_JSON)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_READ)))
         .andExpectAll(
             expectValidationErrors(
                 HttpStatus.BAD_REQUEST,
@@ -209,7 +191,9 @@ class IdentityControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(userRequest))
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -230,7 +214,9 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_READ))
                 .header(API_VERSION_HEADER, "3.0.0"))
         .andExpectAll(
             expectValidationErrors(
@@ -253,7 +239,9 @@ class IdentityControllerTest {
         .perform(
             get(getUrl)
                 .accept(MediaType.APPLICATION_JSON)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.TEAM_READ))
                 .header(API_VERSION_HEADER, "2.0.0"))
         .andExpectAll(
             expectValidationErrors(
@@ -266,6 +254,36 @@ class IdentityControllerTest {
                 HttpStatus.BAD_REQUEST.value()));
 
     verifyNoInteractions(identityService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("teamProtectedRequests")
+  void shouldReturnForbiddenWhenTeamPermissionIsMissing(MockHttpServletRequestBuilder request)
+      throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(identityService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    mockMvc.perform(get(BASE_URL + "/" + USER_ID)).andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(identityService);
+  }
+
+  private static Stream<Arguments> teamProtectedRequests() {
+    return Stream.of(
+        Arguments.of(get(BASE_URL + "/" + USER_ID)),
+        Arguments.of(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(createUserRequest()))));
   }
 
   private static Stream<Arguments> invalidRequestsCreate() {
