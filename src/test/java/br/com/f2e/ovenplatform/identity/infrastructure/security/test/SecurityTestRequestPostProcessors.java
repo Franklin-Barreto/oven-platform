@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.identity.infrastructure.security.test;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -17,13 +18,13 @@ public final class SecurityTestRequestPostProcessors {
   private SecurityTestRequestPostProcessors() {}
 
   public static RequestPostProcessor authenticatedTenantUser(UUID tenantId) {
-    return authenticatedTenantUser(tenantId, DEFAULT_USER_ID, TenantMembershipRole.MEMBER);
+    return authenticatedTenantUser(tenantId, DEFAULT_USER_ID, TenantMembershipRole.ATTENDANT);
   }
 
   public static RequestPostProcessor authenticatedTenantUser(
       UUID tenantId, UUID userId, TenantMembershipRole role) {
     return request -> {
-      var authenticatedUser = new AuthenticatedUser(tenantId, userId, role);
+      var authenticatedUser = new AuthenticatedUser(tenantId, userId, Set.of(role));
 
       var authentication =
           new UsernamePasswordAuthenticationToken(

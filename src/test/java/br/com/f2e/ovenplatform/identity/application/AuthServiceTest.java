@@ -21,6 +21,7 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.AuthenticatedUse
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -68,18 +69,18 @@ class AuthServiceTest {
         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(TENANT_ID, USER_ID, TenantMembershipRole.MEMBER.name()))
-        .thenReturn("jwt-token");
+    when(accessTokenService.generateToken(TENANT_ID, USER_ID)).thenReturn("jwt-token");
     when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
-        .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.MEMBER)));
+        .thenReturn(
+            Optional.of(
+                TenantMembership.staff(user, TENANT_ID, Set.of(TenantMembershipRole.ATTENDANT))));
 
     var token = authService.login(TENANT_ID, EMAIL, "123456");
 
     assertEquals("jwt-token", token);
     assertSame(authenticated, SecurityContextHolder.getContext().getAuthentication());
 
-    verify(accessTokenService)
-        .generateToken(TENANT_ID, USER_ID, TenantMembershipRole.MEMBER.name());
+    verify(accessTokenService).generateToken(TENANT_ID, USER_ID);
   }
 
   @Test
@@ -90,10 +91,11 @@ class AuthServiceTest {
         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
-    when(accessTokenService.generateToken(TENANT_ID, USER_ID, TenantMembershipRole.ADMIN.name()))
-        .thenReturn("jwt-token");
+    when(accessTokenService.generateToken(TENANT_ID, USER_ID)).thenReturn("jwt-token");
     when(tenantMembershipRepository.findByUserIdAndTenantId(USER_ID, TENANT_ID))
-        .thenReturn(Optional.of(createTenantMembership(user, TenantMembershipRole.ADMIN)));
+        .thenReturn(
+            Optional.of(
+                TenantMembership.staff(user, TENANT_ID, Set.of(TenantMembershipRole.MANAGER))));
 
     authService.login(TENANT_ID, EMAIL, "123456");
 
@@ -138,7 +140,8 @@ class AuthServiceTest {
     var authenticated =
         new UsernamePasswordAuthenticationToken(userDetails, null, userDetails.getAuthorities());
 
-    var tenantMembership = createTenantMembership(user, TenantMembershipRole.ADMIN);
+    var tenantMembership =
+        TenantMembership.staff(user, TENANT_ID, Set.of(TenantMembershipRole.MANAGER));
     tenantMembership.deactivate();
 
     when(authenticationManager.authenticate(any(Authentication.class))).thenReturn(authenticated);
@@ -174,9 +177,5 @@ class AuthServiceTest {
 
   private static AuthenticatedUserDetails createUserDetails(User user) {
     return new AuthenticatedUserDetails(user.getId(), user.getEmail(), user.getPasswordHash());
-  }
-
-  private TenantMembership createTenantMembership(User user, TenantMembershipRole role) {
-    return new TenantMembership(user, TENANT_ID, role);
   }
 }

@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
@@ -86,6 +87,7 @@ class OrderControllerTest {
 
   @MockitoBean private OrderService orderService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private ApplicationEventPublisher eventPublisher;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;

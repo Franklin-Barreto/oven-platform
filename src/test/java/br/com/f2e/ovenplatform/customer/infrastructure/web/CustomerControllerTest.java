@@ -26,6 +26,7 @@ import br.com.f2e.ovenplatform.customer.domain.AddressLine;
 import br.com.f2e.ovenplatform.customer.domain.Customer;
 import br.com.f2e.ovenplatform.customer.domain.CustomerAddressDetails;
 import br.com.f2e.ovenplatform.customer.domain.CustomerAddressLocation;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
@@ -61,6 +62,7 @@ class CustomerControllerTest {
 
   @MockitoBean private CustomerService customerService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;
   @MockitoBean private TraceContext traceContext;

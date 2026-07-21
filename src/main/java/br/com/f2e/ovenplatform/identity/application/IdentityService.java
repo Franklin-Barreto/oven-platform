@@ -39,21 +39,15 @@ public class IdentityService {
             .findByEmail(email)
             .orElseGet(() -> createUserForTenantMembership(command, email));
 
-    TenantMembership saved =
-        tenantMembershipRepository.save(
-            new TenantMembership(user, command.tenantId(), command.role()));
+    var tenantMembership = TenantMembership.staff(user, command.tenantId(), command.roles());
+
+    TenantMembership saved = tenantMembershipRepository.save(tenantMembership);
     return new TenantUserResult(
         saved.getUser().getId(),
         saved.getTenantId(),
         saved.getUser().getEmail(),
-        saved.getRole(),
+        saved.getRoles(),
         saved.getStatus());
-  }
-
-  private User createUserForTenantMembership(CreateTenantUserCommand command, String email) {
-    var passwordHash = passwordEncoder.encode(command.rawPassword());
-
-    return userRepository.save(new User(email, passwordHash));
   }
 
   @Transactional(readOnly = true)
@@ -67,7 +61,13 @@ public class IdentityService {
         membership.getUser().getId(),
         membership.getTenantId(),
         membership.getUser().getEmail(),
-        membership.getRole(),
+        membership.getRoles(),
         membership.getStatus());
+  }
+
+  private User createUserForTenantMembership(CreateTenantUserCommand command, String email) {
+    var passwordHash = passwordEncoder.encode(command.rawPassword());
+
+    return userRepository.save(new User(email, passwordHash));
   }
 }

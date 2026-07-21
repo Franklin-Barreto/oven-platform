@@ -1,9 +1,12 @@
 package br.com.f2e.ovenplatform.identity.domain;
 
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotEmptyAndWithoutNulls;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
@@ -12,6 +15,9 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 import jakarta.persistence.UniqueConstraint;
+import java.util.EnumSet;
+import java.util.HashSet;
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -31,9 +37,13 @@ public class TenantMembership extends BaseEntity {
   @Column(name = "tenant_id", nullable = false)
   private UUID tenantId;
 
+  @ElementCollection(fetch = FetchType.LAZY)
+  @CollectionTable(
+      name = "tenant_membership_roles",
+      joinColumns = @JoinColumn(name = "membership_id"))
   @Enumerated(EnumType.STRING)
   @Column(name = "role", nullable = false)
-  private TenantMembershipRole role;
+  private Set<TenantMembershipRole> roles = new HashSet<>();
 
   @Enumerated(EnumType.STRING)
   @Column(name = "status", nullable = false)
@@ -41,19 +51,33 @@ public class TenantMembership extends BaseEntity {
 
   protected TenantMembership() {}
 
-  public TenantMembership(User user, UUID tenantId, TenantMembershipRole role) {
+  private TenantMembership(User user, UUID tenantId, Set<TenantMembershipRole> roles) {
     this.user = requireNotNull(user, "user");
     this.tenantId = requireNotNull(tenantId, "tenantId");
-    this.role = requireNotNull(role, "role");
+    this.roles = validateRoles(roles);
     this.status = TenantMembershipStatus.ACTIVE;
+  }
+
+  public static TenantMembership owner(User user, UUID tenantId) {
+    return new TenantMembership(user, tenantId, Set.of(TenantMembershipRole.OWNER));
+  }
+
+  public static TenantMembership staff(User user, UUID tenantId, Set<TenantMembershipRole> roles) {
+    var validatedRoles = validateRoles(roles);
+
+    if (validatedRoles.contains(TenantMembershipRole.OWNER)) {
+      throw new IllegalArgumentException("Staff membership cannot contain OWNER");
+    }
+
+    return new TenantMembership(user, tenantId, validatedRoles);
   }
 
   public UUID getTenantId() {
     return tenantId;
   }
 
-  public TenantMembershipRole getRole() {
-    return role;
+  public Set<TenantMembershipRole> getRoles() {
+    return Set.copyOf(roles);
   }
 
   public TenantMembershipStatus getStatus() {
@@ -66,5 +90,10 @@ public class TenantMembership extends BaseEntity {
 
   public void deactivate() {
     this.status = TenantMembershipStatus.INACTIVE;
+  }
+
+  private static Set<TenantMembershipRole> validateRoles(Set<TenantMembershipRole> roles) {
+    requireNotEmptyAndWithoutNulls(roles, "roles");
+    return EnumSet.copyOf(roles);
   }
 }

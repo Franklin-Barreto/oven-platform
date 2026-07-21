@@ -10,6 +10,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.f2e.ovenplatform.identity.application.AuthService;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
@@ -47,6 +48,7 @@ class AuthenticationControllerTest {
 
   @MockitoBean private AuthService authService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;
   @MockitoBean private TraceContext traceContext;

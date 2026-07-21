@@ -1,0 +1,49 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+            http://www.liquibase.org/xml/ns/dbchangelog
+            https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="019-add-tenant-membership-roles" author="franklin">
+        <createTable tableName="tenant_membership_roles">
+            <column name="membership_id" type="UUID">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="role" type="VARCHAR(50)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addPrimaryKey
+                tableName="tenant_membership_roles"
+                columnNames="membership_id, role"
+                constraintName="pk_tenant_membership_roles"/>
+
+        <addForeignKeyConstraint
+                baseTableName="tenant_membership_roles"
+                baseColumnNames="membership_id"
+                referencedTableName="tenant_memberships"
+                referencedColumnNames="id"
+                constraintName="fk_tenant_membership_roles_membership"
+                onDelete="CASCADE"/>
+
+        <sql>
+            INSERT INTO tenant_membership_roles (membership_id, role)
+            SELECT id,
+                   CASE role
+                       WHEN 'OWNER' THEN 'OWNER'
+                       WHEN 'ADMIN' THEN 'MANAGER'
+                       WHEN 'MEMBER' THEN 'ATTENDANT'
+                       END
+            FROM tenant_memberships
+        </sql>
+
+        <dropColumn
+                tableName="tenant_memberships"
+                columnName="role"/>
+    </changeSet>
+
+</databaseChangeLog>

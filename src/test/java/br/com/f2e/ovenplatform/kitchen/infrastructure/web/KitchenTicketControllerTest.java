@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
 import br.com.f2e.ovenplatform.kitchen.domain.Ticket;
@@ -61,6 +62,7 @@ class KitchenTicketControllerTest {
 
   @MockitoBean private KitchenService kitchenService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;
   @MockitoBean private TraceContext traceContext;

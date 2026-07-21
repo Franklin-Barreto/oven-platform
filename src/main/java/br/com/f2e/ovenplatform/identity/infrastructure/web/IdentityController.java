@@ -34,7 +34,7 @@ public class IdentityController {
         TenantUserResponse.from(
             identityService.createTenantUser(
                 new CreateTenantUserCommand(
-                    tenantId, userRequest.email(), userRequest.password(), userRequest.role())));
+                    tenantId, userRequest.email(), userRequest.password(), userRequest.roles())));
 
     var uri = ResourceUriBuilder.buildLocation(userResponse.id());
 
