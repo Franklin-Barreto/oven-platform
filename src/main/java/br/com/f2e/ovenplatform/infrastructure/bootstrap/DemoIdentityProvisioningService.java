@@ -3,7 +3,6 @@ package br.com.f2e.ovenplatform.infrastructure.bootstrap;
 import br.com.f2e.ovenplatform.identity.application.TenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.application.UserRepository;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
-import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import br.com.f2e.ovenplatform.tenant.application.TenantRepository;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
@@ -70,7 +69,6 @@ public class DemoIdentityProvisioningService {
       return;
     }
 
-    tenantMembershipRepository.save(
-        new TenantMembership(user, tenant.getId(), TenantMembershipRole.OWNER));
+    tenantMembershipRepository.save(TenantMembership.owner(user, tenant.getId()));
   }
 }

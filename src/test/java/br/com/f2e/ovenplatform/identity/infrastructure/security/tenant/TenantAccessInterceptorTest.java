@@ -9,6 +9,7 @@ import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -83,7 +84,7 @@ class TenantAccessInterceptorTest {
         new UsernamePasswordAuthenticationToken(
             "john@email.com",
             null,
-            List.of(new SimpleGrantedAuthority(TenantMembershipRole.MEMBER.name())));
+            List.of(new SimpleGrantedAuthority(TenantMembershipRole.ATTENDANT.name())));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -99,8 +100,8 @@ class TenantAccessInterceptorTest {
   }
 
   private static void authenticateUserForTenant(UUID tenantId) {
-    var role = TenantMembershipRole.MEMBER;
-    var authenticatedUser = new AuthenticatedUser(tenantId, USER_ID, role);
+    var role = TenantMembershipRole.ATTENDANT;
+    var authenticatedUser = new AuthenticatedUser(tenantId, USER_ID, Set.of(role));
 
     var authentication =
         new UsernamePasswordAuthenticationToken(

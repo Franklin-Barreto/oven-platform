@@ -1,6 +1,8 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.filter;
 
-import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import io.jsonwebtoken.JwtException;
@@ -9,7 +11,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import java.util.UUID;
 import org.jspecify.annotations.NonNull;
 import org.slf4j.Logger;
@@ -26,9 +27,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
   private static final Logger LOGGER = LoggerFactory.getLogger(JwtAuthenticationFilter.class);
   public static final String BEARER = "Bearer ";
   private final JwtService jwtService;
+  private final TenantMembershipAuthenticationService membershipAuthenticationService;
 
-  public JwtAuthenticationFilter(JwtService jwtService) {
+  public JwtAuthenticationFilter(
+      JwtService jwtService,
+      TenantMembershipAuthenticationService membershipAuthenticationService) {
     this.jwtService = jwtService;
+    this.membershipAuthenticationService = membershipAuthenticationService;
   }
 
   @Override
@@ -54,14 +59,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     try {
       var claims = jwtService.parseClaims(token);
-      var role = claims.get("role", String.class);
-      var tenantId = claims.get("tenantId", String.class);
+      var tenantId = UUID.fromString(claims.get("tenantId", String.class));
+      var userId = UUID.fromString(claims.getSubject());
+      var membership = membershipAuthenticationService.loadActiveMembership(userId, tenantId);
       var authenticatedUser =
-          new AuthenticatedUser(
-              UUID.fromString(tenantId),
-              UUID.fromString(claims.getSubject()),
-              TenantMembershipRole.valueOf(role));
-      var authenticated = getAuthenticated(authenticatedUser, role);
+          new AuthenticatedUser(membership.tenantId(), membership.userId(), membership.roles());
+      var authenticated = getAuthenticated(authenticatedUser);
       securityContext.setAuthentication(authenticated);
 
     } catch (JwtException ex) {
@@ -69,14 +72,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     } catch (IllegalArgumentException ex) {
       clearContextAndLog("User had sent invalid arguments {}", ex);
+
+    } catch (TenantAccessDeniedException | TenantMembershipInactiveException ex) {
+      clearContextAndLog("Tenant membership could not be authenticated {}", ex);
     }
     filterChain.doFilter(request, response);
   }
 
   private static UsernamePasswordAuthenticationToken getAuthenticated(
-      AuthenticatedUser authenticatedUser, String role) {
-    return new UsernamePasswordAuthenticationToken(
-        authenticatedUser, null, List.of(new SimpleGrantedAuthority(role)));
+      AuthenticatedUser authenticatedUser) {
+    var authorities =
+        authenticatedUser.roles().stream()
+            .map(role -> new SimpleGrantedAuthority(role.name()))
+            .toList();
+    return new UsernamePasswordAuthenticationToken(authenticatedUser, null, authorities);
   }
 
   private void clearContextAndLog(String message, Exception ex) {

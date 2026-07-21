@@ -24,4 +24,5 @@
     <include file="db/changelog/changes/db.changelog-016-add-order-delivery-customer-snapshot.xml" />
     <include file="db/changelog/changes/db.changelog-017-align-event-publication-schema.xml" />
     <include file="db/changelog/changes/db.changelog-018-drop-outbox-events.xml" />
+    <include file="db/changelog/changes/db.changelog-019-add-tenant-membership-roles.xml" />
 </databaseChangeLog>

@@ -10,7 +10,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.identity.application.AuthenticatedTenantMembership;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import io.jsonwebtoken.Claims;
@@ -21,12 +25,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.util.List;
-import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
@@ -37,9 +42,10 @@ import org.springframework.security.core.context.SecurityContextHolder;
 @ExtendWith(MockitoExtension.class)
 class JwtAuthenticationFilterTest {
 
-  private JwtAuthenticationFilter filter;
+  @InjectMocks private JwtAuthenticationFilter filter;
 
   @Mock private JwtService jwtService;
+  @Mock private TenantMembershipAuthenticationService membershipAuthenticationService;
 
   @Mock private HttpServletRequest request;
   @Mock private HttpServletResponse response;
@@ -52,7 +58,6 @@ class JwtAuthenticationFilterTest {
   @BeforeEach
   void setUp() {
     SecurityContextHolder.clearContext();
-    filter = new JwtAuthenticationFilter(jwtService);
     when(request.getRequestURI()).thenReturn("/api/protected");
   }
 
@@ -66,9 +71,14 @@ class JwtAuthenticationFilterTest {
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
     when(claims.getSubject()).thenReturn(SUBJECT.toString());
-    when(claims.get("role", String.class)).thenReturn(TenantMembershipRole.MEMBER.name());
     when(claims.get("tenantId", String.class)).thenReturn(TENANT_ID.toString());
     when(jwtService.parseClaims("valid-token")).thenReturn(claims);
+    when(membershipAuthenticationService.loadActiveMembership(SUBJECT, TENANT_ID))
+        .thenReturn(
+            new AuthenticatedTenantMembership(
+                TENANT_ID,
+                SUBJECT,
+                Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN)));
 
     filter.doFilter(request, response, filterChain);
 
@@ -82,16 +92,18 @@ class JwtAuthenticationFilterTest {
 
     assertEquals(TENANT_ID, authenticatedUser.tenantId());
     assertEquals(SUBJECT, authenticatedUser.userId());
-    assertEquals(TenantMembershipRole.MEMBER, authenticatedUser.role());
-
-    assertTrue(
+    assertEquals(
+        Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN),
+        authenticatedUser.roles());
+    assertEquals(
+        Set.of(TenantMembershipRole.ATTENDANT.name(), TenantMembershipRole.KITCHEN.name()),
         authentication.getAuthorities().stream()
-            .anyMatch(
-                authority ->
-                    Objects.equals(authority.getAuthority(), TenantMembershipRole.MEMBER.name())));
+            .map(org.springframework.security.core.GrantedAuthority::getAuthority)
+            .collect(java.util.stream.Collectors.toSet()));
 
     verify(filterChain).doFilter(request, response);
     verify(jwtService).parseClaims("valid-token");
+    verify(membershipAuthenticationService).loadActiveMembership(SUBJECT, TENANT_ID);
   }
 
   @Test
@@ -106,6 +118,7 @@ class JwtAuthenticationFilterTest {
 
     verify(filterChain).doFilter(request, response);
     verifyNoInteractions(jwtService);
+    verifyNoInteractions(membershipAuthenticationService);
   }
 
   @Test
@@ -119,6 +132,31 @@ class JwtAuthenticationFilterTest {
     assertNull(SecurityContextHolder.getContext().getAuthentication());
 
     verify(jwtService).parseClaims("invalid-token");
+    verifyNoInteractions(membershipAuthenticationService);
+    verify(filterChain).doFilter(request, response);
+  }
+
+  @Test
+  void shouldNotAuthenticateWhenMembershipIsAbsent() throws ServletException, IOException {
+    prepareValidToken();
+    when(membershipAuthenticationService.loadActiveMembership(SUBJECT, TENANT_ID))
+        .thenThrow(new TenantAccessDeniedException());
+
+    filter.doFilter(request, response, filterChain);
+
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
+    verify(filterChain).doFilter(request, response);
+  }
+
+  @Test
+  void shouldNotAuthenticateWhenMembershipIsInactive() throws ServletException, IOException {
+    prepareValidToken();
+    when(membershipAuthenticationService.loadActiveMembership(SUBJECT, TENANT_ID))
+        .thenThrow(new TenantMembershipInactiveException());
+
+    filter.doFilter(request, response, filterChain);
+
+    assertNull(SecurityContextHolder.getContext().getAuthentication());
     verify(filterChain).doFilter(request, response);
   }
 
@@ -127,8 +165,8 @@ class JwtAuthenticationFilterTest {
 
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
-    var role = TenantMembershipRole.ADMIN;
-    var authenticatedUser = new AuthenticatedUser(TENANT_ID, SUBJECT, role);
+    var role = TenantMembershipRole.MANAGER;
+    var authenticatedUser = new AuthenticatedUser(TENANT_ID, SUBJECT, Set.of(role));
 
     var existingAuthentication =
         new UsernamePasswordAuthenticationToken(
@@ -141,6 +179,14 @@ class JwtAuthenticationFilterTest {
     assertSame(existingAuthentication, SecurityContextHolder.getContext().getAuthentication());
 
     verifyNoInteractions(jwtService);
+    verifyNoInteractions(membershipAuthenticationService);
     verify(filterChain).doFilter(request, response);
+  }
+
+  private void prepareValidToken() {
+    when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
+    when(claims.getSubject()).thenReturn(SUBJECT.toString());
+    when(claims.get("tenantId", String.class)).thenReturn(TENANT_ID.toString());
+    when(jwtService.parseClaims("valid-token")).thenReturn(claims);
   }
 }

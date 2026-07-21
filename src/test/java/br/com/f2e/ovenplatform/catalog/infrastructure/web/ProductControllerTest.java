@@ -19,6 +19,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.catalog.application.CatalogService;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
@@ -62,6 +63,7 @@ class ProductControllerTest {
 
   @MockitoBean private CatalogService catalogService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;
   @MockitoBean private TraceContext traceContext;

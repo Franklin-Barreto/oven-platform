@@ -10,6 +10,7 @@ import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedExcep
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import java.lang.reflect.Method;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -85,8 +86,8 @@ class CurrentTenantIdArgumentResolverTest {
   }
 
   private static void authenticateTenantUser() {
-    var role = TenantMembershipRole.MEMBER;
-    var authenticatedUser = new AuthenticatedUser(TENANT_ID, USER_ID, role);
+    var role = TenantMembershipRole.ATTENDANT;
+    var authenticatedUser = new AuthenticatedUser(TENANT_ID, USER_ID, Set.of(role));
 
     var authentication =
         new UsernamePasswordAuthenticationToken(

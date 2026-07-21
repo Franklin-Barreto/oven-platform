@@ -41,8 +41,7 @@ public class AuthService {
     if (tenantMembership.getStatus() != TenantMembershipStatus.ACTIVE) {
       throw new TenantMembershipInactiveException();
     }
-    return jwtService.generateToken(
-        tenantId, loggedUser.userId(), tenantMembership.getRole().name());
+    return jwtService.generateToken(tenantId, loggedUser.userId());
   }
 
   private TenantMembership getTenantMembership(UUID tenantId, UUID userId) {

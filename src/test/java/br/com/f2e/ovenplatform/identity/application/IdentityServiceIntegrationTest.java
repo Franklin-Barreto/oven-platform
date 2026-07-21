@@ -18,6 +18,7 @@ import br.com.f2e.ovenplatform.identity.infrastructure.security.config.PasswordE
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -49,7 +50,8 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldCreateNewUserAndTenantMembershipWhenTenantExists() {
     var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     var response = identityService.createTenantUser(command);
 
@@ -65,7 +67,7 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(response.userId()).isEqualTo(persistedUser.getId());
     assertThat(response.tenantId()).isEqualTo(TENANT_ID);
     assertThat(response.email()).isEqualTo(NORMALIZED_EMAIL);
-    assertThat(response.role()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(response.roles()).contains(TenantMembershipRole.MANAGER);
     assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     assertThat(persistedUser.getEmail()).isEqualTo(NORMALIZED_EMAIL);
@@ -75,7 +77,7 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(persistedMembership.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(persistedMembership.getUser().getId()).isEqualTo(persistedUser.getId());
-    assertThat(persistedMembership.getRole()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(persistedMembership.getRoles()).contains(TenantMembershipRole.MANAGER);
     assertThat(persistedMembership.getStatus()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
@@ -84,7 +86,8 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldFindTenantUserByIdThroughService() {
     var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     var created = identityService.createTenantUser(command);
     flushAndClear();
@@ -94,7 +97,7 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(result.userId()).isEqualTo(created.userId());
     assertThat(result.tenantId()).isEqualTo(TENANT_ID);
     assertThat(result.email()).isEqualTo(NORMALIZED_EMAIL);
-    assertThat(result.role()).isEqualTo(TenantMembershipRole.ADMIN);
+    assertThat(result.roles()).contains(TenantMembershipRole.MANAGER);
     assertThat(result.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
@@ -115,7 +118,8 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldThrowWhenUserDoesNotBelongToTenantThroughService() {
     var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     var created = identityService.createTenantUser(command);
     flushAndClear();
@@ -135,14 +139,15 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldReuseExistingUserAndCreateTenantMembershipWhenEmailAlreadyExists() {
     var firstTenantCommand =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.MEMBER);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.ATTENDANT));
 
     var existingUserResponse = identityService.createTenantUser(firstTenantCommand);
     flushAndClear();
 
     var secondTenantCommand =
         new CreateTenantUserCommand(
-            ANOTHER_TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.OWNER);
+            ANOTHER_TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.KITCHEN));
 
     var response = identityService.createTenantUser(secondTenantCommand);
     flushAndClear();
@@ -153,7 +158,7 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(response.userId()).isEqualTo(existingUserResponse.userId());
     assertThat(response.tenantId()).isEqualTo(ANOTHER_TENANT_ID);
     assertThat(response.email()).isEqualTo(NORMALIZED_EMAIL);
-    assertThat(response.role()).isEqualTo(TenantMembershipRole.OWNER);
+    assertThat(response.roles()).containsExactly(TenantMembershipRole.KITCHEN);
     assertThat(response.status()).isEqualTo(TenantMembershipStatus.ACTIVE);
 
     var memberships = tenantMembershipRepository.findAll();
@@ -164,17 +169,28 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
             membership -> {
               assertThat(membership.getUser().getId()).isEqualTo(existingUserResponse.userId());
               assertThat(membership.getTenantId()).isEqualTo(TENANT_ID);
-              assertThat(membership.getRole()).isEqualTo(TenantMembershipRole.MEMBER);
+              assertThat(membership.getRoles()).contains(TenantMembershipRole.ATTENDANT);
             })
         .anySatisfy(
             membership -> {
               assertThat(membership.getUser().getId()).isEqualTo(existingUserResponse.userId());
               assertThat(membership.getTenantId()).isEqualTo(ANOTHER_TENANT_ID);
-              assertThat(membership.getRole()).isEqualTo(TenantMembershipRole.OWNER);
+              assertThat(membership.getRoles()).containsExactly(TenantMembershipRole.KITCHEN);
             });
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
     verify(tenantValidator).ensureTenantExists(ANOTHER_TENANT_ID);
+  }
+
+  @Test
+  void shouldRejectOwnerInOrdinaryTenantUserCreation() {
+    var command =
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.OWNER));
+
+    assertThatThrownBy(() -> identityService.createTenantUser(command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("Staff membership cannot contain OWNER");
   }
 
   @Test
@@ -184,7 +200,8 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
         .ensureTenantExists(TENANT_ID);
 
     var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     assertThatThrownBy(() -> identityService.createTenantUser(command))
         .isInstanceOf(ResourceNotFoundException.class);
@@ -198,7 +215,8 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldFailWhenUserAlreadyBelongsToTenant() {
     var command =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, RAW_PASSWORD, TenantMembershipRole.ADMIN);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     identityService.createTenantUser(command);
     flushAndClear();
@@ -218,7 +236,7 @@ class IdentityServiceIntegrationTest extends DataJpaIntegrationTest {
   void shouldNormalizeEmailBeforeCreatingTenantUser() {
     var command =
         new CreateTenantUserCommand(
-            TENANT_ID, " Contact@email.com ", RAW_PASSWORD, TenantMembershipRole.ADMIN);
+            TENANT_ID, " Contact@email.com ", RAW_PASSWORD, Set.of(TenantMembershipRole.MANAGER));
 
     var response = identityService.createTenantUser(command);
 

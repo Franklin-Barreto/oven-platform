@@ -27,7 +27,7 @@ public final class JwtService implements AccessTokenService {
   }
 
   @Override
-  public String generateToken(UUID tenantId, UUID subject, String roleName) {
+  public String generateToken(UUID tenantId, UUID subject) {
 
     Instant instant = Instant.now();
     return Jwts.builder()
@@ -35,7 +35,6 @@ public final class JwtService implements AccessTokenService {
         .issuedAt(new Date(instant.toEpochMilli()))
         .expiration(new Date(instant.plus(expirationMinutes, ChronoUnit.MINUTES).toEpochMilli()))
         .signWith(key)
-        .claim("role", roleName)
         .claim("tenantId", tenantId)
         .compact();
   }

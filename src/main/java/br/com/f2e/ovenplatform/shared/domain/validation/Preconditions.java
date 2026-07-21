@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.shared.domain.validation;
 
 import java.math.BigDecimal;
 import java.util.Collection;
+import java.util.Objects;
 
 public final class Preconditions {
 
@@ -79,6 +80,17 @@ public final class Preconditions {
 
     if (field.isEmpty()) {
       throw new IllegalArgumentException("%s must have at least 1 item".formatted(fieldName));
+    }
+
+    return field;
+  }
+
+  public static <T extends Collection<?>> T requireNotEmptyAndWithoutNulls(
+      T field, String fieldName) {
+    requireNotEmpty(field, fieldName);
+
+    if (field.stream().anyMatch(Objects::isNull)) {
+      throw new IllegalArgumentException("%s must not contain null elements".formatted(fieldName));
     }
 
     return field;

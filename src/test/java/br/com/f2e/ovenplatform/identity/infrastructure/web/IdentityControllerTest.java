@@ -14,6 +14,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.identity.application.CreateTenantUserCommand;
 import br.com.f2e.ovenplatform.identity.application.IdentityService;
+import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.application.TenantUserResult;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
@@ -26,6 +27,7 @@ import io.micrometer.tracing.Span;
 import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
 import java.util.NoSuchElementException;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.hibernate.exception.ConstraintViolationException;
@@ -58,6 +60,7 @@ class IdentityControllerTest {
   @Autowired private MockMvc mockMvc;
   @MockitoBean private IdentityService identityService;
   @MockitoBean private JwtService jwtService;
+  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private Tracer tracer;
   @MockitoBean private Span span;
   @MockitoBean private TraceContext traceContext;
@@ -78,7 +81,8 @@ class IdentityControllerTest {
   void shouldCreateUserSuccessfully() throws Exception {
 
     var request =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, PASSWORD, Set.of(TenantMembershipRole.ATTENDANT));
     when(identityService.createTenantUser(request)).thenReturn(tenantUserCreatedResponse());
 
     var userRequest = createUserRequest();
@@ -194,7 +198,8 @@ class IdentityControllerTest {
       throws Exception {
 
     var request =
-        new CreateTenantUserCommand(TENANT_ID, EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
+        new CreateTenantUserCommand(
+            TENANT_ID, EMAIL, PASSWORD, Set.of(TenantMembershipRole.ATTENDANT));
     when(identityService.createTenantUser(request)).thenThrow(exception);
 
     var userRequest = createUserRequest();
@@ -266,14 +271,16 @@ class IdentityControllerTest {
   private static Stream<Arguments> invalidRequestsCreate() {
     return Stream.of(
         Arguments.of(
-            new UserRequest("invalidEmail.com", "1234", TenantMembershipRole.MEMBER),
+            new UserRequest("invalidEmail.com", "1234", Set.of(TenantMembershipRole.ATTENDANT)),
             "email",
             "must be a well-formed email address"),
         Arguments.of(
-            new UserRequest("user@email.com", "", TenantMembershipRole.MEMBER),
+            new UserRequest("user@email.com", "", Set.of(TenantMembershipRole.ATTENDANT)),
             "password",
             "must not be blank"),
-        Arguments.of(new UserRequest("user@email.com", "1234", null), "role", "must not be null"));
+        Arguments.of(new UserRequest("user@email.com", "1234", null), "roles", "must not be empty"),
+        Arguments.of(
+            new UserRequest("user@email.com", "1234", Set.of()), "roles", "must not be empty"));
   }
 
   private static Stream<Arguments> dataIntegrityViolationScenarios() {
@@ -296,12 +303,16 @@ class IdentityControllerTest {
   }
 
   private static UserRequest createUserRequest() {
-    return new UserRequest(EMAIL, PASSWORD, TenantMembershipRole.MEMBER);
+    return new UserRequest(EMAIL, PASSWORD, Set.of(TenantMembershipRole.ATTENDANT));
   }
 
   private static TenantUserResult tenantUserCreatedResponse() {
     return new TenantUserResult(
-        USER_ID, TENANT_ID, EMAIL, TenantMembershipRole.MEMBER, TenantMembershipStatus.ACTIVE);
+        USER_ID,
+        TENANT_ID,
+        EMAIL,
+        Set.of(TenantMembershipRole.ATTENDANT),
+        TenantMembershipStatus.ACTIVE);
   }
 
   private static DataIntegrityViolationException directConstraintViolation(String constraintName) {
