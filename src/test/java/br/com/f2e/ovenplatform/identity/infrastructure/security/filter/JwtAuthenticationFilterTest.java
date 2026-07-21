@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.f2e.ovenplatform.identity.application.AuthenticatedTenantMembership;
 import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
@@ -54,6 +55,14 @@ class JwtAuthenticationFilterTest {
 
   private static final UUID SUBJECT = UUID.randomUUID();
   private static final UUID TENANT_ID = UUID.randomUUID();
+  private static final Set<TenantMembershipRole> ROLES =
+      Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN);
+  private static final Set<TenantPermission> PERMISSIONS =
+      Set.of(
+          TenantPermission.CATALOG_READ,
+          TenantPermission.ORDER_CREATE,
+          TenantPermission.KITCHEN_READ,
+          TenantPermission.KITCHEN_OPERATE);
 
   @BeforeEach
   void setUp() {
@@ -74,11 +83,7 @@ class JwtAuthenticationFilterTest {
     when(claims.get("tenantId", String.class)).thenReturn(TENANT_ID.toString());
     when(jwtService.parseClaims("valid-token")).thenReturn(claims);
     when(membershipAuthenticationService.loadActiveMembership(SUBJECT, TENANT_ID))
-        .thenReturn(
-            new AuthenticatedTenantMembership(
-                TENANT_ID,
-                SUBJECT,
-                Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN)));
+        .thenReturn(new AuthenticatedTenantMembership(TENANT_ID, SUBJECT, ROLES, PERMISSIONS));
 
     filter.doFilter(request, response, filterChain);
 
@@ -92,11 +97,14 @@ class JwtAuthenticationFilterTest {
 
     assertEquals(TENANT_ID, authenticatedUser.tenantId());
     assertEquals(SUBJECT, authenticatedUser.userId());
+    assertEquals(ROLES, authenticatedUser.roles());
+    assertEquals(PERMISSIONS, authenticatedUser.permissions());
     assertEquals(
-        Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN),
-        authenticatedUser.roles());
-    assertEquals(
-        Set.of(TenantMembershipRole.ATTENDANT.name(), TenantMembershipRole.KITCHEN.name()),
+        Set.of(
+            TenantPermission.CATALOG_READ.name(),
+            TenantPermission.ORDER_CREATE.name(),
+            TenantPermission.KITCHEN_READ.name(),
+            TenantPermission.KITCHEN_OPERATE.name()),
         authentication.getAuthorities().stream()
             .map(org.springframework.security.core.GrantedAuthority::getAuthority)
             .collect(java.util.stream.Collectors.toSet()));
@@ -166,11 +174,13 @@ class JwtAuthenticationFilterTest {
     when(request.getHeader(HttpHeaders.AUTHORIZATION)).thenReturn("Bearer valid-token");
 
     var role = TenantMembershipRole.MANAGER;
-    var authenticatedUser = new AuthenticatedUser(TENANT_ID, SUBJECT, Set.of(role));
+    var permission = TenantPermission.KITCHEN_OPERATE;
+    var authenticatedUser =
+        new AuthenticatedUser(TENANT_ID, SUBJECT, Set.of(role), Set.of(permission));
 
     var existingAuthentication =
         new UsernamePasswordAuthenticationToken(
-            authenticatedUser, null, List.of(new SimpleGrantedAuthority(role.name())));
+            authenticatedUser, null, List.of(new SimpleGrantedAuthority(permission.name())));
 
     SecurityContextHolder.getContext().setAuthentication(existingAuthentication);
 

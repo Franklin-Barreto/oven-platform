@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
@@ -41,10 +42,9 @@ class TenantAccessInterceptorTest {
 
   @Test
   void shouldAllowRequestWhenTenantHeaderMatchesAuthenticatedTenant() {
-    authenticateUserForTenant(TENANT_ID);
+    authenticateUserForTenant();
 
     var request = requestWithTenantHeader(TENANT_ID);
-
     var shouldContinue = interceptor.preHandle(request, response(), handler());
 
     assertTrue(shouldContinue);
@@ -52,7 +52,7 @@ class TenantAccessInterceptorTest {
 
   @Test
   void shouldRejectRequestWhenTenantHeaderDiffersFromAuthenticatedTenant() {
-    authenticateUserForTenant(TENANT_ID);
+    authenticateUserForTenant();
 
     var request = requestWithTenantHeader(ANOTHER_TENANT_ID);
     var handler = handler();
@@ -64,7 +64,7 @@ class TenantAccessInterceptorTest {
 
   @Test
   void shouldSkipValidationWhenTenantHeaderIsMissing() {
-    authenticateUserForTenant(TENANT_ID);
+    authenticateUserForTenant();
 
     var request = new MockHttpServletRequest();
 
@@ -84,7 +84,7 @@ class TenantAccessInterceptorTest {
         new UsernamePasswordAuthenticationToken(
             "john@email.com",
             null,
-            List.of(new SimpleGrantedAuthority(TenantMembershipRole.ATTENDANT.name())));
+            List.of(new SimpleGrantedAuthority(TenantPermission.KITCHEN_OPERATE.name())));
 
     SecurityContextHolder.getContext().setAuthentication(authentication);
 
@@ -99,9 +99,11 @@ class TenantAccessInterceptorTest {
     return request;
   }
 
-  private static void authenticateUserForTenant(UUID tenantId) {
-    var role = TenantMembershipRole.ATTENDANT;
-    var authenticatedUser = new AuthenticatedUser(tenantId, USER_ID, Set.of(role));
+  private static void authenticateUserForTenant() {
+    var role = TenantMembershipRole.KITCHEN;
+    var authenticatedUser =
+        new AuthenticatedUser(
+            TENANT_ID, USER_ID, Set.of(role), Set.of(TenantPermission.KITCHEN_OPERATE));
 
     var authentication =
         new UsernamePasswordAuthenticationToken(

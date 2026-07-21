@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.application;
 
+import br.com.f2e.ovenplatform.identity.application.security.TenantPermissionResolver;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
@@ -11,10 +12,13 @@ import org.springframework.transaction.annotation.Transactional;
 public class TenantMembershipAuthenticationService {
 
   private final TenantMembershipRepository tenantMembershipRepository;
+  private final TenantPermissionResolver permissionResolver;
 
   public TenantMembershipAuthenticationService(
-      TenantMembershipRepository tenantMembershipRepository) {
+      TenantMembershipRepository tenantMembershipRepository,
+      TenantPermissionResolver permissionResolver) {
     this.tenantMembershipRepository = tenantMembershipRepository;
+    this.permissionResolver = permissionResolver;
   }
 
   @Transactional(readOnly = true)
@@ -29,6 +33,9 @@ public class TenantMembershipAuthenticationService {
     }
 
     return new AuthenticatedTenantMembership(
-        membership.getTenantId(), membership.getUser().getId(), membership.getRoles());
+        membership.getTenantId(),
+        membership.getUser().getId(),
+        membership.getRoles(),
+        permissionResolver.resolve(membership.getRoles()));
   }
 }

@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.test;
 
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
 import java.util.List;
@@ -24,7 +25,9 @@ public final class SecurityTestRequestPostProcessors {
   public static RequestPostProcessor authenticatedTenantUser(
       UUID tenantId, UUID userId, TenantMembershipRole role) {
     return request -> {
-      var authenticatedUser = new AuthenticatedUser(tenantId, userId, Set.of(role));
+      var authenticatedUser =
+          new AuthenticatedUser(
+              tenantId, userId, Set.of(role), Set.of(TenantPermission.ORDER_READ));
 
       var authentication =
           new UsernamePasswordAuthenticationToken(
