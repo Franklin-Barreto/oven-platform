@@ -4,71 +4,43 @@ import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.Secu
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.time.Instant;
 import java.util.Collections;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @ActiveProfiles("test")
 @WebMvcTest(controllers = PaymentController.class)
-@Import({ApiErrorResponseFactory.class})
-class PaymentControllerTest {
+class PaymentControllerTest extends AbstractControllerTest {
 
   private static final String BASE_URL = "/payments";
   private static final String LOOK_UP_URL = BASE_URL + "/orders/lookup";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final Instant PAID_AT = Instant.parse("2026-05-12T20:18:00Z");
 
-  @Autowired private MockMvc mockMvc;
   @MockitoBean private PaymentService paymentService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
-
-  @AfterEach
-  void tearDown() {
-    SecurityContextHolder.clearContext();
-  }
 
   @Test
   void shouldReturnPaymentsByOrderIds() throws Exception {
@@ -83,7 +55,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(paymentReadUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request)))
         .andExpect(status().isOk())
@@ -107,7 +79,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(paymentReadUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request)))
         .andExpect(status().isOk())
@@ -122,7 +94,7 @@ class PaymentControllerTest {
     mockMvc
         .perform(
             post(LOOK_UP_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(paymentReadUser())
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(new OrderPaymentsLookupRequest(Collections.emptyList()))))
         .andExpect(status().isBadRequest())
@@ -135,5 +107,43 @@ class PaymentControllerTest {
                 "At least one order id must be provided",
                 "orderIds",
                 HttpStatus.BAD_REQUEST.value()));
+
+    verifyNoInteractions(paymentService);
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenPaymentReadPermissionIsMissing() throws Exception {
+    var request = new OrderPaymentsLookupRequest(List.of(UUID.randomUUID()));
+
+    mockMvc
+        .perform(
+            post(LOOK_UP_URL)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_READ))
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(request)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(paymentService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    var request = new OrderPaymentsLookupRequest(List.of(UUID.randomUUID()));
+
+    mockMvc
+        .perform(
+            post(LOOK_UP_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(request)))
+        .andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(paymentService);
+  }
+
+  private static RequestPostProcessor paymentReadUser() {
+    return authenticatedTenantUser(
+        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.PAYMENT_READ);
   }
 }

@@ -14,9 +14,10 @@ import org.springframework.stereotype.Component;
 public class E2eScenarioContext {
 
   private UUID tenantId;
-  private String ownerEmail;
-  private String ownerPassword;
+  private String userEmail;
+  private String userPassword;
   private String accessToken;
+  private int lastResponseStatus;
   private OrderResponse lastOrderResponse;
 
   private final Map<String, CategoryResponse> categoriesByName = new HashMap<>();
@@ -30,20 +31,20 @@ public class E2eScenarioContext {
     this.tenantId = tenantId;
   }
 
-  public String ownerEmail() {
-    return ownerEmail;
+  public String userEmail() {
+    return userEmail;
   }
 
-  public void setOwnerEmail(String ownerEmail) {
-    this.ownerEmail = ownerEmail;
+  public void setUserEmail(String userEmail) {
+    this.userEmail = userEmail;
   }
 
-  public String ownerPassword() {
-    return ownerPassword;
+  public String userPassword() {
+    return userPassword;
   }
 
-  public void setOwnerPassword(String ownerPassword) {
-    this.ownerPassword = ownerPassword;
+  public void setUserPassword(String userPassword) {
+    this.userPassword = userPassword;
   }
 
   public String accessToken() {
@@ -52,6 +53,14 @@ public class E2eScenarioContext {
 
   public void setAccessToken(String accessToken) {
     this.accessToken = accessToken;
+  }
+
+  public int lastResponseStatus() {
+    return lastResponseStatus;
+  }
+
+  public void setLastResponseStatus(int lastResponseStatus) {
+    this.lastResponseStatus = lastResponseStatus;
   }
 
   public void addCategory(CategoryResponse category) {

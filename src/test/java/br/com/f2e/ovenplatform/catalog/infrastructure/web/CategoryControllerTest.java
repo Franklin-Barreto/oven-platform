@@ -4,7 +4,6 @@ import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.Secu
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -18,63 +17,35 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.catalog.application.CategoryService;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(controllers = {CategoryController.class})
-@Import({ApiErrorResponseFactory.class})
-class CategoryControllerTest {
+class CategoryControllerTest extends AbstractControllerTest {
 
   private static final String BASE_URL = "/categories";
   private static final String VALID_CATEGORY = "Pizzas";
   private static final String UPDATED_CATEGORY = "Drinks";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
+
   private static final UUID CATEGORY_ID = UUID.fromString("5b2180d1-cae8-42bd-a3f4-2ab97a49a789");
 
-  @Autowired private MockMvc mockMvc;
-
   @MockitoBean private CategoryService categoryService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
-
-  @AfterEach
-  void tearDown() {
-    SecurityContextHolder.clearContext();
-  }
 
   @Test
   void shouldCreateCategoryUsingTenantFromAuthenticatedPrincipal() throws Exception {
@@ -86,7 +57,11 @@ class CategoryControllerTest {
         mockMvc
             .perform(
                 post(BASE_URL)
-                    .with(authenticatedTenantUser(TENANT_ID))
+                    .with(
+                        authenticatedTenantUser(
+                            TENANT_ID,
+                            TenantMembershipRole.MANAGER,
+                            TenantPermission.CATALOG_MANAGE))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(createCategoryRequest()))
                     .accept(MediaType.APPLICATION_JSON))
@@ -108,7 +83,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             post(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
                 .accept(MediaType.APPLICATION_JSON))
@@ -134,7 +111,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             get(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
@@ -152,7 +131,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             get(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
@@ -172,7 +153,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + CATEGORY_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(updateCategoryRequest()))
                 .accept(MediaType.APPLICATION_JSON))
@@ -191,7 +174,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + CATEGORY_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
                 .accept(MediaType.APPLICATION_JSON))
@@ -216,7 +201,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + CATEGORY_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(updateCategoryRequest()))
                 .accept(MediaType.APPLICATION_JSON))
@@ -233,7 +220,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             delete(BASE_URL + "/" + CATEGORY_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNoContent());
 
@@ -249,7 +238,9 @@ class CategoryControllerTest {
     mockMvc
         .perform(
             delete(BASE_URL + "/" + CATEGORY_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -257,6 +248,40 @@ class CategoryControllerTest {
                 .value("Category id: %s not found".formatted(CATEGORY_ID)));
 
     verify(categoryService).deactivate(TENANT_ID, CATEGORY_ID);
+  }
+
+  @ParameterizedTest
+  @MethodSource("categoryMutationRequests")
+  void shouldReturnForbiddenWhenCategoryMutationPermissionIsMissing(
+      MockHttpServletRequestBuilder request) throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(categoryService);
+  }
+
+  @Test
+  void shouldReturnForbiddenWhenCategoryReadPermissionIsMissing() throws Exception {
+    mockMvc
+        .perform(
+            get(BASE_URL)
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(categoryService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    mockMvc.perform(get(BASE_URL)).andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(categoryService);
   }
 
   private static Stream<Arguments> invalidCreateRequests() {
@@ -275,6 +300,19 @@ class CategoryControllerTest {
             "name must have at least 5 characters"),
         Arguments.of(
             new UpdateCategoryRequest(UPDATED_CATEGORY, null), "active", "must not be null"));
+  }
+
+  private static Stream<Arguments> categoryMutationRequests() {
+    return Stream.of(
+        Arguments.of(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(createCategoryRequest()))),
+        Arguments.of(
+            patch(BASE_URL + "/" + CATEGORY_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(updateCategoryRequest()))),
+        Arguments.of(delete(BASE_URL + "/" + CATEGORY_ID)));
   }
 
   private static CreateCategoryRequest createCategoryRequest() {

@@ -1,9 +1,10 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.test;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.authentication;
+
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.dto.AuthenticatedUser;
-import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -19,23 +20,32 @@ public final class SecurityTestRequestPostProcessors {
   private SecurityTestRequestPostProcessors() {}
 
   public static RequestPostProcessor authenticatedTenantUser(UUID tenantId) {
-    return authenticatedTenantUser(tenantId, DEFAULT_USER_ID, TenantMembershipRole.ATTENDANT);
+    return authenticatedTenantUser(
+        tenantId, DEFAULT_USER_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_READ);
   }
 
   public static RequestPostProcessor authenticatedTenantUser(
-      UUID tenantId, UUID userId, TenantMembershipRole role) {
+      UUID tenantId, TenantMembershipRole role, TenantPermission... permissions) {
+    return authenticatedTenantUser(tenantId, DEFAULT_USER_ID, role, permissions);
+  }
+
+  private static RequestPostProcessor authenticatedTenantUser(
+      UUID tenantId, UUID userId, TenantMembershipRole role, TenantPermission... permissions) {
     return request -> {
-      var authenticatedUser =
-          new AuthenticatedUser(
-              tenantId, userId, Set.of(role), Set.of(TenantPermission.ORDER_READ));
+      var permissionSet = Set.of(permissions);
+      var authenticatedUser = new AuthenticatedUser(tenantId, userId, Set.of(role), permissionSet);
 
       var authentication =
           new UsernamePasswordAuthenticationToken(
-              authenticatedUser, null, List.of(new SimpleGrantedAuthority(role.name())));
+              authenticatedUser,
+              null,
+              permissionSet.stream()
+                  .map(permission -> new SimpleGrantedAuthority(permission.name()))
+                  .toList());
 
       SecurityContextHolder.getContext().setAuthentication(authentication);
 
-      return request;
+      return authentication(authentication).postProcessRequest(request);
     };
   }
 }

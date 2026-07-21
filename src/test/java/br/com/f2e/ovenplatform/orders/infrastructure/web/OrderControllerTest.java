@@ -9,7 +9,6 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHea
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -20,8 +19,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
@@ -41,11 +40,8 @@ import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.math.BigDecimal;
 import java.util.Collections;
 import java.util.List;
@@ -53,29 +49,23 @@ import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.ApplicationEventPublisher;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @WebMvcTest(controllers = OrderController.class)
-@Import({ApiErrorResponseFactory.class})
-class OrderControllerTest {
+class OrderControllerTest extends AbstractControllerTest {
 
   private static final String BASE_URL = "/orders";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID CUSTOMER_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
@@ -83,33 +73,14 @@ class OrderControllerTest {
       UUID.fromString("d6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
 
-  @Autowired private MockMvc mockMvc;
-
   @MockitoBean private OrderService orderService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
   @MockitoBean private ApplicationEventPublisher eventPublisher;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
-
-  @AfterEach
-  void tearDown() {
-    SecurityContextHolder.clearContext();
-  }
 
   @Test
   void shouldCreateOrderWithItems() throws Exception {
     var orderRequest = createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, 3);
 
-    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
+    var order = createOrder(ORDER_ID, 3, new BigDecimal("35.40"));
 
     when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
 
@@ -119,7 +90,7 @@ class OrderControllerTest {
                 post(BASE_URL)
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(orderRequest))
-                    .with(authenticatedTenantUser(TENANT_ID)))
+                    .with(orderCreateUser()))
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(order.getId().toString()))
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
@@ -157,7 +128,7 @@ class OrderControllerTest {
   @Test
   void shouldCreateDeliveryOrderWithCustomerAddressIdentifiers() throws Exception {
     var orderRequest = createDeliveryOrderRequest();
-    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("35.40"));
+    var order = createOrder(ORDER_ID, 3, new BigDecimal("35.40"));
 
     when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
 
@@ -166,7 +137,7 @@ class OrderControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(orderRequest))
-                .with(authenticatedTenantUser(TENANT_ID)))
+                .with(orderCreateUser()))
         .andExpect(status().isCreated());
 
     var commandCaptor = ArgumentCaptor.forClass(CreateOrderCommand.class);
@@ -192,7 +163,7 @@ class OrderControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(createDeliveryOrderRequest()))
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(orderCreateUser())
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -216,7 +187,7 @@ class OrderControllerTest {
             post(BASE_URL)
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(orderCreateUser())
                 .accept(MediaType.APPLICATION_JSON))
         .andExpectAll(
             expectValidationErrors(
@@ -235,12 +206,12 @@ class OrderControllerTest {
   void shouldReturnOrderResponseWhenFoundById() throws Exception {
     var unitPrice = new BigDecimal("25.30");
 
-    var order = createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, unitPrice);
+    var order = createOrder(ORDER_ID, 3, unitPrice);
 
     when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
 
     mockMvc
-        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(ORDER_ID.toString()))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
@@ -264,13 +235,13 @@ class OrderControllerTest {
 
   @Test
   void shouldExposeDeliveryCustomerSnapshotWhenFoundById() throws Exception {
-    var order = createDeliveryOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, new BigDecimal("25.30"));
+    var order = createDeliveryOrder(new BigDecimal("25.30"));
     order.attachDeliveryCustomerSnapshot(deliveryCustomerSnapshot());
 
     when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
 
     mockMvc
-        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.deliveryCustomerSnapshot.customerId").value(CUSTOMER_ID.toString()))
         .andExpect(jsonPath("$.deliveryCustomerSnapshot.customerName").value("Maria"))
@@ -297,7 +268,7 @@ class OrderControllerTest {
     when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.empty());
 
     mockMvc
-        .perform(get(BASE_URL + "/" + ORDER_ID).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
         .andExpect(status().isNotFound());
 
     verify(orderService).findOrder(TENANT_ID, ORDER_ID);
@@ -308,7 +279,7 @@ class OrderControllerTest {
     var invalidOrderId = "invalid-uuid";
 
     mockMvc
-        .perform(get(BASE_URL + "/" + invalidOrderId).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(BASE_URL + "/" + invalidOrderId).with(orderReadUser()))
         .andExpect(status().isBadRequest())
         .andExpectAll(
             expectValidationErrors(
@@ -330,7 +301,7 @@ class OrderControllerTest {
     mockMvc
         .perform(
             post(BASE_URL + "/" + ORDER_ID + endpoint)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(orderManageUser())
                 .header(API_VERSION_HEADER, API_VERSION_VALUE))
         .andExpect(status().isNoContent())
         .andExpect(content().string(""));
@@ -347,7 +318,7 @@ class OrderControllerTest {
         .markAsReady(TENANT_ID, ORDER_ID);
 
     mockMvc
-        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(post(fullPath).with(orderManageUser()))
         .andExpect(status().isNotFound())
         .andExpectAll(
             expectValidationErrors(
@@ -371,7 +342,7 @@ class OrderControllerTest {
         .complete(TENANT_ID, ORDER_ID);
 
     mockMvc
-        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(post(fullPath).with(orderManageUser()))
         .andExpect(status().isNotFound())
         .andExpectAll(
             expectValidationErrors(
@@ -395,7 +366,7 @@ class OrderControllerTest {
         .cancel(TENANT_ID, ORDER_ID);
 
     mockMvc
-        .perform(post(fullPath).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(post(fullPath).with(orderManageUser()))
         .andExpect(status().isConflict())
         .andExpectAll(
             expectValidationErrors(
@@ -417,16 +388,14 @@ class OrderControllerTest {
     var secondOrderId = UUID.randomUUID();
 
     var orders =
-        List.of(
-            createOrder(TENANT_ID, ORDER_ID, PRODUCT_ID, 3, unitPrice),
-            createOrder(TENANT_ID, secondOrderId, PRODUCT_ID, 2, unitPrice));
+        List.of(createOrder(ORDER_ID, 3, unitPrice), createOrder(secondOrderId, 2, unitPrice));
 
     when(orderService.listOrders(TENANT_ID)).thenReturn(orders);
 
     var secondOrderJson = "$[1]";
 
     mockMvc
-        .perform(get(BASE_URL).with(authenticatedTenantUser(TENANT_ID)))
+        .perform(get(BASE_URL).with(orderReadUser()))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.length()").value(2))
         .andExpect(jsonPath("$[0].id").value(ORDER_ID.toString()))
@@ -459,24 +428,82 @@ class OrderControllerTest {
         .perform(
             post(BASE_URL + "/" + orderId + "/payment/mark-paid")
                 .accept(MediaType.APPLICATION_JSON)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(paymentManageUser())
                 .header(ApiHeaders.API_VERSION_HEADER, ApiHeaders.API_VERSION_VALUE))
         .andExpect(status().isNoContent());
 
     verify(orderService).markPaymentAsPaid(TENANT_ID, orderId);
   }
 
-  private Order createOrder(
-      UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
-    var order = withId(new Order(tenantId, OrderServiceType.COUNTER), orderId);
-    order.addItem(productId, PRODUCT_NAME, quantity, unitPrice);
+  @ParameterizedTest
+  @MethodSource("orderProtectedRequests")
+  void shouldReturnForbiddenWhenOrderPermissionIsMissing(MockHttpServletRequestBuilder request)
+      throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(orderService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    mockMvc.perform(get(BASE_URL)).andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(orderService);
+  }
+
+  private static Stream<Arguments> orderProtectedRequests() {
+    return Stream.of(
+        Arguments.of(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(
+                    JsonUtils.toJson(createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, 1)))),
+        Arguments.of(get(BASE_URL + "/" + ORDER_ID)),
+        Arguments.of(get(BASE_URL)),
+        Arguments.of(post(BASE_URL + "/" + ORDER_ID + "/mark-ready")),
+        Arguments.of(post(BASE_URL + "/" + ORDER_ID + "/complete")),
+        Arguments.of(post(BASE_URL + "/" + ORDER_ID + "/cancel")),
+        Arguments.of(post(BASE_URL + "/" + ORDER_ID + "/payment/mark-paid")));
+  }
+
+  private static RequestPostProcessor orderCreateUser() {
+    return authenticatedTenantUser(
+        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_CREATE);
+  }
+
+  private static RequestPostProcessor orderReadUser() {
+    return authenticatedTenantUser(
+        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_READ);
+  }
+
+  private static RequestPostProcessor orderManageUser() {
+    return authenticatedTenantUser(
+        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.ORDER_MANAGE);
+  }
+
+  private static RequestPostProcessor paymentManageUser() {
+    return authenticatedTenantUser(
+        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.PAYMENT_MANAGE);
+  }
+
+  private Order createOrder(UUID orderId, int quantity, BigDecimal unitPrice) {
+    var order =
+        withId(new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.COUNTER), orderId);
+    order.addItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, quantity, unitPrice);
     return order;
   }
 
-  private Order createDeliveryOrder(
-      UUID tenantId, UUID orderId, UUID productId, int quantity, BigDecimal unitPrice) {
-    var order = withId(new Order(tenantId, OrderServiceType.DELIVERY), orderId);
-    order.addItem(productId, PRODUCT_NAME, quantity, unitPrice);
+  private Order createDeliveryOrder(BigDecimal unitPrice) {
+    var order =
+        withId(
+            new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.DELIVERY),
+            OrderControllerTest.ORDER_ID);
+    order.addItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, 3, unitPrice);
     return order;
   }
 
@@ -497,12 +524,11 @@ class OrderControllerTest {
   private static Stream<Arguments> invalidCreateOrderRequests() {
     return Stream.of(
         Arguments.of("serviceType", "must not be null", createOrderRequest(null, PRODUCT_ID, 1)),
-        Arguments.of(
-            "items", "must not be null", createOrderRequest(OrderServiceType.COUNTER, null)),
+        Arguments.of("items", "must not be null", createOrderRequest(null)),
         Arguments.of(
             "items",
             "items must have at least 1 item",
-            createOrderRequest(OrderServiceType.COUNTER, Collections.emptyList())),
+            createOrderRequest(Collections.emptyList())),
         Arguments.of(
             "items[0].productId",
             "must not be null",
@@ -555,9 +581,8 @@ class OrderControllerTest {
         new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
   }
 
-  private static CreateOrderRequest createOrderRequest(
-      OrderServiceType serviceType, List<OrderItemRequest> items) {
+  private static CreateOrderRequest createOrderRequest(List<OrderItemRequest> items) {
     return new CreateOrderRequest(
-        serviceType, items, new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
+        OrderServiceType.COUNTER, items, new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
   }
 }

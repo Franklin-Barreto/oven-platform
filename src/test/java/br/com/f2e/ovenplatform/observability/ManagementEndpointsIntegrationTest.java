@@ -61,7 +61,7 @@ class ManagementEndpointsIntegrationTest {
   }
 
   @Test
-  void shouldKeepBusinessEndpointsProtected() throws Exception {
-    mockMvc.perform(get("/tenants/{id}", UUID.randomUUID())).andExpect(status().isForbidden());
+  void shouldReturnUnauthorizedForBusinessEndpointWithoutAuthentication() throws Exception {
+    mockMvc.perform(get("/orders/{id}", UUID.randomUUID())).andExpect(status().isUnauthorized());
   }
 }

@@ -5,7 +5,6 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
-import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
@@ -19,66 +18,37 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.catalog.application.CatalogService;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
-import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import io.micrometer.tracing.Span;
-import io.micrometer.tracing.TraceContext;
-import io.micrometer.tracing.Tracer;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.context.annotation.Import;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 @WebMvcTest(controllers = {ProductController.class})
-@Import({ApiErrorResponseFactory.class})
-class ProductControllerTest {
+class ProductControllerTest extends AbstractControllerTest {
 
   private static final String BASE_URL = "/products";
   private static final BigDecimal VALID_PRICE = BigDecimal.valueOf(10.5);
   private static final String VALID_PRODUCT = "Coca-cola";
   private static final String VALID_DESCRIPTION = "Refrigerante lata";
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID CATEGORY_ID = UUID.fromString("5b2180d1-cae8-42bd-a3f4-2ab97a49a789");
   private static final UUID PRODUCT_ID = UUID.fromString("22b2759d-35b2-4b04-ab39-df2a203a652c");
 
-  @Autowired private MockMvc mockMvc;
-
   @MockitoBean private CatalogService catalogService;
-  @MockitoBean private JwtService jwtService;
-  @MockitoBean private TenantMembershipAuthenticationService membershipAuthenticationService;
-  @MockitoBean private Tracer tracer;
-  @MockitoBean private Span span;
-  @MockitoBean private TraceContext traceContext;
-
-  @BeforeEach
-  void setUp() {
-    doReturn(span).when(tracer).currentSpan();
-    when(span.context()).thenReturn(traceContext);
-    when(traceContext.traceId()).thenReturn("abc-123");
-  }
-
-  @AfterEach
-  void tearDown() {
-    SecurityContextHolder.clearContext();
-  }
 
   @Test
   void shouldCreateProductUsingTenantFromAuthenticatedPrincipal() throws Exception {
@@ -92,7 +62,11 @@ class ProductControllerTest {
         mockMvc
             .perform(
                 post(BASE_URL)
-                    .with(authenticatedTenantUser(TENANT_ID))
+                    .with(
+                        authenticatedTenantUser(
+                            TENANT_ID,
+                            TenantMembershipRole.MANAGER,
+                            TenantPermission.CATALOG_MANAGE))
                     .contentType(MediaType.APPLICATION_JSON)
                     .content(JsonUtils.toJson(createProductRequest()))
                     .accept(MediaType.APPLICATION_JSON))
@@ -117,7 +91,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             post(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
                 .accept(MediaType.APPLICATION_JSON))
@@ -143,7 +119,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             get(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
@@ -164,7 +142,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             get(BASE_URL)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
@@ -182,7 +162,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             get(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
@@ -204,7 +186,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             get(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -232,7 +216,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(updateProductRequest()))
                 .accept(MediaType.APPLICATION_JSON))
@@ -262,7 +248,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(request))
                 .accept(MediaType.APPLICATION_JSON))
@@ -294,7 +282,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(JsonUtils.toJson(updateProductRequest()))
                 .accept(MediaType.APPLICATION_JSON))
@@ -319,7 +309,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             delete(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNoContent());
 
@@ -335,7 +327,9 @@ class ProductControllerTest {
     mockMvc
         .perform(
             delete(BASE_URL + "/" + PRODUCT_ID)
-                .with(authenticatedTenantUser(TENANT_ID))
+                .with(
+                    authenticatedTenantUser(
+                        TENANT_ID, TenantMembershipRole.MANAGER, TenantPermission.CATALOG_MANAGE))
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isNotFound())
         .andExpect(
@@ -343,6 +337,41 @@ class ProductControllerTest {
                 .value("Product id: %s not found".formatted(PRODUCT_ID)));
 
     verify(catalogService).deactivate(TENANT_ID, PRODUCT_ID);
+  }
+
+  @ParameterizedTest
+  @MethodSource("productMutationRequests")
+  void shouldReturnForbiddenWhenProductMutationPermissionIsMissing(
+      MockHttpServletRequestBuilder request) throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.ATTENDANT, TenantPermission.CATALOG_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(catalogService);
+  }
+
+  @ParameterizedTest
+  @MethodSource("productReadRequests")
+  void shouldReturnForbiddenWhenProductReadPermissionIsMissing(
+      MockHttpServletRequestBuilder request) throws Exception {
+    mockMvc
+        .perform(
+            request.with(
+                authenticatedTenantUser(
+                    TENANT_ID, TenantMembershipRole.KITCHEN, TenantPermission.KITCHEN_READ)))
+        .andExpect(status().isForbidden());
+
+    verifyNoInteractions(catalogService);
+  }
+
+  @Test
+  void shouldReturnUnauthorizedWhenAuthenticationIsMissing() throws Exception {
+    mockMvc.perform(get(BASE_URL)).andExpect(status().isUnauthorized());
+
+    verifyNoInteractions(catalogService);
   }
 
   private static Stream<Arguments> invalidRequestsCreate() {
@@ -408,6 +437,23 @@ class ProductControllerTest {
                 CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, null),
             "active",
             "must not be null"));
+  }
+
+  private static Stream<Arguments> productMutationRequests() {
+    return Stream.of(
+        Arguments.of(
+            post(BASE_URL)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(createProductRequest()))),
+        Arguments.of(
+            patch(BASE_URL + "/" + PRODUCT_ID)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(JsonUtils.toJson(updateProductRequest()))),
+        Arguments.of(delete(BASE_URL + "/" + PRODUCT_ID)));
+  }
+
+  private static Stream<Arguments> productReadRequests() {
+    return Stream.of(Arguments.of(get(BASE_URL)), Arguments.of(get(BASE_URL + "/" + PRODUCT_ID)));
   }
 
   private static CreateProductRequest createProductRequest() {

@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -31,6 +32,7 @@ public class CustomerController {
     this.customerService = customerService;
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_MANAGE')")
   @PostMapping(version = API_VERSION_VALUE)
   public ResponseEntity<CustomerResponse> create(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody CreateCustomerRequest request) {
@@ -39,6 +41,7 @@ public class CustomerController {
     return ResponseEntity.created(uri).body(customer);
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_READ')")
   @GetMapping(version = API_VERSION_VALUE)
   public ResponseEntity<List<CustomerResponse>> list(
       @CurrentTenantId UUID tenantId, @RequestParam(required = false) String phone) {
@@ -50,12 +53,14 @@ public class CustomerController {
     return ResponseEntity.ok(customers.stream().map(CustomerResponse::from).toList());
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/{id}")
   public ResponseEntity<CustomerResponse> find(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     return ResponseEntity.ok(CustomerResponse.from(customerService.getCustomer(tenantId, id)));
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_MANAGE')")
   @PatchMapping(version = API_VERSION_VALUE, path = "/{id}")
   public ResponseEntity<CustomerResponse> update(
       @CurrentTenantId UUID tenantId,
@@ -65,6 +70,7 @@ public class CustomerController {
         CustomerResponse.from(customerService.update(tenantId, id, request.toCommand())));
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_MANAGE')")
   @PostMapping(version = API_VERSION_VALUE, path = "/{customerId}/addresses")
   public ResponseEntity<CustomerResponse> addAddress(
       @CurrentTenantId UUID tenantId,
@@ -75,6 +81,7 @@ public class CustomerController {
             customerService.addAddress(tenantId, customerId, request.toCommand())));
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_MANAGE')")
   @PatchMapping(version = API_VERSION_VALUE, path = "/{customerId}/addresses/{addressId}")
   public ResponseEntity<CustomerResponse> updateAddress(
       @CurrentTenantId UUID tenantId,
@@ -86,6 +93,7 @@ public class CustomerController {
             customerService.updateAddress(tenantId, customerId, addressId, request.toCommand())));
   }
 
+  @PreAuthorize("hasAuthority('CUSTOMER_MANAGE')")
   @DeleteMapping(version = API_VERSION_VALUE, path = "/{customerId}/addresses/{addressId}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void deleteAddress(

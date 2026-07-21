@@ -10,6 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -30,6 +31,7 @@ public class ProductController {
     this.service = service;
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @PostMapping(version = API_VERSION_VALUE)
   public ResponseEntity<ProductResponse> create(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody CreateProductRequest productRequest) {
@@ -46,6 +48,7 @@ public class ProductController {
     return ResponseEntity.created(uri).body(productResponse);
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_READ')")
   @GetMapping(version = API_VERSION_VALUE)
   public ResponseEntity<List<ProductResponse>> list(@CurrentTenantId UUID tenantId) {
     var products =
@@ -54,12 +57,14 @@ public class ProductController {
     return ResponseEntity.ok(products);
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/{id}")
   public ResponseEntity<ProductResponse> find(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     return ResponseEntity.ok(ProductResponse.from(service.getProduct(tenantId, id)));
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @PatchMapping(version = API_VERSION_VALUE, path = "/{id}")
   public ResponseEntity<ProductResponse> update(
       @CurrentTenantId UUID tenantId,
@@ -78,6 +83,7 @@ public class ProductController {
     return ResponseEntity.ok(ProductResponse.from(product));
   }
 
+  @PreAuthorize("hasAuthority('CATALOG_MANAGE')")
   @DeleteMapping(version = API_VERSION_VALUE, path = "/{id}")
   @ResponseStatus(HttpStatus.NO_CONTENT)
   public void delete(@CurrentTenantId UUID tenantId, @PathVariable UUID id) {
