@@ -10,9 +10,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.identity.application.AuthenticatedTenantMembership;
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.application.authentication.AuthenticatedTenantMembership;
+import br.com.f2e.ovenplatform.identity.application.authentication.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;

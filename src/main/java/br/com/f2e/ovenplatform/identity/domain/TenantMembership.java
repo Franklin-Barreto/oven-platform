@@ -63,13 +63,7 @@ public class TenantMembership extends BaseEntity {
   }
 
   public static TenantMembership staff(User user, UUID tenantId, Set<TenantMembershipRole> roles) {
-    var validatedRoles = validateRoles(roles);
-
-    if (validatedRoles.contains(TenantMembershipRole.OWNER)) {
-      throw new IllegalArgumentException("Staff membership cannot contain OWNER");
-    }
-
-    return new TenantMembership(user, tenantId, validatedRoles);
+    return new TenantMembership(user, tenantId, validateOperationalRoles(roles));
   }
 
   public UUID getTenantId() {
@@ -92,8 +86,28 @@ public class TenantMembership extends BaseEntity {
     this.status = TenantMembershipStatus.INACTIVE;
   }
 
+  public void activate() {
+    this.status = TenantMembershipStatus.ACTIVE;
+  }
+
+  public void changeOperationalRolesTo(Set<TenantMembershipRole> roles) {
+    this.roles = validateOperationalRoles(roles);
+  }
+
   private static Set<TenantMembershipRole> validateRoles(Set<TenantMembershipRole> roles) {
     requireNotEmptyAndWithoutNulls(roles, "roles");
     return EnumSet.copyOf(roles);
+  }
+
+  private static Set<TenantMembershipRole> validateOperationalRoles(
+      Set<TenantMembershipRole> roles) {
+
+    var validatedRoles = validateRoles(roles);
+
+    if (validatedRoles.contains(TenantMembershipRole.OWNER)) {
+      throw new IllegalArgumentException("Staff membership cannot contain OWNER");
+    }
+
+    return validatedRoles;
   }
 }

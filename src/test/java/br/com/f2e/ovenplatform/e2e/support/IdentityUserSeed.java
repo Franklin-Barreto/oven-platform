@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.e2e.support;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipRepository;
-import br.com.f2e.ovenplatform.identity.application.UserRepository;
+import br.com.f2e.ovenplatform.identity.application.port.TenantMembershipRepository;
+import br.com.f2e.ovenplatform.identity.application.port.UserRepository;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;

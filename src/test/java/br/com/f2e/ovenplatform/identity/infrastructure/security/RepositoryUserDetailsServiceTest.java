@@ -5,7 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.identity.application.UserRepository;
+import br.com.f2e.ovenplatform.identity.application.port.UserRepository;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import java.util.Optional;
 import java.util.UUID;

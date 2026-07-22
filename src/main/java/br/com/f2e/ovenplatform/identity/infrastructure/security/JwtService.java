@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security;
 
-import br.com.f2e.ovenplatform.identity.application.AccessTokenService;
+import br.com.f2e.ovenplatform.identity.application.authentication.AccessTokenService;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;

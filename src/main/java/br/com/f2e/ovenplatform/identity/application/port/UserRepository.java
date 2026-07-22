@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.identity.application;
+package br.com.f2e.ovenplatform.identity.application.port;
 
 import br.com.f2e.ovenplatform.identity.domain.User;
 import java.util.Optional;

@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.identity.application;
+package br.com.f2e.ovenplatform.identity.application.authentication;
 
 import java.util.UUID;
 

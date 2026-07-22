@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.persistence;
 
-import br.com.f2e.ovenplatform.identity.application.UserRepository;
+import br.com.f2e.ovenplatform.identity.application.port.UserRepository;
 import br.com.f2e.ovenplatform.identity.domain.User;
 import java.util.Optional;
 import org.springframework.stereotype.Repository;

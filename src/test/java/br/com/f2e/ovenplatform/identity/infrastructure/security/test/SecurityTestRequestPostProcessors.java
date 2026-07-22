@@ -29,7 +29,7 @@ public final class SecurityTestRequestPostProcessors {
     return authenticatedTenantUser(tenantId, DEFAULT_USER_ID, role, permissions);
   }
 
-  private static RequestPostProcessor authenticatedTenantUser(
+  public static RequestPostProcessor authenticatedTenantUser(
       UUID tenantId, UUID userId, TenantMembershipRole role, TenantPermission... permissions) {
     return request -> {
       var permissionSet = Set.of(permissions);

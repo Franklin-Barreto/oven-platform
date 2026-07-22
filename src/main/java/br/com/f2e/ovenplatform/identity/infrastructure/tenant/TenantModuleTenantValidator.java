@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.tenant;
 
-import br.com.f2e.ovenplatform.identity.application.TenantValidator;
+import br.com.f2e.ovenplatform.identity.application.port.TenantValidator;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.tenant.application.api.TenantLookup;
 import java.util.UUID;
