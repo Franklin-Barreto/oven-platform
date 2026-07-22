@@ -1,12 +1,15 @@
-package br.com.f2e.ovenplatform.identity.application;
+package br.com.f2e.ovenplatform.identity.application.authentication;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.application.security.TenantPermissionResolver;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.identity.domain.User;
+import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.JpaTenantMembershipRepositoryAdapter;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataTenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.infrastructure.persistence.SpringDataUserRepository;
@@ -57,5 +60,61 @@ class TenantMembershipAuthenticationServiceIntegrationTest extends DataJpaIntegr
             TenantPermission.PAYMENT_MANAGE,
             TenantPermission.KITCHEN_READ,
             TenantPermission.KITCHEN_OPERATE);
+  }
+
+  @Test
+  void shouldRejectNextAuthenticationAfterMembershipIsDeactivated() {
+
+    var user = userRepository.save(new User("inactive@email.com", "password-hash"));
+    membershipRepository.save(
+        TenantMembership.staff(user, TENANT_ID, Set.of(TenantMembershipRole.ATTENDANT)));
+
+    flushAndClear();
+
+    assertThatCode(() -> authenticationService.loadActiveMembership(user.getId(), TENANT_ID))
+        .doesNotThrowAnyException();
+
+    var persistedMembership =
+        membershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID).orElseThrow();
+
+    persistedMembership.deactivate();
+    flushAndClear();
+
+    var userId = user.getId();
+
+    assertThatThrownBy(() -> authenticationService.loadActiveMembership(userId, TENANT_ID))
+        .isInstanceOf(TenantMembershipInactiveException.class);
+  }
+
+  @Test
+  void shouldResolveUpdatedPermissionsOnNextAuthentication() {
+    var user = userRepository.save(new User("updated@email.com", "password-hash"));
+
+    membershipRepository.save(
+        TenantMembership.staff(user, TENANT_ID, Set.of(TenantMembershipRole.ATTENDANT)));
+
+    flushAndClear();
+
+    var beforeChange = authenticationService.loadActiveMembership(user.getId(), TENANT_ID);
+
+    assertThat(beforeChange.permissions())
+        .contains(TenantPermission.ORDER_READ)
+        .doesNotContain(TenantPermission.KITCHEN_READ, TenantPermission.KITCHEN_OPERATE);
+
+    var persistedMembership =
+        membershipRepository.findByUserIdAndTenantId(user.getId(), TENANT_ID).orElseThrow();
+
+    persistedMembership.changeOperationalRolesTo(
+        Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN));
+
+    flushAndClear();
+
+    var afterChange = authenticationService.loadActiveMembership(user.getId(), TENANT_ID);
+
+    assertThat(afterChange.roles())
+        .containsExactlyInAnyOrder(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN);
+
+    assertThat(afterChange.permissions())
+        .contains(TenantPermission.KITCHEN_READ, TenantPermission.KITCHEN_OPERATE);
   }
 }

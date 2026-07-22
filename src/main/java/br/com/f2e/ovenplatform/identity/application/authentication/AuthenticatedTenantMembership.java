@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.identity.application;
+package br.com.f2e.ovenplatform.identity.application.authentication;
 
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;

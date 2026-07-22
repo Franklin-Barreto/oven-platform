@@ -1,5 +1,10 @@
 package br.com.f2e.ovenplatform.identity.domain;
 
+import static br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole.ATTENDANT;
+import static br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole.KITCHEN;
+import static br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole.OWNER;
+import static br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus.ACTIVE;
+import static br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus.INACTIVE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
@@ -27,8 +32,8 @@ class TenantMembershipTest {
     assertThat(tenantMembership.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(tenantMembership.getUser()).isEqualTo(user);
     assertThat(tenantMembership.getUser().getEmail()).isEqualTo(USER_EMAIL);
-    assertThat(tenantMembership.getRoles()).containsExactly(TenantMembershipRole.OWNER);
-    assertThat(tenantMembership.getStatus()).isEqualTo(TenantMembershipStatus.ACTIVE);
+    assertThat(tenantMembership.getRoles()).containsExactly(OWNER);
+    assertThat(tenantMembership.getStatus()).isEqualTo(ACTIVE);
   }
 
   @Test
@@ -44,14 +49,9 @@ class TenantMembershipTest {
 
   @Test
   void shouldCreateStaffMembershipWithMultipleRoles() {
-    var membership =
-        TenantMembership.staff(
-            createUser(),
-            TENANT_ID,
-            Set.of(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN));
+    var membership = TenantMembership.staff(createUser(), TENANT_ID, Set.of(ATTENDANT, KITCHEN));
 
-    assertThat(membership.getRoles())
-        .containsExactlyInAnyOrder(TenantMembershipRole.ATTENDANT, TenantMembershipRole.KITCHEN);
+    assertThat(membership.getRoles()).containsExactlyInAnyOrder(ATTENDANT, KITCHEN);
   }
 
   @Test
@@ -76,7 +76,7 @@ class TenantMembershipTest {
   @Test
   void shouldRejectOwnerCombinedWithAnotherRole() {
     var user = createUser();
-    var roles = Set.of(TenantMembershipRole.OWNER, TenantMembershipRole.ATTENDANT);
+    var roles = Set.of(OWNER, ATTENDANT);
 
     assertThatThrownBy(() -> TenantMembership.staff(user, TENANT_ID, roles))
         .isInstanceOf(IllegalArgumentException.class)
@@ -85,14 +85,14 @@ class TenantMembershipTest {
 
   @Test
   void shouldDefensivelyCopyRoles() {
-    var roles = new HashSet<>(Set.of(TenantMembershipRole.ATTENDANT));
+    var roles = new HashSet<>(Set.of(ATTENDANT));
     var membership = TenantMembership.staff(createUser(), TENANT_ID, roles);
 
-    roles.add(TenantMembershipRole.KITCHEN);
+    roles.add(KITCHEN);
 
-    assertThat(membership.getRoles()).containsExactly(TenantMembershipRole.ATTENDANT);
+    assertThat(membership.getRoles()).containsExactly(ATTENDANT);
     var membershipRoles = membership.getRoles();
-    assertThatThrownBy(() -> membershipRoles.add(TenantMembershipRole.KITCHEN))
+    assertThatThrownBy(() -> membershipRoles.add(KITCHEN))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
@@ -105,18 +105,74 @@ class TenantMembershipTest {
         .hasMessage(message);
   }
 
+  @Test
+  void shouldReplaceOperationalRoles() {
+    var membership = staffMembership(ATTENDANT);
+
+    membership.changeOperationalRolesTo(Set.of(ATTENDANT, KITCHEN));
+
+    assertThat(membership.getRoles()).containsExactlyInAnyOrder(ATTENDANT, KITCHEN);
+  }
+
+  @Test
+  void shouldRejectOwnerWhenChangingOperationalRoles() {
+    var membership = staffMembership(ATTENDANT);
+    var owner = Set.of(OWNER);
+
+    assertThatThrownBy(() -> membership.changeOperationalRolesTo(owner))
+        .isInstanceOf(IllegalArgumentException.class);
+    assertThat(membership.getRoles()).containsExactly(ATTENDANT);
+  }
+
+  @Test
+  void shouldDefensivelyCopyChangedOperationalRoles() {
+    var membership = staffMembership(ATTENDANT);
+    var newRoles = new HashSet<>(Set.of(ATTENDANT));
+
+    membership.changeOperationalRolesTo(newRoles);
+    newRoles.add(KITCHEN);
+
+    assertThat(membership.getRoles()).containsExactly(ATTENDANT);
+  }
+
+  @Test
+  void shouldDeactivateMembershipIdempotently() {
+    var membership = staffMembership(ATTENDANT);
+
+    membership.deactivate();
+    membership.deactivate();
+
+    assertThat(membership.getStatus()).isEqualTo(INACTIVE);
+  }
+
+  @Test
+  void shouldReactivateMembershipIdempotently() {
+    var membership = staffMembership(ATTENDANT);
+    membership.deactivate();
+
+    membership.activate();
+    membership.activate();
+
+    assertThat(membership.getStatus()).isEqualTo(ACTIVE);
+  }
+
+  private static TenantMembership staffMembership(TenantMembershipRole... roles) {
+    return TenantMembership.staff(
+        new User("employee@oven.test", "encoded-password"), TENANT_ID, Set.of(roles));
+  }
+
   private static User createUser() {
     return new User(USER_EMAIL, RAW_PASSWORD);
   }
 
   private static Stream<Arguments> invalidData() {
     return Stream.of(
-        Arguments.of(null, TENANT_ID, TenantMembershipRole.OWNER, "user must not be null"),
-        Arguments.of(createUser(), null, TenantMembershipRole.OWNER, "tenantId must not be null"));
+        Arguments.of(null, TENANT_ID, OWNER, "user must not be null"),
+        Arguments.of(createUser(), null, OWNER, "tenantId must not be null"));
   }
 
   private void createTenantMembership(User user, UUID tenantId, TenantMembershipRole role) {
-    if (TenantMembershipRole.OWNER.equals(role)) {
+    if (OWNER.equals(role)) {
       TenantMembership.owner(user, tenantId);
       return;
     }

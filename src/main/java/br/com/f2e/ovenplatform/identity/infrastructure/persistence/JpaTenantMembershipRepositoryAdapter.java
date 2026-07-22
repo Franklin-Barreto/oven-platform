@@ -1,7 +1,8 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.persistence;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipRepository;
+import br.com.f2e.ovenplatform.identity.application.port.TenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
@@ -29,5 +30,10 @@ public class JpaTenantMembershipRepositoryAdapter implements TenantMembershipRep
   @Override
   public Optional<TenantMembership> findByUserIdAndTenantId(UUID userId, UUID tenantId) {
     return tenantMembershipRepository.findByUserIdAndTenantId(userId, tenantId);
+  }
+
+  @Override
+  public List<TenantMembership> findAllByTenantId(UUID tenantId) {
+    return tenantMembershipRepository.findAllByTenantId(tenantId);
   }
 }

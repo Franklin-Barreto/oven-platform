@@ -1,5 +1,6 @@
-package br.com.f2e.ovenplatform.identity.application;
+package br.com.f2e.ovenplatform.identity.application.authentication;
 
+import br.com.f2e.ovenplatform.identity.application.port.TenantMembershipRepository;
 import br.com.f2e.ovenplatform.identity.application.security.AuthenticatedPrincipal;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembership;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipStatus;

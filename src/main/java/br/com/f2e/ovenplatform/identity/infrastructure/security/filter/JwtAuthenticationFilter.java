@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.filter;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
+import br.com.f2e.ovenplatform.identity.application.authentication.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;

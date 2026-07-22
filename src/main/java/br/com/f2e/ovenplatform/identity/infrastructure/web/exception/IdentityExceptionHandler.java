@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.web.exception;
 
+import br.com.f2e.ovenplatform.identity.application.team.TenantTeamManagementDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantAccessDeniedException;
 import br.com.f2e.ovenplatform.identity.domain.exception.TenantMembershipInactiveException;
 import br.com.f2e.ovenplatform.identity.infrastructure.web.AuthenticationController;
@@ -37,5 +38,15 @@ public class IdentityExceptionHandler {
       TenantAccessDeniedException exception, HttpServletRequest request) {
     return responseFactory.create(
         HttpStatus.FORBIDDEN, ApiErrorCodes.TENANT_ACCESS_DENIED, exception.getMessage(), request);
+  }
+
+  @ExceptionHandler(TenantTeamManagementDeniedException.class)
+  public ResponseEntity<ApiErrorResponse> tenantTeamManagementDeniedHandler(
+      TenantTeamManagementDeniedException exception, HttpServletRequest request) {
+    return responseFactory.create(
+        HttpStatus.FORBIDDEN,
+        ApiErrorCodes.TENANT_TEAM_MANAGEMENT_DENIED,
+        exception.getMessage(),
+        request);
   }
 }

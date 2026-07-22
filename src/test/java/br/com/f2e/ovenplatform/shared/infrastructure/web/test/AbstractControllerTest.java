@@ -3,7 +3,7 @@ package br.com.f2e.ovenplatform.shared.infrastructure.web.test;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.identity.application.TenantMembershipAuthenticationService;
+import br.com.f2e.ovenplatform.identity.application.authentication.TenantMembershipAuthenticationService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.JwtService;
 import br.com.f2e.ovenplatform.identity.infrastructure.security.config.SecurityConfig;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorResponseFactory;

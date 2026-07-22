@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security;
 
-import br.com.f2e.ovenplatform.identity.application.UserRepository;
+import br.com.f2e.ovenplatform.identity.application.port.UserRepository;
 import org.jspecify.annotations.NonNull;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
