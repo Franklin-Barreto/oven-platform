@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -26,16 +28,6 @@ import org.springframework.test.web.servlet.MockMvc;
 class ManagementEndpointsIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
-
-  @Test
-  void shouldExposeHealthWithoutAuthentication() throws Exception {
-    mockMvc.perform(get("/actuator/health")).andExpect(status().isOk());
-  }
-
-  @Test
-  void shouldExposeInfoWithoutAuthentication() throws Exception {
-    mockMvc.perform(get("/actuator/info")).andExpect(status().isOk());
-  }
 
   @Test
   void shouldExposePrometheusMetricsWithoutAuthentication() throws Exception {
@@ -63,5 +55,11 @@ class ManagementEndpointsIntegrationTest {
   @Test
   void shouldReturnUnauthorizedForBusinessEndpointWithoutAuthentication() throws Exception {
     mockMvc.perform(get("/orders/{id}", UUID.randomUUID())).andExpect(status().isUnauthorized());
+  }
+
+  @ParameterizedTest(name = "{0} should be public")
+  @ValueSource(strings = {"/actuator/health", "/actuator/health/readiness", "/actuator/info"})
+  void shouldExposePublicManagementEndpointWithoutAuthentication(String endpoint) throws Exception {
+    mockMvc.perform(get(endpoint)).andExpect(status().isOk());
   }
 }
