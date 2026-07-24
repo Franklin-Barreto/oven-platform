@@ -1,15 +1,20 @@
-name: SonarQube
+name: CI
 
 on:
   push:
     branches:
       - main
   pull_request:
+    branches:
+      - main
     types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
-  pull-requests: read
 
 jobs:
   changes:
@@ -73,8 +78,24 @@ jobs:
           path: ~/.m2
           key: ${{ runner.os }}-m2-${{ hashFiles('**/pom.xml') }}
           restore-keys: ${{ runner.os }}-m2
+      - name: Generate test JWT secret
+        shell: bash
+        run: |
+          jwt_secret="$(openssl rand -base64 48)"
+          echo "::add-mask::$jwt_secret"
+          echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
       - name: Build and analyze
         env:
           SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
-          JWT_SECRET: ${{ secrets.JWT_SECRET }}
-        run: mvn -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Franklin-Barreto_oven-platform
+        run: ./mvnw -B verify org.sonarsource.scanner.maven:sonar-maven-plugin:sonar -Dsonar.projectKey=Franklin-Barreto_oven-platform
+      - name: Upload failure reports
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: build-failure-reports-${{ github.run_attempt }}
+          if-no-files-found: ignore
+          retention-days: 7
+          path: |
+            target/surefire-reports/
+            target/site/jacoco/
+            target/jacoco.exec
