@@ -1,0 +1,24 @@
+spring:
+  docker:
+    compose:
+      enabled: false
+  jpa:
+    open-in-view: false
+
+management:
+  metrics:
+    tags:
+      environment: ${OVEN_ENVIRONMENT:staging}
+  tracing:
+    sampling:
+      probability: ${OVEN_TRACING_SAMPLING_PROBABILITY:0.0}
+  endpoints:
+    web:
+      exposure:
+        include: health
+  endpoint:
+    health:
+      show-details: never
+
+oven:
+  environment: staging

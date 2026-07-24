@@ -308,6 +308,88 @@ Docker must be available because the integration test suite uses Testcontainers 
 The Maven Wrapper downloads the project-defined Maven version when necessary, so a global Maven
 installation is not required.
 
+### Production Container
+
+Build the environment-agnostic application image after running the canonical validation:
+
+```bash
+./mvnw verify
+docker build --tag oven-platform:local .
+```
+
+The multi-stage build uses the Maven Wrapper and Java 25, then copies only the runnable application
+artifact into the non-root runtime image. The image contains no database credentials, JWT secrets,
+or environment-specific addresses.
+
+The container requires the following runtime configuration:
+
+| Variable | Purpose |
+| --- | --- |
+| `POSTGRES_HOST` | PostgreSQL hostname |
+| `POSTGRES_PORT` | PostgreSQL port |
+| `POSTGRES_DB_NAME` | Application database |
+| `POSTGRES_USER` | Database user |
+| `POSTGRES_PASSWORD` | Database password |
+| `JWT_SECRET` | Base64-encoded JWT signing key |
+
+Create disposable local credentials, network, and PostgreSQL container:
+
+```bash
+export OVEN_POSTGRES_PASSWORD="$(openssl rand -base64 24)"
+export OVEN_JWT_SECRET="$(openssl rand -base64 48)"
+
+docker network create oven-local
+docker volume create oven-postgres-data
+docker run --detach \
+  --name oven-postgres \
+  --network oven-local \
+  --env POSTGRES_DB=oven \
+  --env POSTGRES_USER=oven \
+  --env POSTGRES_PASSWORD="$OVEN_POSTGRES_PASSWORD" \
+  --volume oven-postgres-data:/var/lib/postgresql/data \
+  postgres:17-alpine
+```
+
+Start the application against that database:
+
+```bash
+docker run --detach \
+  --name oven-platform \
+  --network oven-local \
+  --publish 8080:8080 \
+  --env SPRING_PROFILES_ACTIVE=staging \
+  --env POSTGRES_HOST=oven-postgres \
+  --env POSTGRES_PORT=5432 \
+  --env POSTGRES_DB_NAME=oven \
+  --env POSTGRES_USER=oven \
+  --env POSTGRES_PASSWORD="$OVEN_POSTGRES_PASSWORD" \
+  --env JWT_SECRET="$OVEN_JWT_SECRET" \
+  oven-platform:local
+```
+
+Liquibase applies pending migrations during startup. Inspect startup and readiness with:
+
+```bash
+docker logs oven-platform
+curl --fail http://localhost:8080/actuator/health/readiness
+docker inspect \
+  --format '{{.State.Status}} / {{if .State.Health}}{{.State.Health.Status}}{{end}}' \
+  oven-platform
+```
+
+The expected Docker state is `running / healthy`. The staging profile disables local Docker Compose
+integration, exposes only health management endpoints, hides health details, and disables trace
+sampling unless `OVEN_TRACING_SAMPLING_PROBABILITY` is configured.
+
+Stop the application with enough time for Spring Boot's graceful shutdown:
+
+```bash
+docker stop --time 30 oven-platform
+```
+
+PostgreSQL, Prometheus, Grafana, and Tempo remain separate from the application image. Local
+observability services are optional and can continue to be managed through `compose.yaml`.
+
 ### API Consistency
 
 API errors follow a standardized response structure including:
