@@ -291,6 +291,23 @@ The build includes:
 - SonarCloud configuration
 - architecture guardrails to prevent layer violations
 
+### Local Validation
+
+Run the same validation lifecycle used by continuous integration before opening or updating a pull
+request:
+
+```bash
+./mvnw verify
+```
+
+This is the canonical project validation command. It compiles the application and runs the automated
+tests, coverage enforcement, formatting, static analysis, and architecture checks configured in
+Maven.
+
+Docker must be available because the integration test suite uses Testcontainers with PostgreSQL.
+The Maven Wrapper downloads the project-defined Maven version when necessary, so a global Maven
+installation is not required.
+
 ### API Consistency
 
 API errors follow a standardized response structure including:
