@@ -91,13 +91,22 @@ assumed-role/oven-platform-terraform-provisioner/
 
 ## Least-privilege boundary
 
-The provisioner role has only the `oven-platform-terraform-guardrails` managed policy. It can:
+The provisioner role has three project-managed policies:
 
-- use the exact S3 state object and lock file;
+- `oven-platform-terraform-guardrails` manages the cost, access, and remote-state baseline;
+- `oven-platform-terraform-staging` manages the tagged staging infrastructure lifecycle;
+- `oven-platform-terraform-staging-compute` constrains EC2 creation to the approved staging
+  architecture.
+
+Together, they allow the role to:
+
+- use only the guardrails and staging state objects and lock files;
 - inspect the exact state bucket;
 - manage the Oven Platform budget and anomaly configuration;
 - manage the GitHub OIDC provider and staging deployment role;
-- read its own role and managed policy.
+- manage only the tagged networking, compute, ECR, and host IAM resources required by staging;
+- start, stop, inspect, and access the staging host through Session Manager;
+- read its own role and project-managed policies.
 
 It cannot update its own policy or attach broader permissions to itself. This deliberately prevents
 self-escalation.
@@ -116,6 +125,8 @@ workflow. Verify afterward that the role has only:
 
 ```text
 oven-platform-terraform-guardrails
+oven-platform-terraform-staging
+oven-platform-terraform-staging-compute
 ```
 
 ## GitHub Actions access

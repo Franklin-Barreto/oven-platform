@@ -23,6 +23,7 @@ data "aws_iam_policy_document" "terraform_provisioner" {
       variable = "s3:prefix"
       values = [
         "staging/terraform.tfstate*",
+        "staging/host.tfstate*",
       ]
     }
   }
@@ -38,6 +39,7 @@ data "aws_iam_policy_document" "terraform_provisioner" {
 
     resources = [
       "${local.state_bucket_arn}/staging/terraform.tfstate",
+      "${local.state_bucket_arn}/staging/host.tfstate",
     ]
   }
 
@@ -53,6 +55,7 @@ data "aws_iam_policy_document" "terraform_provisioner" {
 
     resources = [
       "${local.state_bucket_arn}/staging/terraform.tfstate.tflock",
+      "${local.state_bucket_arn}/staging/host.tfstate.tflock",
     ]
   }
 
