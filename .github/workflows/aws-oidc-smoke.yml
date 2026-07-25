@@ -1,0 +1,36 @@
+name: AWS OIDC Smoke Test
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  authenticate:
+    name: Verify AWS identity
+    runs-on: ubuntu-latest
+    environment: staging
+
+    steps:
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ vars.AWS_REGION }}
+          role-session-name: oven-platform-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: Verify assumed role
+        shell: bash
+        run: |
+          identity_arn="$(aws sts get-caller-identity --query Arn --output text)"
+          echo "::add-mask::$identity_arn"
+
+          if [[ "$identity_arn" != *":assumed-role/oven-platform-staging-github-deploy/"* ]]; then
+            echo "Unexpected AWS identity"
+            exit 1
+          fi
+
+          echo "AWS OIDC authentication succeeded"
