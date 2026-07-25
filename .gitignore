@@ -34,3 +34,15 @@ build/
 
 .env
 .DS_Store
+
+### Terraform ###
+**/.terraform/*
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+crash.*.log
+*.tfvars
+*.tfvars.json
+
+*.backend.hcl
