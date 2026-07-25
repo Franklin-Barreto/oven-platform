@@ -13,13 +13,12 @@ concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   changes:
     name: Detect relevant changes
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     outputs:
       code: ${{ steps.changes.outputs.code }}
     steps:
@@ -57,6 +56,8 @@ jobs:
     needs: changes
     if: needs.changes.outputs.code == 'true'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
         with:
@@ -99,3 +100,31 @@ jobs:
             target/surefire-reports/
             target/site/jacoco/
             target/jacoco.exec
+
+  required-ci:
+    name: Required CI
+    needs:
+      - changes
+      - build
+    if: always()
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Validate CI result
+        shell: bash
+        env:
+          CHANGES_RESULT: ${{ needs.changes.result }}
+          CODE_CHANGED: ${{ needs.changes.outputs.code }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          if [[ "$CHANGES_RESULT" != "success" ]]; then
+            echo "::error::Relevant-change detection did not succeed."
+            exit 1
+          fi
+
+          if [[ "$CODE_CHANGED" == "true" && "$BUILD_RESULT" != "success" ]]; then
+            echo "::error::The required build and analysis did not succeed."
+            exit 1
+          fi
+
+          echo "Required CI conditions satisfied."
