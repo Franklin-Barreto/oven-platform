@@ -18,19 +18,24 @@ export ECR_REGISTRY="${ECR_REPOSITORY%%/*}"
 export IMAGE_TAG="$(git rev-parse HEAD)"
 
 aws ecr get-login-password \
-  --profile oven-admin \
+  --profile oven-terraform-scoped \
   --region "$AWS_REGION" \
   | docker login \
       --username AWS \
       --password-stdin "$ECR_REGISTRY"
 
-docker build \
+docker buildx build \
   --platform linux/amd64 \
+  --provenance=false \
+  --sbom=false \
   --tag "$ECR_REPOSITORY:$IMAGE_TAG" \
+  --push \
   .
-
-docker push "$ECR_REPOSITORY:$IMAGE_TAG"
 ```
+
+Disabling build attestations keeps the published artifact compatible with the Docker Engine
+version provided by Amazon Linux 2023. The immutable ECR tag still identifies the exact source
+commit.
 
 Use the resulting immutable reference as `APPLICATION_IMAGE`:
 
@@ -88,7 +93,7 @@ Configure the subdomain without the `.duckdns.org` suffix:
 
 ```dotenv
 DUCKDNS_DOMAIN=oven-platform-staging
-DUCKDNS_TOKEN=<DuckDNS account token>
+DUCKDNS_TOKEN='<DuckDNS account token>'
 ```
 
 Install and validate the systemd units:
@@ -160,7 +165,7 @@ the operational contact used for ACME certificate notifications:
 
 ```dotenv
 STAGING_HOSTNAME=oven-platform-staging.duckdns.org
-ACME_EMAIL=<operational email>
+ACME_EMAIL='<operational email>'
 ```
 
 Using a hostname without `http://` enables Caddy automatic HTTPS and HTTP-to-HTTPS redirects.
