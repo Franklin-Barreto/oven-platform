@@ -1,0 +1,9 @@
+spring:
+  main:
+    web-application-type: none
+oven:
+  bootstrap:
+    owner:
+      tenant-name: ${OVEN_BOOTSTRAP_TENANT_NAME}
+      email: ${OVEN_BOOTSTRAP_OWNER_EMAIL}
+      password: ${OVEN_BOOTSTRAP_OWNER_PASSWORD}

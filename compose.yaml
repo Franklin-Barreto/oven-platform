@@ -1,7 +1,7 @@
 services:
 
   postgres:
-    image: 'postgres:latest'
+    image: 'postgres:17-alpine'
     environment:
       - POSTGRES_DB=${POSTGRES_DB_NAME}
       - POSTGRES_USER=${POSTGRES_USER}

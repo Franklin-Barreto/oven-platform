@@ -4,6 +4,10 @@ spring:
       enabled: false
   jpa:
     open-in-view: false
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 1
 
 management:
   metrics:
@@ -12,6 +16,9 @@ management:
   tracing:
     sampling:
       probability: ${OVEN_TRACING_SAMPLING_PROBABILITY:0.0}
+    export:
+      otlp:
+        enabled: false
   endpoints:
     web:
       exposure:

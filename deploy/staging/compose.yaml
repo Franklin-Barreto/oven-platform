@@ -1,0 +1,72 @@
+services:
+  application:
+    image: ${APPLICATION_IMAGE:?APPLICATION_IMAGE is required}
+    restart: unless-stopped
+    stop_grace_period: 30s
+    ports:
+      - "127.0.0.1:8080:8080"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "wget",
+          "--spider",
+          "--quiet",
+          "http://localhost:8080/actuator/health/readiness"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+    environment:
+      SPRING_PROFILES_ACTIVE: staging
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME:?POSTGRES_DB_NAME is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  bootstrap-owner:
+    image: ${APPLICATION_IMAGE:?APPLICATION_IMAGE is required}
+    profiles: [bootstrap]
+    environment:
+      SPRING_PROFILES_ACTIVE: staging,bootstrap-owner
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_DB_NAME: ${POSTGRES_DB_NAME:?POSTGRES_DB_NAME is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET is required}
+      OVEN_BOOTSTRAP_TENANT_NAME: ${OVEN_BOOTSTRAP_TENANT_NAME:?OVEN_BOOTSTRAP_TENANT_NAME is required}
+      OVEN_BOOTSTRAP_OWNER_EMAIL: ${OVEN_BOOTSTRAP_OWNER_EMAIL:?OVEN_BOOTSTRAP_OWNER_EMAIL is required}
+      OVEN_BOOTSTRAP_OWNER_PASSWORD: ${OVEN_BOOTSTRAP_OWNER_PASSWORD:?OVEN_BOOTSTRAP_OWNER_PASSWORD is required}
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB_NAME:?POSTGRES_DB_NAME is required}
+      POSTGRES_USER: ${POSTGRES_USER:?POSTGRES_USER is required}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?POSTGRES_PASSWORD is required}
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+
+volumes:
+  postgres-data:
