@@ -29,3 +29,6 @@ management:
 
 oven:
   environment: staging
+
+server:
+  forward-headers-strategy: framework

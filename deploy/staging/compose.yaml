@@ -68,5 +68,24 @@ services:
     volumes:
       - postgres-data:/var/lib/postgresql/data
 
+  caddy:
+    image: caddy:2.11.4-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      STAGING_HOSTNAME: ${STAGING_HOSTNAME:?STAGING_HOSTNAME is required}
+      ACME_EMAIL: ${ACME_EMAIL:?ACME_EMAIL is required}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    depends_on:
+      application:
+        condition: service_healthy
+
 volumes:
   postgres-data:
+  caddy-data:
+  caddy-config:

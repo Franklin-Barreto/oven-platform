@@ -1,0 +1,16 @@
+[Unit]
+Description=Update Oven Platform staging DuckDNS record
+Wants=network-online.target
+After=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/oven-platform/duckdns.env
+ExecStart=/opt/oven-platform/deploy/staging/update-duckdns.sh
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectHome=true
+ProtectSystem=strict
+
+[Install]
+WantedBy=multi-user.target
