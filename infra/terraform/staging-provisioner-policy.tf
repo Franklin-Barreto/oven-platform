@@ -46,6 +46,35 @@ data "aws_iam_policy_document" "staging_provisioner" {
   }
 
   statement {
+    sid    = "AuthenticateToEcr"
+    effect = "Allow"
+
+    actions = [
+      "ecr:GetAuthorizationToken",
+    ]
+
+    resources = ["*"]
+  }
+
+  statement {
+    sid    = "PushStagingApplicationImage"
+    effect = "Allow"
+
+    actions = [
+      "ecr:BatchCheckLayerAvailability",
+      "ecr:BatchGetImage",
+      "ecr:CompleteLayerUpload",
+      "ecr:InitiateLayerUpload",
+      "ecr:PutImage",
+      "ecr:UploadLayerPart",
+    ]
+
+    resources = [
+      local.staging_ecr_repository_arn,
+    ]
+  }
+
+  statement {
     sid    = "ReadStagingHostIdentity"
     effect = "Allow"
 
