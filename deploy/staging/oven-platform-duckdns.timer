@@ -1,0 +1,11 @@
+[Unit]
+Description=Periodically update Oven Platform staging DuckDNS record
+
+[Timer]
+OnBootSec=1min
+OnUnitActiveSec=5min
+Persistent=true
+Unit=oven-platform-duckdns.service
+
+[Install]
+WantedBy=timers.target
