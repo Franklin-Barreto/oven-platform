@@ -6,7 +6,5 @@ public interface ImageStorage {
 
   StoredObjectMetadata getMetadata(String objectKey);
 
-  ImageReadAuthorization authorizeRead(String objectKey);
-
   void delete(String objectKey);
 }

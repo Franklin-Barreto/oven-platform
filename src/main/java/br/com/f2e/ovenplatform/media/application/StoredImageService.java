@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.media.application;
 
-import br.com.f2e.ovenplatform.media.application.storage.ImageReadAuthorization;
+import br.com.f2e.ovenplatform.media.application.delivery.ImageDelivery;
+import br.com.f2e.ovenplatform.media.application.delivery.PublicImageLocation;
 import br.com.f2e.ovenplatform.media.application.storage.ImageStorage;
 import br.com.f2e.ovenplatform.media.application.storage.UploadAuthorizationSpec;
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
@@ -13,12 +14,17 @@ public class StoredImageService {
   private static final String RESOURCE = "StoredImage";
   private final StoredImageRepository repository;
   private final ImageStorage imageStorage;
+  private final ImageDelivery imageDelivery;
   private final MediaProperties properties;
 
   public StoredImageService(
-      StoredImageRepository repository, ImageStorage imageStorage, MediaProperties properties) {
+      StoredImageRepository repository,
+      ImageStorage imageStorage,
+      ImageDelivery imageDelivery,
+      MediaProperties properties) {
     this.repository = repository;
     this.imageStorage = imageStorage;
+    this.imageDelivery = imageDelivery;
     this.properties = properties;
   }
 
@@ -54,12 +60,12 @@ public class StoredImageService {
     return repository.save(image);
   }
 
-  public ImageReadAuthorization authorizeRead(UUID tenantId, UUID imageId) {
+  public PublicImageLocation resolvePublicLocation(UUID tenantId, UUID imageId) {
     var image = getImage(tenantId, imageId);
     if (!image.isAvailable()) {
       throw new StoredImageNotAvailableException("Image is pending");
     }
-    return imageStorage.authorizeRead(image.getObjectKey());
+    return imageDelivery.resolvePublicLocation(image.getObjectKey());
   }
 
   @Transactional
