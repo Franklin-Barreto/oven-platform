@@ -8,7 +8,7 @@ COMPOSE_DOWNLOAD="$(mktemp)"
 trap 'rm -f "${COMPOSE_DOWNLOAD}"' EXIT
 
 dnf upgrade -y
-dnf install -y docker
+dnf install -y curl docker git python3
 
 curl \
   --fail \

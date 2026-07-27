@@ -141,16 +141,27 @@ repo:Franklin-Barreto/oven-platform:environment:staging
 ```
 
 The GitHub `staging` environment permits deployments only from `main`. Its repository-visible
-variables contain the AWS region and role ARN; neither value is a credential. Application secrets
-must remain in AWS-managed runtime storage introduced by a later issue.
+variables contain the AWS region and role ARN; neither value is a credential. Database credentials,
+JWT secrets, DuckDNS tokens, and staging smoke-test credentials remain only in root-readable files
+on the AWS host.
 
-The deployment role starts with no AWS permissions. Permissions are added only when a deployment
-issue demonstrates a concrete requirement.
+The deployment role has one project-managed inline policy named
+`oven-platform-staging-deploy`. It permits only:
+
+- authenticating to ECR and publishing immutable images to the `oven-platform` repository;
+- inspecting EC2 and Session Manager state;
+- starting the Terraform-tagged staging instance;
+- sending `AWS-RunShellScript` commands to the Terraform-tagged staging instance;
+- reading the resulting command status and output.
+
+It cannot create or destroy infrastructure, change IAM, stop or terminate the instance, open an
+interactive session, access Terraform state, or read host runtime secrets through AWS APIs.
 
 To disable GitHub deployment access immediately:
 
 1. Open **IAM > Roles > oven-platform-staging-github-deploy**.
-2. Remove the GitHub OIDC federated principal from the role trust policy, or delete the role.
+2. Remove the `oven-platform-staging-deploy` inline policy or remove the GitHub OIDC federated
+   principal from the role trust policy.
 3. Remove or disable the GitHub `staging` environment until the incident is resolved.
 
 Restore access through a reviewed Terraform change. Changing only GitHub configuration is not a
