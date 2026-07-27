@@ -11,7 +11,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
-import br.com.f2e.ovenplatform.media.application.storage.ImageReadAuthorization;
+import br.com.f2e.ovenplatform.media.application.delivery.ImageDelivery;
+import br.com.f2e.ovenplatform.media.application.delivery.PublicImageLocation;
 import br.com.f2e.ovenplatform.media.application.storage.ImageStorage;
 import br.com.f2e.ovenplatform.media.application.storage.ImageUploadAuthorization;
 import br.com.f2e.ovenplatform.media.application.storage.StoredObjectMetadata;
@@ -49,6 +50,7 @@ class StoredImageServiceTest {
 
   @Mock private StoredImageRepository repository;
   @Mock private ImageStorage imageStorage;
+  @Mock private ImageDelivery imageDelivery;
 
   private StoredImageService service;
 
@@ -56,7 +58,7 @@ class StoredImageServiceTest {
   void setUp() {
     service =
         new StoredImageService(
-            repository, imageStorage, new MediaProperties(DataSize.ofMegabytes(10)));
+            repository, imageStorage, imageDelivery, new MediaProperties(DataSize.ofMegabytes(10)));
   }
 
   @Test
@@ -169,29 +171,27 @@ class StoredImageServiceTest {
   }
 
   @Test
-  void shouldAuthorizeReadForAvailableImage() {
+  void shouldResolvePublicLocationForAvailableImage() {
     var image = availableImage();
-    var authorization =
-        new ImageReadAuthorization(
-            URI.create("https://storage.example/read/image.webp"), EXPIRES_AT);
+    var location = new PublicImageLocation(URI.create("https://images.example/tenant/image.webp"));
     when(repository.findByIdAndTenantId(IMAGE_ID, TENANT_ID)).thenReturn(Optional.of(image));
-    when(imageStorage.authorizeRead(OBJECT_KEY)).thenReturn(authorization);
+    when(imageDelivery.resolvePublicLocation(OBJECT_KEY)).thenReturn(location);
 
-    var result = service.authorizeRead(TENANT_ID, IMAGE_ID);
+    var result = service.resolvePublicLocation(TENANT_ID, IMAGE_ID);
 
-    assertThat(result).isEqualTo(authorization);
-    verify(imageStorage).authorizeRead(OBJECT_KEY);
+    assertThat(result).isEqualTo(location);
+    verify(imageDelivery).resolvePublicLocation(OBJECT_KEY);
   }
 
   @Test
-  void shouldRejectReadAuthorizationForPendingImage() {
+  void shouldRejectPublicLocationForPendingImage() {
     when(repository.findByIdAndTenantId(IMAGE_ID, TENANT_ID))
         .thenReturn(Optional.of(pendingImage()));
 
-    assertThatThrownBy(() -> service.authorizeRead(TENANT_ID, IMAGE_ID))
+    assertThatThrownBy(() -> service.resolvePublicLocation(TENANT_ID, IMAGE_ID))
         .isInstanceOf(StoredImageNotAvailableException.class);
 
-    verifyNoInteractions(imageStorage);
+    verifyNoInteractions(imageDelivery);
   }
 
   @Test
