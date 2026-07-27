@@ -6,6 +6,8 @@ import java.util.Objects;
 
 public final class Preconditions {
 
+  private static final String GREATER_THAN_ZERO = "%s must be greater than zero";
+
   private Preconditions() {}
 
   public static <T> T requireNotNull(T field, String fieldName) {
@@ -39,7 +41,7 @@ public final class Preconditions {
     requireNotNull(field, fieldName);
 
     if (field.compareTo(BigDecimal.ZERO) <= 0) {
-      throw new IllegalArgumentException("%s must be greater than zero".formatted(fieldName));
+      throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
     }
 
     return field;
@@ -47,7 +49,15 @@ public final class Preconditions {
 
   public static int requirePositive(int field, String fieldName) {
     if (field <= 0) {
-      throw new IllegalArgumentException("%s must be greater than zero".formatted(fieldName));
+      throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
+    }
+
+    return field;
+  }
+
+  public static long requirePositive(long field, String fieldName) {
+    if (field <= 0) {
+      throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
     }
 
     return field;

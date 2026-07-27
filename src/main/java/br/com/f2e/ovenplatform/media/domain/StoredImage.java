@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.media.domain;
 
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
@@ -63,7 +64,7 @@ public class StoredImage extends BaseEntity {
         requireNotNull(tenantId, "tenantId"),
         requireObjectKey(objectKey),
         requireContentType(contentType),
-        requirePositiveSize(sizeBytes),
+        requirePositive(sizeBytes, "sizeBytes"),
         requireChecksum(checksum));
   }
 
@@ -132,14 +133,6 @@ public class StoredImage extends BaseEntity {
     }
 
     return normalized;
-  }
-
-  private static long requirePositiveSize(long sizeBytes) {
-    if (sizeBytes <= 0) {
-      throw new IllegalArgumentException("sizeBytes must be greater than zero");
-    }
-
-    return sizeBytes;
   }
 
   private static String requireChecksum(String checksum) {
