@@ -1,0 +1,141 @@
+name: Deploy AWS staging
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: aws-staging-deployment
+  cancel-in-progress: false
+
+jobs:
+  validate:
+    name: Validate deployable commit
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      commit-sha: ${{ steps.commit.outputs.sha }}
+
+    steps:
+      - name: Check out main commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          fetch-depth: 1
+
+      - name: Resolve deployable commit
+        id: commit
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          commit_sha="$(git rev-parse HEAD)"
+
+          if [[ ! "$commit_sha" =~ ^[0-9a-f]{40}$ ]]; then
+            echo "::error::Could not resolve a full Git commit SHA."
+            exit 1
+          fi
+
+          echo "sha=$commit_sha" >> "$GITHUB_OUTPUT"
+          echo "Validating commit $commit_sha"
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          java-version: 25
+          distribution: zulu
+          cache: maven
+
+      - name: Generate test JWT secret
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          jwt_secret="$(openssl rand -base64 48)"
+          echo "::add-mask::$jwt_secret"
+          echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
+
+      - name: Verify application
+        run: ./mvnw -B verify
+
+  deploy:
+    name: Publish and deploy
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    environment: staging
+    permissions:
+      contents: read
+      id-token: write
+    env:
+      AWS_REGION: ${{ vars.AWS_REGION }}
+      DEPLOY_COMMIT_SHA: ${{ needs.validate.outputs.commit-sha }}
+      ECR_REPOSITORY_NAME: oven-platform
+
+    steps:
+      - name: Check out deployable commit
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+        with:
+          ref: ${{ env.DEPLOY_COMMIT_SHA }}
+          fetch-depth: 1
+
+      - name: Configure temporary AWS credentials
+        uses: aws-actions/configure-aws-credentials@e6de054238d6b7531b4efff3b6587d9aade6a06c # v6.2.3
+        with:
+          role-to-assume: ${{ vars.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+          role-session-name: oven-platform-${{ github.run_id }}
+          mask-aws-account-id: true
+
+      - name: Publish immutable application image
+        id: publish
+        run: |
+          ./deploy/staging/publish-image.sh \
+            "$AWS_REGION" \
+            "$ECR_REPOSITORY_NAME" \
+            "$DEPLOY_COMMIT_SHA"
+
+      - name: Resolve staging host
+        id: host
+        run: ./deploy/staging/automation/resolve-host.sh
+
+      - name: Start staging host
+        env:
+          INSTANCE_ID: ${{ steps.host.outputs.instance-id }}
+        run: ./deploy/staging/automation/start-host.sh "$INSTANCE_ID"
+
+      - name: Wait for Session Manager
+        env:
+          INSTANCE_ID: ${{ steps.host.outputs.instance-id }}
+        run: ./deploy/staging/automation/wait-for-ssm.sh "$INSTANCE_ID"
+
+      - name: Deploy and run smoke tests
+        env:
+          APPLICATION_IMAGE: ${{ steps.publish.outputs.image }}
+          INSTANCE_ID: ${{ steps.host.outputs.instance-id }}
+        run: |
+          ./deploy/staging/automation/deploy-via-ssm.sh \
+            "$INSTANCE_ID" \
+            "$APPLICATION_IMAGE" \
+            "$DEPLOY_COMMIT_SHA" \
+            "$AWS_REGION"
+
+      - name: Deployment summary
+        env:
+          APPLICATION_IMAGE: ${{ steps.publish.outputs.image }}
+          INSTANCE_ID: ${{ steps.host.outputs.instance-id }}
+        run: |
+          {
+            echo "## AWS staging deployment"
+            echo
+            echo "- Commit: \`${DEPLOY_COMMIT_SHA}\`"
+            echo "- Image: \`${APPLICATION_IMAGE}\`"
+            echo "- Instance: \`${INSTANCE_ID}\`"
+            echo "- Endpoint: https://oven-platform-staging.duckdns.org"
+          } >> "$GITHUB_STEP_SUMMARY"
