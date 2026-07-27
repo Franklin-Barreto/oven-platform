@@ -150,6 +150,10 @@ while [ "$attempt" -le 36 ]; do
     --show-error \
     http://127.0.0.1:8080/actuator/health/readiness \
     >/dev/null; then
+    docker compose \
+      --env-file .env \
+      restart caddy
+
     echo "Deployment readiness passed commitSha=${commit_sha} image=${application_image}"
     exit 0
   fi

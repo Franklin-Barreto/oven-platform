@@ -62,12 +62,32 @@ esac
 
 base_url="https://${staging_hostname}"
 
-curl \
-  --fail \
-  --silent \
-  --show-error \
-  "${base_url}/actuator/health/readiness" \
-  >/dev/null
+https_ready=false
+attempt=1
+
+while [ "$attempt" -le 12 ]; do
+  if curl \
+    --fail \
+    --silent \
+    "${base_url}/actuator/health/readiness" \
+    >/dev/null 2>&1; then
+    https_ready=true
+    break
+  fi
+
+  sleep 5
+  attempt=$((attempt + 1))
+done
+
+if [ "$https_ready" != true ]; then
+  echo "Public HTTPS readiness did not succeed within 60 seconds" >&2
+  curl \
+    --fail \
+    --silent \
+    --show-error \
+    "${base_url}/actuator/health/readiness" \
+    >/dev/null
+fi
 
 login_payload="$(
   TENANT_ID="$tenant_id" \

@@ -327,6 +327,7 @@ check out the exact main commit without AWS credentials
 → update only APPLICATION_IMAGE in the host-owned .env
 → reconcile PostgreSQL, application, and Caddy
 → wait for local readiness
+→ restart Caddy so the recreated application upstream is resolved again
 → verify public HTTPS health, login, and an authenticated API v1 request
 → promote the pending image to current
 ```
@@ -443,7 +444,9 @@ migrations or restore PostgreSQL data. Do not roll back across an incompatible d
 - **Readiness times out:** inspect application and PostgreSQL container status, application logs,
   Liquibase output, and available disk or memory.
 - **HTTPS smoke tests fail:** verify DuckDNS resolution, Caddy logs, certificate status,
-  `OVEN_STAGING_TENANT_ID`, and the host-owned owner credentials.
+  `OVEN_STAGING_TENANT_ID`, and the host-owned owner credentials. The automated deploy restarts
+  Caddy after recreating the application container and waits up to 60 seconds for public readiness,
+  allowing Docker DNS to resolve the new upstream.
 - **Rollback candidate is absent:** no prior automated full-SHA deployment has been recorded on the
   current host.
 
