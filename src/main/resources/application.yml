@@ -37,6 +37,8 @@ jwt:
   secret: ${JWT_SECRET}
   expiration-minutes: ${JWT_EXPIRATION_MINUTES:30}
 oven:
+  media:
+    max-upload-size: ${MEDIA_MAX_UPLOAD_SIZE:10MB}
   events:
     publication:
       monitoring:
