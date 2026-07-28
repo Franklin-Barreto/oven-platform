@@ -5,4 +5,8 @@ public class StoredImageNotAvailableException extends RuntimeException {
   public StoredImageNotAvailableException(String message) {
     super(message);
   }
+
+  public StoredImageNotAvailableException() {
+    super("Image is pending");
+  }
 }

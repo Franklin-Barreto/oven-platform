@@ -16,6 +16,10 @@ public final class ApiErrorCodes {
   public static final String TENANT_ACCESS_DENIED = "TENANT_ACCESS_DENIED";
   public static final String TENANT_TEAM_MANAGEMENT_DENIED = "TENANT_TEAM_MANAGEMENT_DENIED";
   public static final String INVALID_TICKET_STATUS_TRANSITION = "INVALID_TICKET_STATUS_TRANSITION";
+  public static final String IMAGE_UPLOAD_SIZE_EXCEEDED = "IMAGE_UPLOAD_SIZE_EXCEEDED";
+  public static final String STORED_IMAGE_METADATA_MISMATCH = "STORED_IMAGE_METADATA_MISMATCH";
+  public static final String STORED_IMAGE_NOT_AVAILABLE = "STORED_IMAGE_NOT_AVAILABLE";
+  public static final String IMAGE_UPLOAD_NOT_FOUND = "IMAGE_UPLOAD_NOT_FOUND";
 
   private ApiErrorCodes() {}
 }
