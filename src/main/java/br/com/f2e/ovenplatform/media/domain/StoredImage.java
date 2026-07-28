@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.media.domain;
 
+import static br.com.f2e.ovenplatform.media.domain.validation.MediaPreconditions.requireSha256Checksum;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
@@ -65,7 +66,7 @@ public class StoredImage extends BaseEntity {
         requireObjectKey(objectKey),
         requireContentType(contentType),
         requirePositive(sizeBytes, "sizeBytes"),
-        requireChecksum(checksum));
+        requireSha256Checksum(checksum));
   }
 
   public boolean isAvailable() {
@@ -130,17 +131,6 @@ public class StoredImage extends BaseEntity {
 
     if (!SUPPORTED_CONTENT_TYPES.contains(normalized)) {
       throw new IllegalArgumentException("Unsupported image content type: " + normalized);
-    }
-
-    return normalized;
-  }
-
-  private static String requireChecksum(String checksum) {
-    var normalized = requireNotBlank(checksum, "checksum");
-
-    if (normalized.length() > MAX_CHECKSUM_LENGTH) {
-      throw new IllegalArgumentException(
-          "checksum must have at most %d characters".formatted(MAX_CHECKSUM_LENGTH));
     }
 
     return normalized;

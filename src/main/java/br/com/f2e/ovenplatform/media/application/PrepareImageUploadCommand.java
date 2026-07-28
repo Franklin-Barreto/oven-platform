@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.media.application;
 
+import static br.com.f2e.ovenplatform.media.domain.validation.MediaPreconditions.requireSha256Checksum;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotBlank;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
@@ -10,6 +11,6 @@ public record PrepareImageUploadCommand(String contentType, long sizeBytes, Stri
   public PrepareImageUploadCommand {
     contentType = requireNotBlank(contentType, "contentType").toLowerCase(Locale.ROOT);
     requirePositive(sizeBytes, "sizeBytes");
-    checksum = requireNotBlank(checksum, "checksum");
+    checksum = requireSha256Checksum(checksum);
   }
 }

@@ -19,6 +19,7 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID TENANT_ID = UUID.randomUUID();
   private static final UUID ANOTHER_TENANT_ID = UUID.randomUUID();
+  private static final String CHECKSUM = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
 
   @Autowired private StoredImageRepository repository;
 
@@ -40,7 +41,7 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
               assertThat(persisted.getObjectKey()).isEqualTo(image.getObjectKey());
               assertThat(persisted.getContentType()).isEqualTo("image/webp");
               assertThat(persisted.getSizeBytes()).isEqualTo(1024);
-              assertThat(persisted.getChecksum()).isEqualTo("sha256-checksum");
+              assertThat(persisted.getChecksum()).isEqualTo(CHECKSUM);
               assertThat(persisted.getStatus()).isEqualTo(StoredImageStatus.PENDING);
               assertThat(persisted.getCreatedAt()).isNotNull();
               assertThat(persisted.getUpdatedAt()).isNotNull();
@@ -61,7 +62,7 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldPersistAvailableTransition() {
     var image = repository.save(pendingImage(TENANT_ID));
-    image.confirm("image/webp", 1024, "sha256-checksum");
+    image.confirm("image/webp", 1024, CHECKSUM);
     repository.save(image);
 
     flushAndClear();
@@ -76,7 +77,7 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
   void shouldFindOnlyPendingImagesCreatedBeforeThreshold() {
     var pending = repository.save(pendingImage(TENANT_ID));
     var available = pendingImage(TENANT_ID);
-    available.confirm("image/webp", 1024, "sha256-checksum");
+    available.confirm("image/webp", 1024, CHECKSUM);
     repository.save(available);
 
     flushAndClear();
@@ -114,7 +115,7 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private StoredImage pendingImage(UUID tenantId, String objectKey) {
-    return StoredImage.pending(tenantId, objectKey, "image/webp", 1024, "sha256-checksum");
+    return StoredImage.pending(tenantId, objectKey, "image/webp", 1024, CHECKSUM);
   }
 
   private String objectKey() {

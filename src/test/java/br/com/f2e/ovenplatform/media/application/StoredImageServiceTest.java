@@ -43,7 +43,8 @@ class StoredImageServiceTest {
   private static final UUID IMAGE_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final String CONTENT_TYPE = "image/webp";
   private static final long SIZE_BYTES = 42_000L;
-  private static final String CHECKSUM = "sha256:8b1a9953c4611296a827abf8c47804d7";
+  private static final String CHECKSUM = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
+  private static final String DIFFERENT_CHECKSUM = "i6GoWHDjVPMdo+45cSVkdhpDR285lhsADeHze+dtdPM=";
   private static final String OBJECT_KEY =
       "tenants/%s/images/7d877954-28f7-483d-9c21-60d13ec17e80.webp".formatted(TENANT_ID);
   private static final Instant EXPIRES_AT = Instant.parse("2026-07-27T15:10:00Z");
@@ -226,7 +227,7 @@ class StoredImageServiceTest {
             "different size", new StoredObjectMetadata(CONTENT_TYPE, SIZE_BYTES + 1, CHECKSUM)),
         Arguments.of(
             "different checksum",
-            new StoredObjectMetadata(CONTENT_TYPE, SIZE_BYTES, "sha256:different")));
+            new StoredObjectMetadata(CONTENT_TYPE, SIZE_BYTES, DIFFERENT_CHECKSUM)));
   }
 
   private static StoredImage pendingImage() {
