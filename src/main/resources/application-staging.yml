@@ -29,6 +29,11 @@ management:
 
 oven:
   environment: staging
+  media:
+    delivery:
+      base-url: ${MEDIA_DELIVERY_BASE_URL}
+    aws:
+      bucket: ${MEDIA_AWS_BUCKET}
 
 server:
   forward-headers-strategy: framework

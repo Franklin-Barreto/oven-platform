@@ -22,6 +22,7 @@
         <jjwt.version>0.13.0</jjwt.version>
         <mockito.version>5.20.0</mockito.version>
         <cucumber.version>7.34.4</cucumber.version>
+        <aws-sdk.version>2.46.8</aws-sdk.version>
 
         <sonar.projectKey>Franklin-Barreto_oven-platform</sonar.projectKey>
         <sonar.organization>franklin-barreto</sonar.organization>
@@ -97,6 +98,14 @@
         <dependency>
             <groupId>org.postgresql</groupId>
             <artifactId>postgresql</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
         </dependency>
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
@@ -252,6 +261,13 @@
                 <groupId>org.testcontainers</groupId>
                 <artifactId>testcontainers-bom</artifactId>
                 <version>2.0.5</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+            <dependency>
+                <groupId>software.amazon.awssdk</groupId>
+                <artifactId>bom</artifactId>
+                <version>${aws-sdk.version}</version>
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>

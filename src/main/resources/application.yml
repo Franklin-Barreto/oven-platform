@@ -39,6 +39,12 @@ jwt:
 oven:
   media:
     max-upload-size: ${MEDIA_MAX_UPLOAD_SIZE:10MB}
+    delivery:
+      base-url: ${MEDIA_DELIVERY_BASE_URL:http://localhost:8080/media/}
+    aws:
+      bucket: ${MEDIA_AWS_BUCKET:oven-platform-local-images}
+      region: ${AWS_REGION:us-east-1}
+      upload-authorization-ttl: ${MEDIA_UPLOAD_AUTHORIZATION_TTL:10m}
   events:
     publication:
       monitoring:

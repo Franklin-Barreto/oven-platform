@@ -7,8 +7,10 @@ import br.com.f2e.ovenplatform.media.application.storage.UploadAuthorizationSpec
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+@Service
 public class StoredImageService {
 
   private static final String RESOURCE = "StoredImage";
@@ -32,6 +34,7 @@ public class StoredImageService {
   public PreparedImageUpload prepareUpload(UUID tenantId, PrepareImageUploadCommand command) {
 
     validateUploadSize(command.sizeBytes());
+
     var objectKey = generateObjectKey(tenantId, command.contentType());
     var pendingStoreImage =
         StoredImage.pending(
