@@ -31,7 +31,7 @@ class OwnerProvisioningProcessIntegrationTest {
                   "-cp",
                   testClasspath(),
                   OvenPlatformApplication.class.getName(),
-                  "--spring.profiles.active=staging,bootstrap-owner",
+                  "--spring.profiles.active=bootstrap-owner",
                   "--spring.docker.compose.enabled=false",
                   "--spring.datasource.url=" + postgres.getJdbcUrl(),
                   "--spring.datasource.username=" + postgres.getUsername(),
