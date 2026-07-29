@@ -1,5 +1,7 @@
 package br.com.f2e.ovenplatform.media.application;
 
+import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
+import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.media.application.delivery.ImageDelivery;
 import br.com.f2e.ovenplatform.media.application.delivery.PublicImageLocation;
 import br.com.f2e.ovenplatform.media.application.storage.ImageStorage;
@@ -7,12 +9,14 @@ import br.com.f2e.ovenplatform.media.application.storage.UploadAuthorizationSpec
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.time.Instant;
+import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-public class StoredImageService {
+public class StoredImageService implements AvailableImageLookup {
 
   private static final String RESOURCE = "StoredImage";
   private final StoredImageRepository repository;
@@ -66,17 +70,53 @@ public class StoredImageService {
 
   public PublicImageLocation resolvePublicLocation(UUID tenantId, UUID imageId) {
     var image = getImage(tenantId, imageId);
-    if (!image.isAvailable()) {
-      throw new StoredImageNotAvailableException("Image is pending");
-    }
+    requireAvailable(image);
     return imageDelivery.resolvePublicLocation(image.getObjectKey());
   }
 
   @Transactional
   public void delete(UUID tenantId, UUID imageId) {
     var image = getImage(tenantId, imageId);
-    imageStorage.delete(image.getObjectKey());
+
     repository.delete(image);
+    imageStorage.delete(image.getObjectKey());
+  }
+
+  @Transactional
+  public void cleanupPendingImages(Instant createdBefore) {
+    repository
+        .findPendingCreatedBefore(createdBefore)
+        .forEach(
+            image -> {
+              imageStorage.delete(image.getObjectKey());
+              repository.delete(image);
+            });
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public AvailableImage getAvailableImage(UUID tenantId, UUID imageId) {
+    var location = resolvePublicLocation(tenantId, imageId);
+    return new AvailableImage(imageId, location.url());
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public List<AvailableImage> getAvailableImages(UUID tenantId, Set<UUID> imageIds) {
+    var images = repository.findAllByTenantIdAndIdIn(tenantId, imageIds);
+
+    if (images.size() != imageIds.size()) {
+      throw new ResourceNotFoundException("One or more StoredImages were not found");
+    }
+
+    return images.stream()
+        .map(
+            image -> {
+              requireAvailable(image);
+              var location = imageDelivery.resolvePublicLocation(image.getObjectKey());
+              return new AvailableImage(image.getId(), location.url());
+            })
+        .toList();
   }
 
   private StoredImage getImage(UUID tenantId, UUID imageId) {
@@ -110,14 +150,9 @@ public class StoredImageService {
     };
   }
 
-  @Transactional
-  public void cleanupPendingImages(Instant createdBefore) {
-    repository
-        .findPendingCreatedBefore(createdBefore)
-        .forEach(
-            image -> {
-              imageStorage.delete(image.getObjectKey());
-              repository.delete(image);
-            });
+  private static void requireAvailable(StoredImage image) {
+    if (!image.isAvailable()) {
+      throw new StoredImageNotAvailableException("Image is pending");
+    }
   }
 }

@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.media.infrastructure.persistence;
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.media.domain.StoredImageStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -13,4 +14,6 @@ public interface SpringDataStoredImageRepository extends JpaRepository<StoredIma
   Optional<StoredImage> findByIdAndTenantId(UUID id, UUID tenantId);
 
   List<StoredImage> findByStatusAndCreatedAtBefore(StoredImageStatus status, Instant time);
+
+  List<StoredImage> findByTenantIdAndIdIn(UUID tenantId, Collection<UUID> ids);
 }

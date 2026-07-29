@@ -3,16 +3,23 @@ package br.com.f2e.ovenplatform.media.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.f2e.ovenplatform.catalog.domain.Category;
+import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.media.domain.StoredImageStatus;
 import br.com.f2e.ovenplatform.media.infrastructure.persistence.JpaStoredImageRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
+import br.com.f2e.ovenplatform.tenant.domain.Plan;
+import br.com.f2e.ovenplatform.tenant.domain.Tenant;
+import java.math.BigDecimal;
 import java.time.Instant;
+import java.util.Set;
 import java.util.UUID;
 import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Import(JpaStoredImageRepositoryAdapter.class)
 class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
@@ -57,6 +64,23 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
     var found = repository.findByIdAndTenantId(image.getId(), ANOTHER_TENANT_ID);
 
     assertThat(found).isEmpty();
+  }
+
+  @Test
+  void shouldFindImagesByIdsOnlyForRequestedTenant() {
+    var firstImage = repository.save(pendingImage(TENANT_ID));
+    var secondImage = repository.save(pendingImage(TENANT_ID));
+    var anotherTenantImage = repository.save(pendingImage(ANOTHER_TENANT_ID));
+
+    flushAndClear();
+
+    var images =
+        repository.findAllByTenantIdAndIdIn(
+            TENANT_ID, Set.of(firstImage.getId(), secondImage.getId(), anotherTenantImage.getId()));
+
+    assertThat(images)
+        .extracting(StoredImage::getId)
+        .containsExactlyInAnyOrder(firstImage.getId(), secondImage.getId());
   }
 
   @Test
@@ -108,6 +132,31 @@ class StoredImageRepositoryIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
 
     assertThat(repository.findByIdAndTenantId(imageId, TENANT_ID)).isEmpty();
+  }
+
+  @Test
+  void shouldRejectDeletingImageReferencedByProduct() {
+    var tenant = new Tenant("Don Corleone Pizzeria", Plan.MVP);
+    entityManager.persist(tenant);
+    var category = new Category("Pizzas", tenant.getId());
+    entityManager.persist(category);
+    var image = repository.save(pendingImage(tenant.getId()));
+    image.confirm("image/webp", 1024, CHECKSUM);
+    repository.save(image);
+    entityManager.persist(
+        new Product(
+            tenant.getId(),
+            category.getId(),
+            image.getId(),
+            "Pizza Portuguesa",
+            "Pizza com queijo, presunto e ovos",
+            new BigDecimal("35.40")));
+    flushAndClear();
+    var referencedImage =
+        repository.findByIdAndTenantId(image.getId(), tenant.getId()).orElseThrow();
+
+    assertThatThrownBy(() -> repository.delete(referencedImage))
+        .isInstanceOf(DataIntegrityViolationException.class);
   }
 
   private StoredImage pendingImage(UUID tenantId) {

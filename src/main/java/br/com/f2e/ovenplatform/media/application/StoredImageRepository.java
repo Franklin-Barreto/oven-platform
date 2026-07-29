@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.media.application;
 
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,4 +16,6 @@ public interface StoredImageRepository {
   void delete(StoredImage storedImage);
 
   List<StoredImage> findPendingCreatedBefore(Instant createdBefore);
+
+  List<StoredImage> findAllByTenantIdAndIdIn(UUID tenantId, Collection<UUID> ids);
 }

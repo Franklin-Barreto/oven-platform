@@ -11,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.delivery.ImageDelivery;
 import br.com.f2e.ovenplatform.media.application.delivery.PublicImageLocation;
 import br.com.f2e.ovenplatform.media.application.storage.ImageStorage;
@@ -25,6 +26,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
@@ -42,6 +44,8 @@ class StoredImageServiceTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID IMAGE_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final UUID SECOND_IMAGE_ID =
+      UUID.fromString("cc310129-f1d5-4942-8d0a-b144e518aecf");
   private static final String CONTENT_TYPE = "image/webp";
   private static final long SIZE_BYTES = 42_000L;
   private static final String CHECKSUM = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
@@ -197,19 +201,19 @@ class StoredImageServiceTest {
   }
 
   @Test
-  void shouldDeleteStorageObjectBeforeDeletingDatabaseRecord() {
+  void shouldDeleteDatabaseRecordBeforeDeletingStorageObject() {
     var image = pendingImage();
     when(repository.findByIdAndTenantId(IMAGE_ID, TENANT_ID)).thenReturn(Optional.of(image));
 
     service.delete(TENANT_ID, IMAGE_ID);
 
     var ordered = inOrder(imageStorage, repository);
-    ordered.verify(imageStorage).delete(OBJECT_KEY);
     ordered.verify(repository).delete(image);
+    ordered.verify(imageStorage).delete(OBJECT_KEY);
   }
 
   @Test
-  void shouldKeepDatabaseRecordWhenStorageDeletionFails() {
+  void shouldPropagateStorageFailureAfterRequestingDatabaseDeletion() {
     var image = pendingImage();
     when(repository.findByIdAndTenantId(IMAGE_ID, TENANT_ID)).thenReturn(Optional.of(image));
     var storageFailure = new IllegalStateException("storage unavailable");
@@ -217,7 +221,9 @@ class StoredImageServiceTest {
 
     assertThatThrownBy(() -> service.delete(TENANT_ID, IMAGE_ID)).isSameAs(storageFailure);
 
-    verify(repository, never()).delete(any());
+    var ordered = inOrder(repository, imageStorage);
+    ordered.verify(repository).delete(image);
+    ordered.verify(imageStorage).delete(OBJECT_KEY);
   }
 
   @Test
@@ -271,6 +277,83 @@ class StoredImageServiceTest {
     verify(repository, never()).delete(image);
   }
 
+  @Test
+  void shouldGetAvailableImageThroughPublicContract() {
+    var image = availableImage();
+    var publicUrl = URI.create("https://images.example/tenant/image.webp");
+
+    when(repository.findByIdAndTenantId(IMAGE_ID, TENANT_ID)).thenReturn(Optional.of(image));
+    when(imageDelivery.resolvePublicLocation(OBJECT_KEY))
+        .thenReturn(new PublicImageLocation(publicUrl));
+
+    var result = service.getAvailableImage(TENANT_ID, IMAGE_ID);
+
+    assertThat(result.id()).isEqualTo(IMAGE_ID);
+    assertThat(result.publicUrl()).isEqualTo(publicUrl);
+  }
+
+  @Test
+  void shouldGetAvailableImagesThroughPublicContract() {
+    var secondObjectKey = "tenants/%s/images/second.webp".formatted(TENANT_ID);
+    var firstImage = availableImage();
+    var secondImage = availableImage(secondObjectKey);
+    var firstUrl = URI.create("https://images.example/tenant/first.webp");
+    var secondUrl = URI.create("https://images.example/tenant/second.webp");
+    var imageIds = Set.of(IMAGE_ID, SECOND_IMAGE_ID);
+
+    when(repository.findAllByTenantIdAndIdIn(TENANT_ID, imageIds))
+        .thenReturn(List.of(firstImage, secondImage));
+    when(imageDelivery.resolvePublicLocation(OBJECT_KEY))
+        .thenReturn(new PublicImageLocation(firstUrl));
+    when(imageDelivery.resolvePublicLocation(secondObjectKey))
+        .thenReturn(new PublicImageLocation(secondUrl));
+
+    var result = service.getAvailableImages(TENANT_ID, imageIds);
+
+    assertThat(result)
+        .containsExactlyInAnyOrder(
+            new AvailableImage(IMAGE_ID, firstUrl), new AvailableImage(SECOND_IMAGE_ID, secondUrl));
+    verify(repository).findAllByTenantIdAndIdIn(TENANT_ID, imageIds);
+    verify(imageDelivery).resolvePublicLocation(OBJECT_KEY);
+    verify(imageDelivery).resolvePublicLocation(secondObjectKey);
+  }
+
+  @Test
+  void shouldRejectAvailableImagesLookupWhenAnImageIsPending() {
+    var imageIds = Set.of(IMAGE_ID);
+    when(repository.findAllByTenantIdAndIdIn(TENANT_ID, imageIds))
+        .thenReturn(List.of(pendingImage()));
+
+    assertThatThrownBy(() -> service.getAvailableImages(TENANT_ID, imageIds))
+        .isInstanceOf(StoredImageNotAvailableException.class)
+        .hasMessage("Image is pending");
+
+    verifyNoInteractions(imageDelivery);
+  }
+
+  @Test
+  void shouldRejectAvailableImagesLookupWhenSomeImageIsNotFoundForTenant() {
+    var imageIds = Set.of(IMAGE_ID, SECOND_IMAGE_ID);
+    when(repository.findAllByTenantIdAndIdIn(TENANT_ID, imageIds))
+        .thenReturn(List.of(availableImage()));
+
+    assertThatThrownBy(() -> service.getAvailableImages(TENANT_ID, imageIds))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("One or more StoredImages were not found");
+
+    verifyNoInteractions(imageDelivery);
+  }
+
+  @Test
+  void shouldReturnEmptyAvailableImagesWhenNoIdsAreRequested() {
+    when(repository.findAllByTenantIdAndIdIn(TENANT_ID, Set.of())).thenReturn(List.of());
+
+    var result = service.getAvailableImages(TENANT_ID, Set.of());
+
+    assertThat(result).isEmpty();
+    verifyNoInteractions(imageDelivery);
+  }
+
   private static Stream<Arguments> incompatibleMetadata() {
     return Stream.of(
         Arguments.of(
@@ -289,6 +372,14 @@ class StoredImageServiceTest {
 
   private static StoredImage availableImage() {
     var image = pendingImage();
+    image.confirm(CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
+    return image;
+  }
+
+  private static StoredImage availableImage(String objectKey) {
+    var image =
+        withId(
+            StoredImage.pending(TENANT_ID, objectKey, CONTENT_TYPE, SIZE_BYTES, CHECKSUM), StoredImageServiceTest.SECOND_IMAGE_ID);
     image.confirm(CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
     return image;
   }
