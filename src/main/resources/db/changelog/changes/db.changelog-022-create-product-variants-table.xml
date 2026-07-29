@@ -1,0 +1,95 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="022-create-product-variants-table" author="franklin">
+        <addUniqueConstraint
+                tableName="products"
+                columnNames="tenant_id,id"
+                constraintName="uk_products_tenant_id_id"/>
+
+        <addUniqueConstraint
+                tableName="stored_images"
+                columnNames="tenant_id,id"
+                constraintName="uk_stored_images_tenant_id_id"/>
+
+        <createTable tableName="product_variants">
+            <column name="id" type="uuid">
+                <constraints
+                        primaryKey="true"
+                        primaryKeyName="pk_product_variants"
+                        nullable="false"/>
+            </column>
+
+            <column name="product_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="tenant_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="image_id" type="uuid"/>
+
+            <column name="name" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="price" type="numeric(19,2)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="active" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="display_position" type="integer" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="product_variants"
+                baseColumnNames="tenant_id"
+                referencedTableName="tenants"
+                referencedColumnNames="id"
+                constraintName="fk_product_variants_tenant_id"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableName="product_variants"
+                baseColumnNames="tenant_id,product_id"
+                referencedTableName="products"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_product_variants_tenant_product"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableName="product_variants"
+                baseColumnNames="tenant_id,image_id"
+                referencedTableName="stored_images"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_product_variants_tenant_image"
+                onDelete="RESTRICT"/>
+
+        <createIndex
+                indexName="idx_product_variants_tenant_product_position"
+                tableName="product_variants">
+            <column name="tenant_id"/>
+            <column name="product_id"/>
+            <column name="display_position"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

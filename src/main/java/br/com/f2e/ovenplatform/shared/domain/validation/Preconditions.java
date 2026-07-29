@@ -37,30 +37,26 @@ public final class Preconditions {
     return requireNotBlank(field, "field");
   }
 
-  public static BigDecimal requirePositive(BigDecimal field, String fieldName) {
-    requireNotNull(field, fieldName);
+  public static <T extends Number> T requirePositive(T value, String fieldName) {
+    requireNotNull(value, fieldName);
 
-    if (field.compareTo(BigDecimal.ZERO) <= 0) {
+    var numericValue = toBigDecimal(value, fieldName);
+
+    if (numericValue.signum() <= 0) {
       throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
     }
 
-    return field;
+    return value;
   }
 
-  public static int requirePositive(int field, String fieldName) {
-    if (field <= 0) {
-      throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
+  public static <T extends Number> T requireNonNegative(T value, String fieldName) {
+    requireNotNull(value, fieldName);
+
+    if (toBigDecimal(value, fieldName).signum() < 0) {
+      throw new IllegalArgumentException("%s must not be negative".formatted(fieldName));
     }
 
-    return field;
-  }
-
-  public static long requirePositive(long field, String fieldName) {
-    if (field <= 0) {
-      throw new IllegalArgumentException(GREATER_THAN_ZERO.formatted(fieldName));
-    }
-
-    return field;
+    return value;
   }
 
   public static String requireMinimumSize(String field, String fieldName, int minimumSize) {
@@ -104,5 +100,14 @@ public final class Preconditions {
     }
 
     return field;
+  }
+
+  private static BigDecimal toBigDecimal(Number value, String fieldName) {
+    try {
+      return new BigDecimal(value.toString());
+    } catch (NumberFormatException exception) {
+      throw new IllegalArgumentException(
+          "%s must be a finite number".formatted(fieldName), exception);
+    }
   }
 }
