@@ -37,13 +37,7 @@ public class ProductController {
       @CurrentTenantId UUID tenantId, @Valid @RequestBody CreateProductRequest productRequest) {
 
     var productResponse =
-        ProductResponse.from(
-            service.createProduct(
-                tenantId,
-                productRequest.categoryId(),
-                productRequest.name(),
-                productRequest.description(),
-                productRequest.price()));
+        ProductResponse.from(service.createProduct(tenantId, productRequest.toCommand()));
     var uri = ResourceUriBuilder.buildLocation(productResponse.id());
     return ResponseEntity.created(uri).body(productResponse);
   }
@@ -70,15 +64,7 @@ public class ProductController {
       @CurrentTenantId UUID tenantId,
       @PathVariable UUID id,
       @Valid @RequestBody UpdateProductRequest productRequest) {
-    var product =
-        service.update(
-            tenantId,
-            id,
-            productRequest.categoryId(),
-            productRequest.name(),
-            productRequest.description(),
-            productRequest.price(),
-            productRequest.active());
+    var product = service.update(tenantId, id, productRequest.toCommand());
 
     return ResponseEntity.ok(ProductResponse.from(product));
   }
