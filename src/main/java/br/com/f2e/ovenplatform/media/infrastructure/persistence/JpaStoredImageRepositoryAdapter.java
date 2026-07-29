@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.media.application.StoredImageRepository;
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.media.domain.StoredImageStatus;
 import java.time.Instant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -31,10 +32,16 @@ public class JpaStoredImageRepositoryAdapter implements StoredImageRepository {
   @Override
   public void delete(StoredImage storedImage) {
     repository.delete(storedImage);
+    repository.flush();
   }
 
   @Override
   public List<StoredImage> findPendingCreatedBefore(Instant time) {
     return repository.findByStatusAndCreatedAtBefore(StoredImageStatus.PENDING, time);
+  }
+
+  @Override
+  public List<StoredImage> findAllByTenantIdAndIdIn(UUID tenantId, Collection<UUID> ids) {
+    return repository.findByTenantIdAndIdIn(tenantId, ids);
   }
 }
