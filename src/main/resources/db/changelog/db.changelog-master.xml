@@ -26,4 +26,5 @@
     <include file="db/changelog/changes/db.changelog-018-drop-outbox-events.xml" />
     <include file="db/changelog/changes/db.changelog-019-add-tenant-membership-roles.xml" />
     <include file="db/changelog/changes/db.changelog-020-create-stored-images-table.xml"/>
+    <include file="db/changelog/changes/db.changelog-021-add-product-image.xml"/>
 </databaseChangeLog>

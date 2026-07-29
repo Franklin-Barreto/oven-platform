@@ -22,6 +22,9 @@ public class Product extends BaseEntity {
   @Column(nullable = false)
   private UUID categoryId;
 
+  @Column(nullable = false)
+  private UUID imageId;
+
   @Column(nullable = false, length = 80)
   private String name;
 
@@ -41,10 +44,16 @@ public class Product extends BaseEntity {
       value = "CT_CONSTRUCTOR_THROW",
       justification = "Domain invariants are validated while constructing the aggregate.")
   public Product(
-      UUID tenantId, UUID categoryId, String name, String description, BigDecimal price) {
+      UUID tenantId,
+      UUID categoryId,
+      UUID imageId,
+      String name,
+      String description,
+      BigDecimal price) {
 
     this.tenantId = requireNotNull(tenantId, "tenantId");
     this.categoryId = requireNotNull(categoryId, "categoryId");
+    this.imageId = requireNotNull(imageId, "imageId");
     this.name = requireMinimumSize(name, "name", 5);
     this.description = normalizeDescription(description);
     this.price = requirePositive(price, "price");
@@ -59,32 +68,20 @@ public class Product extends BaseEntity {
     return categoryId;
   }
 
-  public void changeCategory(UUID categoryId) {
-    this.categoryId = requireNotNull(categoryId, "categoryId");
+  public UUID getImageId() {
+    return imageId;
   }
 
   public String getName() {
     return name;
   }
 
-  public void rename(String name) {
-    this.name = requireMinimumSize(name, "name", 5);
-  }
-
   public String getDescription() {
     return description;
   }
 
-  public void changeDescription(String description) {
-    this.description = normalizeDescription(description);
-  }
-
   public BigDecimal getPrice() {
     return price;
-  }
-
-  public void changePrice(BigDecimal price) {
-    this.price = requirePositive(price, "price");
   }
 
   public boolean isActive() {
@@ -97,6 +94,28 @@ public class Product extends BaseEntity {
 
   public void deactivate() {
     this.active = false;
+  }
+
+  public void updateDetails(
+      UUID categoryId,
+      UUID imageId,
+      String name,
+      String description,
+      BigDecimal price,
+      boolean active) {
+
+    var validatedCategoryId = requireNotNull(categoryId, "categoryId");
+    var validatedImageId = requireNotNull(imageId, "imageId");
+    var validatedName = requireMinimumSize(name, "name", 5);
+    var validatedDescription = normalizeDescription(description);
+    var validatedPrice = requirePositive(price, "price");
+
+    this.categoryId = validatedCategoryId;
+    this.imageId = validatedImageId;
+    this.name = validatedName;
+    this.description = validatedDescription;
+    this.price = validatedPrice;
+    this.active = active;
   }
 
   private static String normalizeDescription(String description) {

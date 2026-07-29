@@ -8,6 +8,7 @@ import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
+import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
@@ -142,17 +143,37 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
   private List<Product> createProducts(Tenant tenant, int quantity, boolean active) {
     List<Product> products = new ArrayList<>(quantity);
     var category = categoryRepository.save(new Category("Pizzas", tenant.getId()));
+    var imageId = createAvailableImage(tenant.getId());
 
     for (int i = 1; i <= quantity; i++) {
       Product product =
           new Product(
-              tenant.getId(), category.getId(), "Product %d".formatted(i), null, new BigDecimal(i));
+              tenant.getId(),
+              category.getId(),
+              imageId,
+              "Product %d".formatted(i),
+              null,
+              new BigDecimal(i));
       if (!active) {
         product.deactivate();
       }
       products.add(productRepository.save(product));
     }
     return products;
+  }
+
+  private UUID createAvailableImage(UUID tenantId) {
+    var checksum = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
+    var image =
+        StoredImage.pending(
+            tenantId,
+            "tenants/%s/images/%s.webp".formatted(tenantId, UUID.randomUUID()),
+            "image/webp",
+            1_024L,
+            checksum);
+    image.confirm("image/webp", 1_024L, checksum);
+    entityManager.persist(image);
+    return image.getId();
   }
 
   private Tenant createTenant(String name) {
