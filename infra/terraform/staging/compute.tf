@@ -8,12 +8,13 @@ resource "aws_instance" "host" {
 
   monitoring                  = false
   user_data                   = file("${path.module}/user-data.sh")
-  user_data_replace_on_change = true
+  user_data_replace_on_change = false
 
   metadata_options {
-    http_endpoint               = "enabled"
-    http_tokens                 = "required"
-    http_put_response_hop_limit = 1
+    http_endpoint = "enabled"
+    http_tokens   = "required"
+    # Docker adds one network hop between the application container and IMDS.
+    http_put_response_hop_limit = 2
     instance_metadata_tags      = "enabled"
   }
 
@@ -37,9 +38,12 @@ resource "aws_instance" "host" {
   }
 
   lifecycle {
+    # The public SSM parameter always resolves to the latest Amazon Linux release. Replacing this
+    # singleton host automatically would discard its root volume and interrupt staging. Host
+    # upgrades are therefore reviewed and triggered explicitly with terraform apply -replace.
     # The subnet must not assign an automatic public IP. The separately managed Elastic IP makes
     # the provider report this computed attribute as true after association.
-    ignore_changes = [associate_public_ip_address]
+    ignore_changes = [ami, associate_public_ip_address]
   }
 
   depends_on = [

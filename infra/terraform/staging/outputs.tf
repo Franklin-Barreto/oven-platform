@@ -22,3 +22,18 @@ output "ssm_start_session_command" {
   description = "Command used to open a Session Manager shell on the host."
   value       = "aws ssm start-session --target ${aws_instance.host.id} --profile oven-terraform-scoped"
 }
+
+output "media_bucket_name" {
+  description = "Private S3 bucket used to store tenant images."
+  value       = aws_s3_bucket.media.bucket
+}
+
+output "media_distribution_id" {
+  description = "CloudFront distribution ID used for public media delivery."
+  value       = aws_cloudfront_distribution.media.id
+}
+
+output "media_public_base_url" {
+  description = "Public HTTPS base URL used to resolve stored media."
+  value       = "https://${aws_cloudfront_distribution.media.domain_name}"
+}

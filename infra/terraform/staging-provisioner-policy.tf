@@ -171,6 +171,7 @@ data "aws_iam_policy_document" "staging_provisioner" {
       "ec2:DeleteVolume",
       "ec2:DeleteVpc",
       "ec2:ModifyInstanceAttribute",
+      "ec2:ModifyInstanceMetadataOptions",
       "ec2:ModifySubnetAttribute",
       "ec2:ModifyVpcAttribute",
       "ec2:ReleaseAddress",

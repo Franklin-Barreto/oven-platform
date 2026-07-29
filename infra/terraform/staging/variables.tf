@@ -32,3 +32,17 @@ variable "root_volume_size" {
     error_message = "The root volume must have at least 16 GiB."
   }
 }
+
+variable "media_cors_allowed_origins" {
+  description = "Browser origins allowed to upload media directly to S3."
+  type        = list(string)
+
+  default = [
+    "https://oven-platform-staging.duckdns.org",
+  ]
+
+  validation {
+    condition     = length(var.media_cors_allowed_origins) > 0
+    error_message = "At least one media CORS origin must be configured."
+  }
+}

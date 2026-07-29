@@ -18,10 +18,13 @@ Terraform manages:
 - one encrypted 20 GiB gp3 root volume;
 - one stable Elastic IP;
 - one immutable, scan-on-push ECR repository that retains the five newest images;
-- an EC2 instance role for Session Manager and read-only access to the application repository.
+- one private S3 media bucket and a separate access-log bucket with 30-day retention;
+- one CloudFront distribution with Origin Access Control for public media delivery;
+- an EC2 instance role for Session Manager, ECR pull, and tenant-scoped media object access.
 
 The environment has no SSH ingress, NAT Gateway, load balancer, RDS, or multi-AZ resources. EC2
-Instance Metadata Service requires IMDSv2 tokens.
+Instance Metadata Service requires IMDSv2 tokens. Its response hop limit is two so the application
+container can obtain short-lived instance-role credentials without storing AWS access keys.
 
 The bootstrap installs Docker, enables the SSM agent, creates `/opt/oven-platform`, and configures
 2 GiB of persistent swap.
@@ -88,6 +91,26 @@ AWS_PROFILE=oven-terraform-scoped \
 ```
 
 Saved plan files are ignored and must not be committed.
+
+### Host upgrades
+
+Routine plans do not replace the singleton EC2 host when AWS publishes a newer Amazon Linux AMI.
+Changes to `user-data.sh` also update the instance metadata without forcing replacement because
+user data is a creation-time bootstrap and is not rerun on an existing host.
+
+When an operating-system or bootstrap upgrade requires rebuilding the host, review the replacement
+explicitly:
+
+```bash
+AWS_PROFILE=oven-terraform-scoped \
+  terraform -chdir=infra/terraform/staging plan \
+  -replace=aws_instance.host \
+  -out=staging-host-upgrade.tfplan
+```
+
+Replacing the host recreates its root volume and causes staging downtime. Preserve any required
+host-local configuration before applying the reviewed plan. The Elastic IP remains managed
+separately and is reassociated with the replacement instance.
 
 ## Routine operation
 
@@ -183,17 +206,20 @@ AWS_PROFILE=oven-terraform-scoped \
   terraform -chdir=infra/terraform/staging apply staging-destroy.tfplan
 ```
 
-Destroying this root removes the EC2 instance, root volume, Elastic IP, ECR repository, and staging
-network. The remote state bucket, budgets, access guardrails, GitHub OIDC configuration, and their
-separate Terraform state remain intact.
+Destroying this root removes the EC2 instance, root volume, Elastic IP, ECR repository, media and
+access-log buckets, CloudFront distribution, and staging network. The remote state bucket, budgets,
+access guardrails, GitHub OIDC configuration, and their separate Terraform state remain intact.
 
 Because the ECR repository has `force_delete` enabled, destroying staging also deletes its stored
-container images. Data on the instance root volume is likewise deleted. Recreate the empty
-environment with a newly reviewed normal plan and apply.
+container images. The S3 buckets use `force_destroy`, so stored images and access logs are also
+deleted. Data on the instance root volume is likewise deleted. Recreate the empty environment with
+a newly reviewed normal plan and apply.
 
 ## Cost controls
 
 - Stop the host whenever staging is not actively being tested.
+- Remember that S3 storage, CloudFront requests, and the Elastic IP can still incur charges while
+  the host is stopped.
 - Destroy the staging root for longer idle periods or to verify complete reproducibility.
 - Check Billing, Budgets, and promotional credit balance regularly.
 - Treat budgets and anomaly alerts as delayed notifications, not hard spending limits.
