@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.catalog.domain;
 
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireMinimumSize;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireSize;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -54,7 +54,7 @@ public class Product extends BaseEntity {
     this.tenantId = requireNotNull(tenantId, "tenantId");
     this.categoryId = requireNotNull(categoryId, "categoryId");
     this.imageId = requireNotNull(imageId, "imageId");
-    this.name = requireMinimumSize(name, "name", 5);
+    this.name = requireSize(name, "name", 5, 80);
     this.description = normalizeDescription(description);
     this.price = requirePositive(price, "price");
     this.active = true;
@@ -106,7 +106,7 @@ public class Product extends BaseEntity {
 
     var validatedCategoryId = requireNotNull(categoryId, "categoryId");
     var validatedImageId = requireNotNull(imageId, "imageId");
-    var validatedName = requireMinimumSize(name, "name", 5);
+    var validatedName = requireSize(name, "name", 5, 80);
     var validatedDescription = normalizeDescription(description);
     var validatedPrice = requirePositive(price, "price");
 

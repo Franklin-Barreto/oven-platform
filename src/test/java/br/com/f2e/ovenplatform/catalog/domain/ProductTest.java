@@ -251,7 +251,8 @@ class ProductTest {
         Arguments.of("", "name must not be blank"),
         Arguments.of(" ", "name must not be blank"),
         Arguments.of("   ", "name must not be blank"),
-        Arguments.of("coca", "name must have at least 5 characters"));
+        Arguments.of("coca", "name must have at least 5 characters"),
+        Arguments.of("a".repeat(81), "name must have at most 80 characters"));
   }
 
   private static Product product() {
