@@ -176,6 +176,21 @@ The application uses its EC2 instance role to authorize direct uploads to the pr
 Public image URLs resolve through CloudFront; no AWS credentials or presigned download URL is
 exposed to clients.
 
+Uploads remain `PENDING` until the client confirms that the object was stored successfully. A
+scheduled cleanup removes uploads that remain `PENDING` longer than the configured retention:
+
+```dotenv
+MEDIA_CLEANUP_ENABLED=true
+MEDIA_CLEANUP_INITIAL_DELAY=1m
+MEDIA_CLEANUP_FIXED_DELAY=1h
+MEDIA_PENDING_RETENTION=24h
+```
+
+The defaults start cleanup one minute after application startup, repeat it one hour after the
+previous execution finishes, and consider a pending upload abandoned after 24 hours. The object is
+deleted from S3 before its database record. If storage deletion fails, the database record is
+preserved and the cleanup retries it on a later execution.
+
 Verify the configuration before starting containers:
 
 ```bash
