@@ -154,6 +154,28 @@ ACME_EMAIL='<operational email>'
 
 Using a hostname without `http://` enables Caddy automatic HTTPS and HTTP-to-HTTPS redirects.
 
+Configure the private S3 bucket and the public CloudFront base URL from the Terraform outputs:
+
+```bash
+AWS_PROFILE=oven-terraform-scoped \
+  terraform -chdir=infra/terraform/staging output -raw media_bucket_name
+
+AWS_PROFILE=oven-terraform-scoped \
+  terraform -chdir=infra/terraform/staging output -raw media_public_base_url
+```
+
+Store the returned values in `.env`:
+
+```dotenv
+AWS_REGION=us-east-1
+MEDIA_AWS_BUCKET='<media_bucket_name output>'
+MEDIA_DELIVERY_BASE_URL='<media_public_base_url output>'
+```
+
+The application uses its EC2 instance role to authorize direct uploads to the private bucket.
+Public image URLs resolve through CloudFront; no AWS credentials or presigned download URL is
+exposed to clients.
+
 Verify the configuration before starting containers:
 
 ```bash
