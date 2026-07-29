@@ -55,3 +55,24 @@ resource "aws_iam_instance_profile" "host" {
   name = "oven-platform-staging-host"
   role = aws_iam_role.host.name
 }
+
+resource "aws_iam_role_policy" "media_storage" {
+  name = "oven-platform-media-storage"
+  role = aws_iam_role.host.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Sid    = "ManageTenantImages"
+        Effect = "Allow"
+        Action = [
+          "s3:PutObject",
+          "s3:GetObject",
+          "s3:DeleteObject",
+        ]
+        Resource = "${aws_s3_bucket.media.arn}/tenants/*/images/*"
+      }
+    ]
+  })
+}

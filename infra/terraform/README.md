@@ -91,12 +91,14 @@ assumed-role/oven-platform-terraform-provisioner/
 
 ## Least-privilege boundary
 
-The provisioner role has three project-managed policies:
+The provisioner role has four project-managed policies:
 
 - `oven-platform-terraform-guardrails` manages the cost, access, and remote-state baseline;
 - `oven-platform-terraform-staging` manages the tagged staging infrastructure lifecycle;
 - `oven-platform-terraform-staging-compute` constrains EC2 creation to the approved staging
-  architecture.
+  architecture;
+- `oven-platform-terraform-staging-media` manages the staging S3 storage and CloudFront delivery
+  resources.
 
 Together, they allow the role to:
 
@@ -104,7 +106,8 @@ Together, they allow the role to:
 - inspect the exact state bucket;
 - manage the Oven Platform budget and anomaly configuration;
 - manage the GitHub OIDC provider and staging deployment role;
-- manage only the tagged networking, compute, ECR, and host IAM resources required by staging;
+- manage only the tagged networking, compute, ECR, S3, CloudFront, and host IAM resources required
+  by staging;
 - start, stop, inspect, and access the staging host through Session Manager;
 - read its own role and project-managed policies.
 
@@ -113,7 +116,7 @@ self-escalation.
 
 When a later issue requires a new AWS action:
 
-1. Add the smallest action and resource scope to `provisioner-policy.tf`.
+1. Add the smallest action and resource scope to the appropriate project-managed policy.
 2. Format, validate, and review the Terraform plan.
 3. As root, temporarily attach `AdministratorAccess` to the provisioner role.
 4. Apply only the reviewed saved plan.
@@ -127,6 +130,7 @@ workflow. Verify afterward that the role has only:
 oven-platform-terraform-guardrails
 oven-platform-terraform-staging
 oven-platform-terraform-staging-compute
+oven-platform-terraform-staging-media
 ```
 
 ## GitHub Actions access
