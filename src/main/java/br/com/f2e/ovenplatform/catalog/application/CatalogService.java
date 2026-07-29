@@ -1,11 +1,14 @@
 package br.com.f2e.ovenplatform.catalog.application;
 
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
+import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import java.math.BigDecimal;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,58 +19,81 @@ public class CatalogService {
 
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;
+  private final AvailableImageLookup availableImageLookup;
 
   public CatalogService(
-      ProductRepository productRepository, CategoryRepository categoryRepository) {
+      ProductRepository productRepository,
+      CategoryRepository categoryRepository,
+      AvailableImageLookup availableImageLookup) {
     this.productRepository = productRepository;
     this.categoryRepository = categoryRepository;
+    this.availableImageLookup = availableImageLookup;
   }
 
-  public Product createProduct(
-      UUID tenantId, UUID categoryId, String name, String description, BigDecimal price) {
-    requireActiveCategory(tenantId, categoryId);
-    var product = new Product(tenantId, categoryId, name, description, price);
-    return productRepository.save(product);
+  public ProductResult createProduct(UUID tenantId, CreateProductCommand command) {
+
+    requireActiveCategory(tenantId, command.categoryId());
+    var availableImage = availableImageLookup.getAvailableImage(tenantId, command.imageId());
+
+    var product =
+        new Product(
+            tenantId,
+            command.categoryId(),
+            command.imageId(),
+            command.name(),
+            command.description(),
+            command.price());
+
+    return ProductResult.from(productRepository.save(product), availableImage);
   }
 
-  public Optional<Product> findProduct(UUID tenantId, UUID productId) {
-    return productRepository.findByIdAndTenantId(productId, tenantId);
+  public Optional<ProductResult> findProduct(UUID tenantId, UUID productId) {
+    return productRepository.findByIdAndTenantId(productId, tenantId).map(this::toResult);
   }
 
-  public Product getProduct(UUID tenantId, UUID productId) {
-    return findRequiredProduct(tenantId, productId);
+  public ProductResult getProduct(UUID tenantId, UUID productId) {
+    return toResult(findRequiredProduct(tenantId, productId));
   }
 
-  public List<Product> listActiveProducts(UUID tenantId) {
-    return productRepository.findActiveByTenantId(tenantId);
+  public List<ProductResult> listActiveProducts(UUID tenantId) {
+    var products = productRepository.findActiveByTenantId(tenantId);
+    var imageIds = products.stream().map(Product::getImageId).collect(Collectors.toSet());
+    var imagesById =
+        availableImageLookup.getAvailableImages(tenantId, imageIds).stream()
+            .collect(Collectors.toMap(AvailableImage::id, Function.identity()));
+
+    return products.stream()
+        .map(product -> ProductResult.from(product, imagesById.get(product.getImageId())))
+        .toList();
   }
 
-  public Product update(
-      UUID tenantId,
-      UUID productId,
-      UUID categoryId,
-      String name,
-      String description,
-      BigDecimal price,
-      boolean active) {
-    requireActiveCategory(tenantId, categoryId);
+  public ProductResult update(UUID tenantId, UUID productId, UpdateProductCommand command) {
+
+    requireActiveCategory(tenantId, command.categoryId());
+    var availableImage = availableImageLookup.getAvailableImage(tenantId, command.imageId());
+
     var product = findRequiredProduct(tenantId, productId);
-    product.changeCategory(categoryId);
-    product.rename(name);
-    product.changeDescription(description);
-    product.changePrice(price);
-    if (active) {
-      product.activate();
-    } else {
-      product.deactivate();
-    }
-    return productRepository.save(product);
+    product.updateDetails(
+        command.categoryId(),
+        command.imageId(),
+        command.name(),
+        command.description(),
+        command.price(),
+        command.active());
+
+    return ProductResult.from(productRepository.save(product), availableImage);
   }
 
   public void deactivate(UUID tenantId, UUID productId) {
     var product = findRequiredProduct(tenantId, productId);
     product.deactivate();
     productRepository.save(product);
+  }
+
+  private ProductResult toResult(Product product) {
+    var image = availableImageLookup.getAvailableImage(product.getTenantId(), product.getImageId());
+
+    return ProductResult.from(product, image);
   }
 
   private Product findRequiredProduct(UUID tenantId, UUID productId) {

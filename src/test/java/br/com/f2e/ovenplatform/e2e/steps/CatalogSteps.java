@@ -8,19 +8,25 @@ import br.com.f2e.ovenplatform.catalog.infrastructure.web.CreateProductRequest;
 import br.com.f2e.ovenplatform.catalog.infrastructure.web.ProductResponse;
 import br.com.f2e.ovenplatform.e2e.context.E2eScenarioContext;
 import br.com.f2e.ovenplatform.e2e.support.E2eApiClient;
+import br.com.f2e.ovenplatform.media.application.StoredImageRepository;
+import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Given;
 import java.math.BigDecimal;
+import java.util.UUID;
 import org.springframework.http.HttpStatus;
 
 public class CatalogSteps {
 
   private final E2eScenarioContext context;
   private final E2eApiClient api;
+  private final StoredImageRepository imageRepository;
 
-  public CatalogSteps(E2eScenarioContext context, E2eApiClient api) {
+  public CatalogSteps(
+      E2eScenarioContext context, E2eApiClient api, StoredImageRepository imageRepository) {
     this.context = context;
     this.api = api;
+    this.imageRepository = imageRepository;
   }
 
   @Given("a category named {string} exists")
@@ -46,7 +52,9 @@ public class CatalogSteps {
   public void productExistsInCategory(String productName, BigDecimal price, String categoryName) {
 
     var category = context.categoryNamed(categoryName);
-    var request = new CreateProductRequest(category.id(), productName, "Delicious pizza", price);
+    var imageId = createAvailableImage();
+    var request =
+        new CreateProductRequest(category.id(), imageId, productName, "Delicious pizza", price);
 
     var response =
         api.authenticated()
@@ -60,5 +68,18 @@ public class CatalogSteps {
 
     assertThat(response).isNotNull();
     context.addProduct(response);
+  }
+
+  private UUID createAvailableImage() {
+    var checksum = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
+    var image =
+        StoredImage.pending(
+            context.tenantId(),
+            "tenants/%s/images/%s.webp".formatted(context.tenantId(), UUID.randomUUID()),
+            "image/webp",
+            1_024L,
+            checksum);
+    image.confirm("image/webp", 1_024L, checksum);
+    return imageRepository.save(image).getId();
   }
 }

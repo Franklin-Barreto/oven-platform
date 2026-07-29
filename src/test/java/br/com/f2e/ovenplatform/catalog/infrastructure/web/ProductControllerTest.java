@@ -1,8 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
-import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
-import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withRandomId;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.LocationHeaderAssertions.assertLocationPath;
 import static org.mockito.Mockito.doThrow;
@@ -17,7 +15,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import br.com.f2e.ovenplatform.catalog.application.CatalogService;
-import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.catalog.application.CreateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.UpdateProductCommand;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -25,6 +25,7 @@ import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes
 import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
 import br.com.f2e.ovenplatform.shared.util.JsonUtils;
 import java.math.BigDecimal;
+import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
@@ -46,17 +47,17 @@ class ProductControllerTest extends AbstractControllerTest {
   private static final String VALID_PRODUCT = "Coca-cola";
   private static final String VALID_DESCRIPTION = "Refrigerante lata";
   private static final UUID CATEGORY_ID = UUID.fromString("5b2180d1-cae8-42bd-a3f4-2ab97a49a789");
+  private static final UUID IMAGE_ID = UUID.fromString("c03aac3d-3c87-4ca6-bf91-6337620f02a9");
   private static final UUID PRODUCT_ID = UUID.fromString("22b2759d-35b2-4b04-ab39-df2a203a652c");
+  private static final URI IMAGE_URL = URI.create("https://images.example/products/image.webp");
 
   @MockitoBean private CatalogService catalogService;
 
   @Test
   void shouldCreateProductUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = withRandomId(product());
+    var product = productResult(true);
 
-    when(catalogService.createProduct(
-            TENANT_ID, CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE))
-        .thenReturn(product);
+    when(catalogService.createProduct(TENANT_ID, createProductCommand())).thenReturn(product);
 
     var result =
         mockMvc
@@ -73,15 +74,15 @@ class ProductControllerTest extends AbstractControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
             .andExpect(jsonPath("$.categoryId").value(CATEGORY_ID.toString()))
+            .andExpect(jsonPath("$.imageId").value(IMAGE_ID.toString()))
             .andExpect(jsonPath("$.name").value(VALID_PRODUCT))
             .andExpect(jsonPath("$.description").value(VALID_DESCRIPTION))
             .andExpect(jsonPath("$.active").value(true))
             .andReturn();
 
-    assertLocationPath(result, BASE_URL + "/" + product.getId());
+    assertLocationPath(result, BASE_URL + "/" + product.id());
 
-    verify(catalogService)
-        .createProduct(TENANT_ID, CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE);
+    verify(catalogService).createProduct(TENANT_ID, createProductCommand());
   }
 
   @ParameterizedTest
@@ -112,7 +113,7 @@ class ProductControllerTest extends AbstractControllerTest {
 
   @Test
   void shouldListActiveProductsUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = product();
+    var product = productResult(true);
 
     when(catalogService.listActiveProducts(TENANT_ID)).thenReturn(List.of(product));
 
@@ -127,6 +128,8 @@ class ProductControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$").isArray())
         .andExpect(jsonPath("$[0].tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$[0].categoryId").value(CATEGORY_ID.toString()))
+        .andExpect(jsonPath("$[0].imageId").value(IMAGE_ID.toString()))
+        .andExpect(jsonPath("$[0].imageUrl").value(IMAGE_URL.toString()))
         .andExpect(jsonPath("$[0].name").value(VALID_PRODUCT))
         .andExpect(jsonPath("$[0].description").value(VALID_DESCRIPTION))
         .andExpect(jsonPath("$[0].price").value(10.5))
@@ -155,7 +158,7 @@ class ProductControllerTest extends AbstractControllerTest {
 
   @Test
   void shouldFindProductUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = withId(product(), PRODUCT_ID);
+    var product = productResult(true);
 
     when(catalogService.getProduct(TENANT_ID, PRODUCT_ID)).thenReturn(product);
 
@@ -170,6 +173,8 @@ class ProductControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.categoryId").value(CATEGORY_ID.toString()))
+        .andExpect(jsonPath("$.imageId").value(IMAGE_ID.toString()))
+        .andExpect(jsonPath("$.imageUrl").value(IMAGE_URL.toString()))
         .andExpect(jsonPath("$.name").value(VALID_PRODUCT))
         .andExpect(jsonPath("$.description").value(VALID_DESCRIPTION))
         .andExpect(jsonPath("$.price").value(10.5))
@@ -200,18 +205,9 @@ class ProductControllerTest extends AbstractControllerTest {
 
   @Test
   void shouldUpdateProductUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = withId(product(), PRODUCT_ID);
-    product.deactivate();
+    var product = productResult(false);
 
-    when(catalogService.update(
-            TENANT_ID,
-            PRODUCT_ID,
-            CATEGORY_ID,
-            VALID_PRODUCT,
-            VALID_DESCRIPTION,
-            VALID_PRICE,
-            false))
-        .thenReturn(product);
+    when(catalogService.update(TENANT_ID, PRODUCT_ID, updateProductCommand())).thenReturn(product);
 
     mockMvc
         .perform(
@@ -225,20 +221,14 @@ class ProductControllerTest extends AbstractControllerTest {
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.categoryId").value(CATEGORY_ID.toString()))
+        .andExpect(jsonPath("$.imageId").value(IMAGE_ID.toString()))
+        .andExpect(jsonPath("$.imageUrl").value(IMAGE_URL.toString()))
         .andExpect(jsonPath("$.name").value(VALID_PRODUCT))
         .andExpect(jsonPath("$.description").value(VALID_DESCRIPTION))
         .andExpect(jsonPath("$.price").value(10.5))
         .andExpect(jsonPath("$.active").value(false));
 
-    verify(catalogService)
-        .update(
-            TENANT_ID,
-            PRODUCT_ID,
-            CATEGORY_ID,
-            VALID_PRODUCT,
-            VALID_DESCRIPTION,
-            VALID_PRICE,
-            false);
+    verify(catalogService).update(TENANT_ID, PRODUCT_ID, updateProductCommand());
   }
 
   @ParameterizedTest
@@ -269,14 +259,7 @@ class ProductControllerTest extends AbstractControllerTest {
 
   @Test
   void shouldReturn404WhenUpdatingUnknownProduct() throws Exception {
-    when(catalogService.update(
-            TENANT_ID,
-            PRODUCT_ID,
-            CATEGORY_ID,
-            VALID_PRODUCT,
-            VALID_DESCRIPTION,
-            VALID_PRICE,
-            false))
+    when(catalogService.update(TENANT_ID, PRODUCT_ID, updateProductCommand()))
         .thenThrow(new ResourceNotFoundException("Product", PRODUCT_ID));
 
     mockMvc
@@ -293,15 +276,7 @@ class ProductControllerTest extends AbstractControllerTest {
             jsonPath("$.errors[0].message")
                 .value("Product id: %s not found".formatted(PRODUCT_ID)));
 
-    verify(catalogService)
-        .update(
-            TENANT_ID,
-            PRODUCT_ID,
-            CATEGORY_ID,
-            VALID_PRODUCT,
-            VALID_DESCRIPTION,
-            VALID_PRICE,
-            false);
+    verify(catalogService).update(TENANT_ID, PRODUCT_ID, updateProductCommand());
   }
 
   @Test
@@ -377,33 +352,39 @@ class ProductControllerTest extends AbstractControllerTest {
   private static Stream<Arguments> invalidRequestsCreate() {
     return Stream.of(
         Arguments.of(
-            new CreateProductRequest(null, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE),
+            new CreateProductRequest(null, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE),
             "categoryId",
             "must not be null"),
         Arguments.of(
-            new CreateProductRequest(CATEGORY_ID, null, VALID_DESCRIPTION, VALID_PRICE),
+            new CreateProductRequest(
+                CATEGORY_ID, null, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE),
+            "imageId",
+            "must not be null"),
+        Arguments.of(
+            new CreateProductRequest(CATEGORY_ID, IMAGE_ID, null, VALID_DESCRIPTION, VALID_PRICE),
             "name",
             "must not be blank"),
         Arguments.of(
-            new CreateProductRequest(CATEGORY_ID, "ab", VALID_DESCRIPTION, VALID_PRICE),
+            new CreateProductRequest(CATEGORY_ID, IMAGE_ID, "ab", VALID_DESCRIPTION, VALID_PRICE),
             "name",
             "name must have at least 5 characters"),
         Arguments.of(
-            new CreateProductRequest(CATEGORY_ID, VALID_PRODUCT, "a".repeat(501), VALID_PRICE),
+            new CreateProductRequest(
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, "a".repeat(501), VALID_PRICE),
             "description",
             "description must have at most 500 characters"),
         Arguments.of(
             new CreateProductRequest(
-                CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, BigDecimal.ZERO),
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, BigDecimal.ZERO),
             "price",
             "must be greater than 0"),
         Arguments.of(
             new CreateProductRequest(
-                CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, new BigDecimal("-10")),
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, new BigDecimal("-10")),
             "price",
             "must be greater than 0"),
         Arguments.of(
-            new CreateProductRequest(CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, null),
+            new CreateProductRequest(CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, null),
             "price",
             "must not be null"));
   }
@@ -411,30 +392,38 @@ class ProductControllerTest extends AbstractControllerTest {
   private static Stream<Arguments> invalidRequestsUpdate() {
     return Stream.of(
         Arguments.of(
-            new UpdateProductRequest(null, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, true),
+            new UpdateProductRequest(
+                null, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, true),
             "categoryId",
             "must not be null"),
         Arguments.of(
-            new UpdateProductRequest(CATEGORY_ID, null, VALID_DESCRIPTION, VALID_PRICE, true),
+            new UpdateProductRequest(
+                CATEGORY_ID, null, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, true),
+            "imageId",
+            "must not be null"),
+        Arguments.of(
+            new UpdateProductRequest(
+                CATEGORY_ID, IMAGE_ID, null, VALID_DESCRIPTION, VALID_PRICE, true),
             "name",
             "must not be blank"),
         Arguments.of(
-            new UpdateProductRequest(CATEGORY_ID, "ab", VALID_DESCRIPTION, VALID_PRICE, true),
+            new UpdateProductRequest(
+                CATEGORY_ID, IMAGE_ID, "ab", VALID_DESCRIPTION, VALID_PRICE, true),
             "name",
             "name must have at least 5 characters"),
         Arguments.of(
             new UpdateProductRequest(
-                CATEGORY_ID, VALID_PRODUCT, "a".repeat(501), VALID_PRICE, true),
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, "a".repeat(501), VALID_PRICE, true),
             "description",
             "description must have at most 500 characters"),
         Arguments.of(
             new UpdateProductRequest(
-                CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, BigDecimal.ZERO, true),
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, BigDecimal.ZERO, true),
             "price",
             "must be greater than 0"),
         Arguments.of(
             new UpdateProductRequest(
-                CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, null),
+                CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, null),
             "active",
             "must not be null"));
   }
@@ -457,15 +446,33 @@ class ProductControllerTest extends AbstractControllerTest {
   }
 
   private static CreateProductRequest createProductRequest() {
-    return new CreateProductRequest(CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE);
+    return new CreateProductRequest(
+        CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE);
   }
 
   private static UpdateProductRequest updateProductRequest() {
     return new UpdateProductRequest(
-        CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, false);
+        CATEGORY_ID, IMAGE_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE, false);
   }
 
-  private static Product product() {
-    return new Product(TENANT_ID, CATEGORY_ID, VALID_PRODUCT, VALID_DESCRIPTION, VALID_PRICE);
+  private static CreateProductCommand createProductCommand() {
+    return createProductRequest().toCommand();
+  }
+
+  private static UpdateProductCommand updateProductCommand() {
+    return updateProductRequest().toCommand();
+  }
+
+  private static ProductResult productResult(boolean active) {
+    return new ProductResult(
+        PRODUCT_ID,
+        TENANT_ID,
+        CATEGORY_ID,
+        IMAGE_ID,
+        IMAGE_URL,
+        VALID_PRODUCT,
+        VALID_DESCRIPTION,
+        VALID_PRICE,
+        active);
   }
 }
