@@ -16,6 +16,7 @@ class ProductTest {
 
   private static final UUID TENANT_ID = UUID.randomUUID();
   private static final UUID CATEGORY_ID = UUID.randomUUID();
+  private static final UUID IMAGE_ID = UUID.randomUUID();
   private static final String VALID_NAME = "Pizza Portuguesa";
   private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";
   private static final BigDecimal VALID_PRICE = new BigDecimal("35.40");
@@ -36,7 +37,12 @@ class ProductTest {
   void shouldTrimProductNameWhenCreatingProduct() {
     var product =
         new Product(
-            TENANT_ID, CATEGORY_ID, "Pizza portuguesa      ", VALID_DESCRIPTION, VALID_PRICE);
+            TENANT_ID,
+            CATEGORY_ID,
+            IMAGE_ID,
+            "Pizza portuguesa      ",
+            VALID_DESCRIPTION,
+            VALID_PRICE);
 
     assertThat(product.getName()).isEqualTo("Pizza portuguesa");
   }
@@ -44,7 +50,9 @@ class ProductTest {
   @Test
   void shouldRejectNullTenantId() {
     assertThatThrownBy(
-            () -> new Product(null, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
+            () ->
+                new Product(
+                    null, CATEGORY_ID, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("tenantId must not be null");
   }
@@ -52,26 +60,29 @@ class ProductTest {
   @Test
   void shouldRejectNullCategoryId() {
     assertThatThrownBy(
-            () -> new Product(TENANT_ID, null, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
+            () ->
+                new Product(TENANT_ID, null, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("categoryId must not be null");
+  }
+
+  @Test
+  void shouldRejectNullPrice() {
+    assertThatThrownBy(
+            () ->
+                new Product(TENANT_ID, CATEGORY_ID, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, null))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("price must not be null");
   }
 
   @ParameterizedTest
   @MethodSource("invalidProductNames")
   void shouldRejectInvalidProductName(String name, String expectedMessage) {
     assertThatThrownBy(
-            () -> new Product(TENANT_ID, CATEGORY_ID, name, VALID_DESCRIPTION, VALID_PRICE))
+            () ->
+                new Product(TENANT_ID, CATEGORY_ID, IMAGE_ID, name, VALID_DESCRIPTION, VALID_PRICE))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
-  }
-
-  @Test
-  void shouldRejectNullPrice() {
-    assertThatThrownBy(
-            () -> new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("price must not be null");
   }
 
   @ParameterizedTest
@@ -80,72 +91,53 @@ class ProductTest {
     var price = new BigDecimal(value);
 
     assertThatThrownBy(
-            () -> new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, price))
+            () ->
+                new Product(TENANT_ID, CATEGORY_ID, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, price))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("price must be greater than zero");
   }
 
   @Test
-  void shouldChangeProductCategoryWhenValid() {
+  void shouldUpdateProductDetails() {
     var product = product();
     var newCategoryId = UUID.randomUUID();
+    var newImageId = UUID.randomUUID();
+    var newPrice = new BigDecimal("25.00");
 
-    product.changeCategory(newCategoryId);
+    product.updateDetails(
+        newCategoryId,
+        newImageId,
+        "  Pizza calabresa  ",
+        "  Massa fina com borda recheada  ",
+        newPrice,
+        false);
 
     assertThat(product.getCategoryId()).isEqualTo(newCategoryId);
-  }
-
-  @Test
-  void shouldRejectNullProductCategoryWhenChangingCategory() {
-    var product = product();
-
-    assertThatThrownBy(() -> product.changeCategory(null))
-        .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("categoryId must not be null");
-  }
-
-  @Test
-  void shouldRenameProductWhenNameIsValid() {
-    var product = product();
-
-    product.rename("Pizza calabresa");
-
+    assertThat(product.getImageId()).isEqualTo(newImageId);
     assertThat(product.getName()).isEqualTo("Pizza calabresa");
-  }
-
-  @Test
-  void shouldTrimProductNameWhenRenamingProduct() {
-    var product = product();
-
-    product.rename("Pizza calabresa      ");
-
-    assertThat(product.getName()).isEqualTo("Pizza calabresa");
+    assertThat(product.getDescription()).isEqualTo("Massa fina com borda recheada");
+    assertThat(product.getPrice()).isEqualByComparingTo(newPrice);
+    assertThat(product.isActive()).isFalse();
   }
 
   @ParameterizedTest
   @MethodSource("invalidProductNames")
-  void shouldRejectInvalidProductNameWhenRenaming(String name, String expectedMessage) {
+  void shouldRejectInvalidProductNameWhenUpdating(String name, String expectedMessage) {
     var product = product();
 
-    assertThatThrownBy(() -> product.rename(name))
+    assertThatThrownBy(
+            () ->
+                product.updateDetails(
+                    CATEGORY_ID, IMAGE_ID, name, VALID_DESCRIPTION, VALID_PRICE, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
 
   @Test
-  void shouldChangeProductDescriptionWhenValid() {
+  void shouldClearProductDescriptionWhenUpdatingWithBlankValue() {
     var product = product();
 
-    product.changeDescription("  Massa fina com borda recheada  ");
-
-    assertThat(product.getDescription()).isEqualTo("Massa fina com borda recheada");
-  }
-
-  @Test
-  void shouldClearProductDescriptionWhenBlank() {
-    var product = product();
-
-    product.changeDescription("   ");
+    product.updateDetails(CATEGORY_ID, IMAGE_ID, VALID_NAME, "   ", VALID_PRICE, true);
 
     assertThat(product.getDescription()).isNull();
   }
@@ -155,39 +147,68 @@ class ProductTest {
     var product = product();
     var description = "a".repeat(501);
 
-    assertThatThrownBy(() -> product.changeDescription(description))
+    assertThatThrownBy(
+            () ->
+                product.updateDetails(
+                    CATEGORY_ID, IMAGE_ID, VALID_NAME, description, VALID_PRICE, true))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("description must have at most 500 characters");
   }
 
   @Test
-  void shouldChangeProductPriceWhenValid() {
+  void shouldRejectNullProductCategoryWhenUpdating() {
     var product = product();
-    var newPrice = new BigDecimal("25.00");
 
-    product.changePrice(newPrice);
-
-    assertThat(product.getPrice()).isEqualByComparingTo(newPrice);
+    assertThatThrownBy(
+            () ->
+                product.updateDetails(
+                    null, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE, true))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("categoryId must not be null");
   }
 
   @Test
-  void shouldRejectNullProductPriceWhenChangingPrice() {
+  void shouldRejectNullProductImageWhenUpdating() {
     var product = product();
 
-    assertThatThrownBy(() -> product.changePrice(null))
+    assertThatThrownBy(
+            () ->
+                product.updateDetails(
+                    CATEGORY_ID, null, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE, true))
         .isInstanceOf(IllegalArgumentException.class)
-        .hasMessage("price must not be null");
+        .hasMessage("imageId must not be null");
   }
 
-  @ParameterizedTest
-  @ValueSource(strings = {"0.00", "-1.00"})
-  void shouldRejectInvalidProductPriceWhenChangingPrice(String value) {
+  @Test
+  void shouldKeepProductUnchangedWhenUpdatedDetailsAreInvalid() {
     var product = product();
-    var price = new BigDecimal(value);
+    var originalCategoryId = product.getCategoryId();
+    var originalImageId = product.getImageId();
+    var originalName = product.getName();
+    var originalDescription = product.getDescription();
+    var originalPrice = product.getPrice();
+    var originalActive = product.isActive();
+    var categoryId = UUID.randomUUID();
+    var imageId = UUID.randomUUID();
 
-    assertThatThrownBy(() -> product.changePrice(price))
+    assertThatThrownBy(
+            () ->
+                product.updateDetails(
+                    categoryId,
+                    imageId,
+                    "Pizza calabresa",
+                    "Nova descrição",
+                    BigDecimal.ZERO,
+                    false))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("price must be greater than zero");
+
+    assertThat(product.getCategoryId()).isEqualTo(originalCategoryId);
+    assertThat(product.getImageId()).isEqualTo(originalImageId);
+    assertThat(product.getName()).isEqualTo(originalName);
+    assertThat(product.getDescription()).isEqualTo(originalDescription);
+    assertThat(product.getPrice()).isEqualByComparingTo(originalPrice);
+    assertThat(product.isActive()).isEqualTo(originalActive);
   }
 
   @Test
@@ -209,6 +230,21 @@ class ProductTest {
     assertThat(product.isActive()).isTrue();
   }
 
+  @Test
+  void shouldCreateProductWithImage() {
+    assertThat(product().getImageId()).isEqualTo(IMAGE_ID);
+  }
+
+  @Test
+  void shouldRejectNullImageWhenCreatingProduct() {
+    assertThatThrownBy(
+            () ->
+                new Product(
+                    TENANT_ID, CATEGORY_ID, null, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("imageId must not be null");
+  }
+
   private static Stream<Arguments> invalidProductNames() {
     return Stream.of(
         Arguments.of(null, "name must not be null"),
@@ -219,6 +255,7 @@ class ProductTest {
   }
 
   private static Product product() {
-    return new Product(TENANT_ID, CATEGORY_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE);
+    return new Product(
+        TENANT_ID, CATEGORY_ID, IMAGE_ID, VALID_NAME, VALID_DESCRIPTION, VALID_PRICE);
   }
 }
