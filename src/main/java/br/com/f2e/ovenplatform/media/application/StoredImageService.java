@@ -6,6 +6,7 @@ import br.com.f2e.ovenplatform.media.application.storage.ImageStorage;
 import br.com.f2e.ovenplatform.media.application.storage.UploadAuthorizationSpec;
 import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import java.time.Instant;
 import java.util.UUID;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -107,5 +108,16 @@ public class StoredImageService {
       default ->
           throw new IllegalArgumentException("Unsupported image content type: " + contentType);
     };
+  }
+
+  @Transactional
+  public void cleanupPendingImages(Instant createdBefore) {
+    repository
+        .findPendingCreatedBefore(createdBefore)
+        .forEach(
+            image -> {
+              imageStorage.delete(image.getObjectKey());
+              repository.delete(image);
+            });
   }
 }

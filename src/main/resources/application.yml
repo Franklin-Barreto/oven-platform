@@ -41,6 +41,11 @@ oven:
     max-upload-size: ${MEDIA_MAX_UPLOAD_SIZE:10MB}
     delivery:
       base-url: ${MEDIA_DELIVERY_BASE_URL:http://localhost:8080/media/}
+    cleanup:
+      enabled: ${MEDIA_CLEANUP_ENABLED:true}
+      initial-delay: ${MEDIA_CLEANUP_INITIAL_DELAY:1m}
+      fixed-delay: ${MEDIA_CLEANUP_FIXED_DELAY:1h}
+      pending-retention: ${MEDIA_PENDING_RETENTION:24h}
     aws:
       bucket: ${MEDIA_AWS_BUCKET:oven-platform-local-images}
       region: ${AWS_REGION:us-east-1}

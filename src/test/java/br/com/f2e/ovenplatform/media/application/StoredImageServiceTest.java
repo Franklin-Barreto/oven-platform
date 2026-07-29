@@ -22,6 +22,7 @@ import br.com.f2e.ovenplatform.media.domain.StoredImageMetadataMismatchException
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.net.URI;
 import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
@@ -217,6 +218,57 @@ class StoredImageServiceTest {
     assertThatThrownBy(() -> service.delete(TENANT_ID, IMAGE_ID)).isSameAs(storageFailure);
 
     verify(repository, never()).delete(any());
+  }
+
+  @Test
+  void shouldDeletePendingImagesCreatedBeforeCutoff() {
+
+    var secondObjectKey = "tenants/%s/images/%s.webp".formatted(TENANT_ID, UUID.randomUUID());
+
+    var firstImage = StoredImage.pending(TENANT_ID, OBJECT_KEY, CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
+    var secondImage =
+        StoredImage.pending(TENANT_ID, secondObjectKey, CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
+    var cutoff = Instant.now();
+
+    when(repository.findPendingCreatedBefore(cutoff)).thenReturn(List.of(firstImage, secondImage));
+
+    service.cleanupPendingImages(cutoff);
+
+    verify(imageStorage).delete(firstImage.getObjectKey());
+    verify(repository).delete(firstImage);
+    verify(imageStorage).delete(secondImage.getObjectKey());
+    verify(repository).delete(secondImage);
+  }
+
+  @Test
+  void shouldDoNothingWhenThereAreNoAbandonedPendingImages() {
+    var cutoff = Instant.now();
+
+    when(repository.findPendingCreatedBefore(cutoff)).thenReturn(List.of());
+
+    service.cleanupPendingImages(cutoff);
+
+    verifyNoInteractions(imageStorage);
+    verify(repository, never()).delete(any());
+  }
+
+  @Test
+  void shouldNotDeleteDatabaseRecordWhenStorageDeletionFails() {
+
+    var image = StoredImage.pending(TENANT_ID, OBJECT_KEY, CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
+    var cutoff = Instant.now();
+
+    when(repository.findPendingCreatedBefore(cutoff)).thenReturn(List.of(image));
+
+    doThrow(new RuntimeException("Storage unavailable"))
+        .when(imageStorage)
+        .delete(image.getObjectKey());
+
+    assertThatThrownBy(() -> service.cleanupPendingImages(cutoff))
+        .isInstanceOf(RuntimeException.class)
+        .hasMessage("Storage unavailable");
+
+    verify(repository, never()).delete(image);
   }
 
   private static Stream<Arguments> incompatibleMetadata() {
