@@ -12,6 +12,7 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.catalog.application.variant.CreateProductVariantCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantService;
 import br.com.f2e.ovenplatform.catalog.application.variant.ReorderProductVariantsCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.UpdateProductVariantCommand;
@@ -36,6 +37,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @Import({
   ProductVariantService.class,
+  ProductVariantResultResolver.class,
   JpaProductRepositoryAdapter.class,
   JpaProductVariantRepositoryAdapter.class
 })

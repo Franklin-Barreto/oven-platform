@@ -13,11 +13,17 @@ import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
 import br.com.f2e.ovenplatform.catalog.application.product.CreateProductCommand;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductSummaryResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductVariantDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
@@ -27,6 +33,7 @@ import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Arrays;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,8 +44,10 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 @Import({
   CatalogService.class,
+  ProductVariantResultResolver.class,
   JpaProductRepositoryAdapter.class,
-  JpaCategoryRepositoryAdapter.class
+  JpaCategoryRepositoryAdapter.class,
+  JpaProductVariantRepositoryAdapter.class
 })
 class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
@@ -46,11 +55,19 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";
   private static final BigDecimal VALID_PRICE = new BigDecimal("35.40");
   private static final URI IMAGE_URL = URI.create("https://images.example/products/image.webp");
+  private static final URI VARIANT_IMAGE_URL =
+      URI.create("https://images.example/products/variant.webp");
   private static final String CATEGORY_NAME = "Pizza";
+  private static final String LARGE_VARIANT_NAME = "Grande";
+  private static final String CORLEONE_PIZZERIA = "Don Corleone Pizzeria";
+  private static final String SOPRANO_PIZZERIA = "Soprano Pizzeria";
+  private static final String PIZZA_MARGHERITA = "Pizza Margherita";
 
   @Autowired private CatalogService catalogService;
   @Autowired private ProductRepository productRepository;
   @Autowired private CategoryRepository categoryRepository;
+  @Autowired private ProductVariantRepository variantRepository;
+
   @MockitoBean private AvailableImageLookup availableImageLookup;
 
   private CatalogTestFixture fixture;
@@ -84,8 +101,8 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectProductWhenCategoryBelongsToAnotherTenant() {
-    var tenant = fixture.createTenant("Don Corleone Pizzeria");
-    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var tenant = fixture.createTenant(CORLEONE_PIZZERIA);
+    var anotherTenant = fixture.createTenant(SOPRANO_PIZZERIA);
     var categoryFromAnotherTenant = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var tenantId = tenant.getId();
     var categoryId = categoryFromAnotherTenant.getId();
@@ -150,8 +167,8 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldReturnEmptyWhenProductBelongsToAnotherTenant() {
-    var ownerTenant = fixture.createTenant("Don Corleone Pizzeria");
-    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var ownerTenant = fixture.createTenant(CORLEONE_PIZZERIA);
+    var anotherTenant = fixture.createTenant(SOPRANO_PIZZERIA);
     var category = fixture.createCategory(ownerTenant, CATEGORY_NAME);
     var product = createProduct(ownerTenant, category);
 
@@ -170,7 +187,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var products = catalogService.listActiveProducts(tenant.getId());
 
-    assertThat(products).extracting(ProductResult::id).containsExactly(activeProduct.id());
+    assertThat(products).extracting(ProductSummaryResult::id).containsExactly(activeProduct.id());
     verify(availableImageLookup)
         .getAvailableImages(tenant.getId(), Set.of(activeProduct.imageId()));
   }
@@ -187,17 +204,19 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotListProductsFromAnotherTenant() {
-    var tenant = fixture.createTenant("Don Corleone Pizzeria");
-    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var tenant = fixture.createTenant(CORLEONE_PIZZERIA);
+    var anotherTenant = fixture.createTenant(SOPRANO_PIZZERIA);
     var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var anotherCategory = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var productFromTenant = createProduct(tenant, category);
-    createProduct(anotherTenant, anotherCategory, "Pizza Margherita", new BigDecimal("39.90"));
+    createProduct(anotherTenant, anotherCategory, PIZZA_MARGHERITA, new BigDecimal("39.90"));
     stubAvailableImages(tenant.getId(), productFromTenant);
 
     var products = catalogService.listActiveProducts(tenant.getId());
 
-    assertThat(products).extracting(ProductResult::id).containsExactly(productFromTenant.id());
+    assertThat(products)
+        .extracting(ProductSummaryResult::id)
+        .containsExactly(productFromTenant.id());
   }
 
   @Test
@@ -205,15 +224,15 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     var tenant = createTenant();
     var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var firstProduct = createProduct(tenant, category);
-    var secondProduct =
-        createProduct(tenant, category, "Pizza Margherita", new BigDecimal("39.90"));
+    var secondProduct = createProduct(tenant, category, PIZZA_MARGHERITA, new BigDecimal("39.90"));
     stubAvailableImages(tenant.getId(), firstProduct, secondProduct);
     clearInvocations(availableImageLookup);
 
     var products = catalogService.listActiveProducts(tenant.getId());
 
     assertThat(products)
-        .extracting(ProductResult::id, ProductResult::imageId, ProductResult::imageUrl)
+        .extracting(
+            ProductSummaryResult::id, ProductSummaryResult::imageId, ProductSummaryResult::imageUrl)
         .containsExactlyInAnyOrder(
             org.assertj.core.groups.Tuple.tuple(
                 firstProduct.id(), firstProduct.imageId(), IMAGE_URL),
@@ -233,16 +252,16 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     var firstProduct =
         createProduct(tenant, category, sharedImageId, "Pizza Portuguesa", new BigDecimal("35.40"));
     var secondProduct =
-        createProduct(tenant, category, sharedImageId, "Pizza Margherita", new BigDecimal("39.90"));
+        createProduct(tenant, category, sharedImageId, PIZZA_MARGHERITA, new BigDecimal("39.90"));
     stubAvailableImages(tenant.getId(), firstProduct);
     clearInvocations(availableImageLookup);
 
     var products = catalogService.listActiveProducts(tenant.getId());
 
     assertThat(products)
-        .extracting(ProductResult::id)
+        .extracting(ProductSummaryResult::id)
         .containsExactlyInAnyOrder(firstProduct.id(), secondProduct.id());
-    assertThat(products).extracting(ProductResult::imageId).containsOnly(sharedImageId);
+    assertThat(products).extracting(ProductSummaryResult::imageId).containsOnly(sharedImageId);
     verify(availableImageLookup).getAvailableImages(tenant.getId(), Set.of(sharedImageId));
     verify(availableImageLookup, never()).getAvailableImage(any(), any());
   }
@@ -255,8 +274,67 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var foundProduct = catalogService.getProduct(tenant.getId(), product.id());
 
-    assertThat(foundProduct.id()).isEqualTo(product.id());
-    assertThat(foundProduct.imageUrl()).isEqualTo(IMAGE_URL);
+    assertThat(foundProduct.product().id()).isEqualTo(product.id());
+    assertThat(foundProduct.product().imageUrl()).isEqualTo(IMAGE_URL);
+    assertThat(foundProduct.product().displayPrice()).isEqualByComparingTo(product.price());
+    assertThat(foundProduct.product().hasVariants()).isFalse();
+    assertThat(foundProduct.product().available()).isTrue();
+    assertThat(foundProduct.variants()).isEmpty();
+  }
+
+  @Test
+  void shouldListOnlyActiveVariantsInDisplayOrderUsingProductImageAsFallback() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    createVariant(tenant, product, "Grande", new BigDecimal("45.00"), 2, true);
+    createVariant(tenant, product, "Pequena", new BigDecimal("39.00"), 0, true);
+    createVariant(tenant, product, "Média", new BigDecimal("42.00"), 1, false);
+
+    var detail = catalogService.getProduct(tenant.getId(), product.id());
+
+    assertThat(detail.product().displayPrice()).isEqualByComparingTo("39.00");
+    assertThat(detail.product().hasVariants()).isTrue();
+    assertThat(detail.product().available()).isTrue();
+    assertThat(detail.variants())
+        .extracting(
+                ProductVariantDetailResult::name,
+                ProductVariantDetailResult::displayPosition,
+                ProductVariantDetailResult::imageId,
+                ProductVariantDetailResult::imageUrl)
+        .containsExactly(
+            org.assertj.core.groups.Tuple.tuple("Pequena", 0, product.imageId(), IMAGE_URL),
+            org.assertj.core.groups.Tuple.tuple("Grande", 2, product.imageId(), IMAGE_URL));
+  }
+
+  @Test
+  void shouldUseVariantImageWhenPresent() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    var variantImageId = createAvailableImage(tenant.getId());
+    var variant =
+        createVariant(
+            tenant,
+            product,
+            variantImageId,
+            LARGE_VARIANT_NAME,
+            new BigDecimal("45.00"),
+            0,
+            true);
+    when(availableImageLookup.getAvailableImages(tenant.getId(), Set.of(variantImageId)))
+        .thenReturn(List.of(new AvailableImage(variantImageId, VARIANT_IMAGE_URL)));
+
+    var detail = catalogService.getProduct(tenant.getId(), product.id());
+
+    assertThat(detail.variants())
+        .singleElement()
+        .satisfies(
+            result -> {
+              assertThat(result.id()).isEqualTo(variant.getId());
+              assertThat(result.imageId()).isEqualTo(variantImageId);
+              assertThat(result.imageUrl()).isEqualTo(VARIANT_IMAGE_URL);
+            });
   }
 
   @Test
@@ -299,8 +377,8 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectProductUpdateWhenProductBelongsToAnotherTenant() {
-    var ownerTenant = fixture.createTenant("Don Corleone Pizzeria");
-    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var ownerTenant = fixture.createTenant(CORLEONE_PIZZERIA);
+    var anotherTenant = fixture.createTenant(SOPRANO_PIZZERIA);
     var ownerCategory = fixture.createCategory(ownerTenant, CATEGORY_NAME);
     var anotherCategory = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var product = createProduct(ownerTenant, ownerCategory);
@@ -337,8 +415,89 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
         .isEqualTo(false);
   }
 
+  @Test
+  void shouldUseBasePriceWhenProductHasNoVariants() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    stubAvailableImages(tenant.getId(), product);
+
+    var products = catalogService.listActiveProducts(tenant.getId());
+
+    assertThat(products)
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.hasVariants()).isFalse();
+              assertThat(summary.available()).isTrue();
+              assertThat(summary.displayPrice()).isEqualByComparingTo(product.price());
+            });
+  }
+
+  @Test
+  void shouldUseMinimumActiveVariantPrice() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    createVariant(tenant, product, LARGE_VARIANT_NAME, new BigDecimal("45.00"), 1, true);
+    createVariant(tenant, product, "Pequena", new BigDecimal("39.00"), 0, true);
+    stubAvailableImages(tenant.getId(), product);
+
+    var products = catalogService.listActiveProducts(tenant.getId());
+
+    assertThat(products)
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.hasVariants()).isTrue();
+              assertThat(summary.available()).isTrue();
+              assertThat(summary.displayPrice()).isEqualByComparingTo("39.00");
+            });
+  }
+
+  @Test
+  void shouldIgnoreInactiveVariantsWhenCalculatingDisplayPrice() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    createVariant(tenant, product, LARGE_VARIANT_NAME, new BigDecimal("45.00"), 0, true);
+    createVariant(tenant, product, "Promocional", new BigDecimal("20.00"), 1, false);
+    stubAvailableImages(tenant.getId(), product);
+
+    var products = catalogService.listActiveProducts(tenant.getId());
+
+    assertThat(products)
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.hasVariants()).isTrue();
+              assertThat(summary.available()).isTrue();
+              assertThat(summary.displayPrice()).isEqualByComparingTo("45.00");
+            });
+  }
+
+  @Test
+  void shouldMarkProductUnavailableWhenAllVariantsAreInactive() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    createVariant(tenant, product, LARGE_VARIANT_NAME, new BigDecimal("45.00"), 0, false);
+    stubAvailableImages(tenant.getId(), product);
+
+    var products = catalogService.listActiveProducts(tenant.getId());
+
+    assertThat(products)
+        .singleElement()
+        .satisfies(
+            summary -> {
+              assertThat(summary.hasVariants()).isTrue();
+              assertThat(summary.available()).isFalse();
+              assertThat(summary.displayPrice()).isNull();
+            });
+  }
+
   private Tenant createTenant() {
-    return fixture.createTenant("Don Corleone Pizzeria");
+    return fixture.createTenant(CORLEONE_PIZZERIA);
   }
 
   private ProductResult createProduct(Tenant tenant, Category category) {
@@ -379,5 +538,33 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     var product = productRepository.findByIdAndTenantId(result.id(), tenant.getId()).orElseThrow();
     product.deactivate();
     productRepository.save(product);
+  }
+
+  private void createVariant(
+      Tenant tenant,
+      ProductResult product,
+      String name,
+      BigDecimal price,
+      int displayPosition,
+      boolean active) {
+
+    createVariant(tenant, product, null, name, price, displayPosition, active);
+  }
+
+  private ProductVariant createVariant(
+      Tenant tenant,
+      ProductResult product,
+      UUID imageId,
+      String name,
+      BigDecimal price,
+      int displayPosition,
+      boolean active) {
+
+    var variant =
+        new ProductVariant(product.id(), tenant.getId(), imageId, name, price, displayPosition);
+
+    variant.changeStatusTo(active);
+
+    return variantRepository.save(variant);
   }
 }

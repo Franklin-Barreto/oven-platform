@@ -44,18 +44,19 @@ public class ProductController {
 
   @PreAuthorize("hasAuthority('CATALOG_READ')")
   @GetMapping(version = API_VERSION_VALUE)
-  public ResponseEntity<List<ProductResponse>> list(@CurrentTenantId UUID tenantId) {
+  public ResponseEntity<List<ProductSummaryResponse>> list(@CurrentTenantId UUID tenantId) {
     var products =
-        service.listActiveProducts(tenantId).stream().map(ProductResponse::from).toList();
+        service.listActiveProducts(tenantId).stream().map(ProductSummaryResponse::from).toList();
 
     return ResponseEntity.ok(products);
   }
 
   @PreAuthorize("hasAuthority('CATALOG_READ')")
   @GetMapping(version = API_VERSION_VALUE, path = "/{id}")
-  public ResponseEntity<ProductResponse> find(
+  public ResponseEntity<ProductDetailResponse> find(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
-    return ResponseEntity.ok(ProductResponse.from(service.getProduct(tenantId, id)));
+
+    return ResponseEntity.ok(ProductDetailResponse.from(service.getProduct(tenantId, id)));
   }
 
   @PreAuthorize("hasAuthority('CATALOG_MANAGE')")

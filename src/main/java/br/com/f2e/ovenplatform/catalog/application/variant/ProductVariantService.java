@@ -2,14 +2,11 @@ package br.com.f2e.ovenplatform.catalog.application.variant;
 
 import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
-import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.net.URI;
-import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -25,14 +22,17 @@ public class ProductVariantService {
   private final ProductRepository productRepository;
   private final ProductVariantRepository variantRepository;
   private final AvailableImageLookup availableImageLookup;
+  private final ProductVariantResultResolver variantResultResolver;
 
   public ProductVariantService(
       ProductRepository productRepository,
       ProductVariantRepository variantRepository,
-      AvailableImageLookup availableImageLookup) {
+      AvailableImageLookup availableImageLookup,
+      ProductVariantResultResolver variantResultResolver) {
     this.productRepository = productRepository;
     this.variantRepository = variantRepository;
     this.availableImageLookup = availableImageLookup;
+    this.variantResultResolver = variantResultResolver;
   }
 
   @Transactional
@@ -63,29 +63,7 @@ public class ProductVariantService {
 
     var productVariants = variantRepository.findByTenantIdAndProductId(tenantId, productId);
 
-    if (productVariants.isEmpty()) {
-      return Collections.emptyList();
-    }
-
-    var imageIds =
-        productVariants.stream()
-            .map(ProductVariant::getImageId)
-            .filter(Objects::nonNull)
-            .collect(Collectors.toSet());
-
-    var availableImages =
-        availableImageLookup.getAvailableImages(tenantId, imageIds).stream()
-            .collect(Collectors.toMap(AvailableImage::id, Function.identity()));
-
-    return productVariants.stream()
-        .map(
-            variant -> {
-              var availableImage = availableImages.get(variant.getImageId());
-              var imageUrl = availableImage == null ? null : availableImage.publicUrl();
-
-              return ProductVariantResult.from(variant, imageUrl);
-            })
-        .toList();
+    return variantResultResolver.resolve(tenantId, productVariants);
   }
 
   @Transactional
