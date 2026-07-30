@@ -5,6 +5,7 @@ import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantReposit
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -66,9 +67,12 @@ public class CatalogService {
   public ProductDetailResult getProduct(UUID tenantId, UUID productId) {
     var product = findRequiredProduct(tenantId, productId);
     var variants = variantRepository.findByTenantIdAndProductId(tenantId, productId);
+    var allVariantResults =
+        variants.stream().map(variant -> ProductVariantResult.from(variant, null)).toList();
+    var activeVariants = variants.stream().filter(ProductVariant::isActive).toList();
+    var resolvedActiveVariants = variantResultResolver.resolve(tenantId, activeVariants);
 
-    return ProductDetailResult.from(
-        toResult(product), variantResultResolver.resolve(tenantId, variants));
+    return ProductDetailResult.from(toResult(product), allVariantResults, resolvedActiveVariants);
   }
 
   public List<ProductSummaryResult> listActiveProducts(UUID tenantId) {

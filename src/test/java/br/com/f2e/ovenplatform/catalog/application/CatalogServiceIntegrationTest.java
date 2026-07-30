@@ -338,6 +338,39 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
+  void shouldNotResolveImageFromInactiveVariantWhenGettingProductDetail() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    var inactiveVariantImageId = createAvailableImage(tenant.getId());
+    createVariant(
+        tenant,
+        product,
+        null,
+        "Pequena",
+        new BigDecimal("39.00"),
+        0,
+        true);
+    createVariant(
+        tenant,
+        product,
+        inactiveVariantImageId,
+        LARGE_VARIANT_NAME,
+        new BigDecimal("45.00"),
+        1,
+        false);
+
+    var detail = catalogService.getProduct(tenant.getId(), product.id());
+
+    assertThat(detail.product().hasVariants()).isTrue();
+    assertThat(detail.product().available()).isTrue();
+    assertThat(detail.variants())
+        .singleElement()
+        .satisfies(variant -> assertThat(variant.name()).isEqualTo("Pequena"));
+    verify(availableImageLookup, never()).getAvailableImages(any(), any());
+  }
+
+  @Test
   void shouldThrowWhenGettingUnknownProduct() {
     var tenant = createTenant();
     var tenantId = tenant.getId();

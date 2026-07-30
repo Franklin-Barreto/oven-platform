@@ -21,6 +21,9 @@ import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductSummaryResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductVariantDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.CreateProductRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.ProductController;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.UpdateProductRequest;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -95,7 +98,7 @@ class ProductControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidRequestsCreate")
   void shouldReturn400WhenCreateRequestIsInvalid(
-      CreateProductRequest request, String field, String message) throws Exception {
+          CreateProductRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             post(BASE_URL)
@@ -255,7 +258,7 @@ class ProductControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidRequestsUpdate")
   void shouldReturn400WhenUpdateRequestIsInvalid(
-      UpdateProductRequest request, String field, String message) throws Exception {
+          UpdateProductRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + PRODUCT_ID)
