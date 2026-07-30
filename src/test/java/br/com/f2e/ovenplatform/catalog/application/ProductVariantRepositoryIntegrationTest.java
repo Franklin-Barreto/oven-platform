@@ -2,20 +2,20 @@ package br.com.f2e.ovenplatform.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
-import br.com.f2e.ovenplatform.catalog.domain.Category;
-import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
-import br.com.f2e.ovenplatform.media.domain.StoredImage;
+import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
+import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture.ProductFixture;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import br.com.f2e.ovenplatform.tenant.domain.Plan;
-import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import jakarta.persistence.PersistenceException;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -23,16 +23,22 @@ import org.springframework.context.annotation.Import;
 @Import(JpaProductVariantRepositoryAdapter.class)
 class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
-  private static final String CHECKSUM = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
   private static final String LARGE_VARIANT_NAME = "Grande";
   private static final String MEDIUM_VARIANT_NAME = "Média";
   private static final String SMALL_VARIANT_NAME = "Pequena";
 
   @Autowired private ProductVariantRepository repository;
 
+  private CatalogTestFixture catalogFixture;
+
+  @BeforeEach
+  void setUp() {
+    catalogFixture = new CatalogTestFixture(entityManager);
+  }
+
   @Test
   void shouldSaveAndRetrieveProductVariant() {
-    var fixture = createFixture("Pizzeria Napoli");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Napoli");
     var variant = variant(fixture, fixture.image().getId(), LARGE_VARIANT_NAME, 1);
 
     repository.save(variant);
@@ -55,7 +61,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldSaveProductVariantWithoutImage() {
-    var fixture = createFixture("Pizzeria Roma");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Roma");
     var variant = variant(fixture, null, MEDIUM_VARIANT_NAME, 0);
 
     repository.save(variant);
@@ -69,7 +75,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldReturnVariantsInDisplayOrder() {
-    var fixture = createFixture("Pizzeria Milano");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Milano");
     var large = variant(fixture, null, LARGE_VARIANT_NAME, 2);
     var small = variant(fixture, null, SMALL_VARIANT_NAME, 0);
     var medium = variant(fixture, null, MEDIUM_VARIANT_NAME, 1);
@@ -86,8 +92,8 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotFindVariantThroughAnotherTenant() {
-    var fixture = createFixture("Pizzeria Firenze");
-    var anotherFixture = createFixture("Pizzeria Torino");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Firenze");
+    var anotherFixture = catalogFixture.createProductFixture("Pizzeria Torino");
     var variant = repository.save(variant(fixture, null, "Família", 0));
     flushAndClear();
 
@@ -99,8 +105,11 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotFindVariantThroughAnotherProduct() {
-    var fixture = createFixture("Pizzeria Bologna");
-    var anotherProduct = createProduct(fixture);
+    var fixture = catalogFixture.createProductFixture("Pizzeria Bologna");
+    var anotherProduct =
+        catalogFixture.createProduct(
+            fixture.tenant(), fixture.category(), fixture.image(), "Pizza Margherita");
+    entityManager.flush();
     var variant = repository.save(variant(fixture, null, "Individual", 0));
     flushAndClear();
 
@@ -112,8 +121,8 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectProductFromAnotherTenant() {
-    var fixture = createFixture("Pizzeria Venezia");
-    var anotherFixture = createFixture("Pizzeria Genova");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Venezia");
+    var anotherFixture = catalogFixture.createProductFixture("Pizzeria Genova");
     var variant =
         new ProductVariant(
             anotherFixture.product().getId(),
@@ -132,8 +141,8 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectImageFromAnotherTenant() {
-    var fixture = createFixture("Pizzeria Palermo");
-    var anotherFixture = createFixture("Pizzeria Bari");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Palermo");
+    var anotherFixture = catalogFixture.createProductFixture("Pizzeria Bari");
     var variant = variant(fixture, anotherFixture.image().getId(), LARGE_VARIANT_NAME, 0);
     repository.save(variant);
 
@@ -145,7 +154,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectNonexistentProduct() {
-    var fixture = createFixture("Pizzeria Verona");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Verona");
     var variant =
         new ProductVariant(
             UUID.randomUUID(),
@@ -164,7 +173,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectNonexistentImage() {
-    var fixture = createFixture("Pizzeria Catania");
+    var fixture = catalogFixture.createProductFixture("Pizzeria Catania");
     var variant = variant(fixture, UUID.randomUUID(), LARGE_VARIANT_NAME, 0);
     repository.save(variant);
 
@@ -174,56 +183,51 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
         .hasMessageContaining("fk_product_variants_tenant_image");
   }
 
-  private Fixture createFixture(String tenantName) {
-    var tenant = new Tenant(tenantName, Plan.MVP);
-    entityManager.persist(tenant);
-
-    var category = new Category("Pizzas", tenant.getId());
-    entityManager.persist(category);
-
-    var image = createAvailableImage(tenant.getId());
-    var product =
-        new Product(
-            tenant.getId(),
-            category.getId(),
-            image.getId(),
-            "Pizza Calabresa",
-            null,
-            new BigDecimal("35.00"));
-    entityManager.persist(product);
+  @Test
+  void shouldFindVariantsForMultipleProductsWithinTenantInDisplayOrder() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Batch");
+    var anotherProduct =
+        catalogFixture.createProduct(
+            fixture.tenant(), fixture.category(), fixture.image(), "Pizza Margherita");
     entityManager.flush();
+    var anotherTenantFixture = catalogFixture.createProductFixture("Another Pizzeria");
 
-    return new Fixture(tenant, category, image, product);
-  }
-
-  private Product createProduct(Fixture fixture) {
-    var product =
-        new Product(
+    var large = variant(fixture, null, LARGE_VARIANT_NAME, 1);
+    var small = variant(fixture, null, SMALL_VARIANT_NAME, 0);
+    var anotherProductVariant =
+        new ProductVariant(
+            anotherProduct.getId(),
             fixture.tenant().getId(),
-            fixture.category().getId(),
-            fixture.image().getId(),
-            "Pizza Margherita",
             null,
-            new BigDecimal("39.00"));
-    entityManager.persist(product);
-    entityManager.flush();
-    return product;
+            MEDIUM_VARIANT_NAME,
+            new BigDecimal("45.00"),
+            0);
+    var anotherTenantVariant = variant(anotherTenantFixture, null, "Família", 0);
+
+    repository.saveAll(List.of(large, small, anotherProductVariant, anotherTenantVariant));
+    flushAndClear();
+
+    var variants =
+        repository.findByTenantIdAndProductIds(
+            fixture.tenant().getId(),
+            Set.of(
+                fixture.product().getId(),
+                anotherProduct.getId(),
+                anotherTenantFixture.product().getId()));
+
+    assertThat(variants)
+        .extracting(
+            ProductVariant::getProductId,
+            ProductVariant::getName,
+            ProductVariant::getDisplayPosition)
+        .containsExactly(
+            tuple(fixture.product().getId(), SMALL_VARIANT_NAME, 0),
+            tuple(fixture.product().getId(), LARGE_VARIANT_NAME, 1),
+            tuple(anotherProduct.getId(), MEDIUM_VARIANT_NAME, 0));
   }
 
-  private StoredImage createAvailableImage(UUID tenantId) {
-    var image =
-        StoredImage.pending(
-            tenantId,
-            "tenants/%s/images/%s.webp".formatted(tenantId, UUID.randomUUID()),
-            "image/webp",
-            1_024L,
-            CHECKSUM);
-    image.confirm("image/webp", 1_024L, CHECKSUM);
-    entityManager.persist(image);
-    return image;
-  }
-
-  private ProductVariant variant(Fixture fixture, UUID imageId, String name, int displayPosition) {
+  private ProductVariant variant(
+      ProductFixture fixture, UUID imageId, String name, int displayPosition) {
     return new ProductVariant(
         fixture.product().getId(),
         fixture.tenant().getId(),
@@ -232,6 +236,4 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
         new BigDecimal("41.00"),
         displayPosition);
   }
-
-  private record Fixture(Tenant tenant, Category category, StoredImage image, Product product) {}
 }
