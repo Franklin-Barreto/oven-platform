@@ -16,7 +16,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
 import br.com.f2e.ovenplatform.catalog.application.product.CreateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductSummaryResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductVariantDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
@@ -50,6 +53,10 @@ class ProductControllerTest extends AbstractControllerTest {
   private static final UUID IMAGE_ID = UUID.fromString("c03aac3d-3c87-4ca6-bf91-6337620f02a9");
   private static final UUID PRODUCT_ID = UUID.fromString("22b2759d-35b2-4b04-ab39-df2a203a652c");
   private static final URI IMAGE_URL = URI.create("https://images.example/products/image.webp");
+  private static final BigDecimal DISPLAY_PRICE = new BigDecimal("8.50");
+  private static final UUID VARIANT_ID = UUID.fromString("8baacf2f-6e97-4633-a798-f36e678e2aa4");
+  private static final String VARIANT_NAME = "Lata 350ml";
+  private static final BigDecimal VARIANT_PRICE = new BigDecimal("8.50");
 
   @MockitoBean private CatalogService catalogService;
 
@@ -112,8 +119,8 @@ class ProductControllerTest extends AbstractControllerTest {
   }
 
   @Test
-  void shouldListActiveProductsUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = productResult(true);
+  void shouldListProductSummariesUsingTenantFromAuthenticatedPrincipal() throws Exception {
+    var product = productSummaryResult();
 
     when(catalogService.listActiveProducts(TENANT_ID)).thenReturn(List.of(product));
 
@@ -126,14 +133,18 @@ class ProductControllerTest extends AbstractControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$").isArray())
-        .andExpect(jsonPath("$[0].tenantId").value(TENANT_ID.toString()))
+        .andExpect(jsonPath("$[0].id").value(PRODUCT_ID.toString()))
         .andExpect(jsonPath("$[0].categoryId").value(CATEGORY_ID.toString()))
         .andExpect(jsonPath("$[0].imageId").value(IMAGE_ID.toString()))
         .andExpect(jsonPath("$[0].imageUrl").value(IMAGE_URL.toString()))
         .andExpect(jsonPath("$[0].name").value(VALID_PRODUCT))
         .andExpect(jsonPath("$[0].description").value(VALID_DESCRIPTION))
-        .andExpect(jsonPath("$[0].price").value(10.5))
-        .andExpect(jsonPath("$[0].active").value(true));
+        .andExpect(jsonPath("$[0].displayPrice").value(8.5))
+        .andExpect(jsonPath("$[0].hasVariants").value(true))
+        .andExpect(jsonPath("$[0].available").value(true))
+        .andExpect(jsonPath("$[0].tenantId").doesNotExist())
+        .andExpect(jsonPath("$[0].price").doesNotExist())
+        .andExpect(jsonPath("$[0].active").doesNotExist());
 
     verify(catalogService).listActiveProducts(TENANT_ID);
   }
@@ -157,8 +168,8 @@ class ProductControllerTest extends AbstractControllerTest {
   }
 
   @Test
-  void shouldFindProductUsingTenantFromAuthenticatedPrincipal() throws Exception {
-    var product = productResult(true);
+  void shouldFindProductDetailUsingTenantFromAuthenticatedPrincipal() throws Exception {
+    var product = productDetailResult();
 
     when(catalogService.getProduct(TENANT_ID, PRODUCT_ID)).thenReturn(product);
 
@@ -171,14 +182,24 @@ class ProductControllerTest extends AbstractControllerTest {
                 .accept(MediaType.APPLICATION_JSON))
         .andExpect(status().isOk())
         .andExpect(jsonPath("$.id").value(PRODUCT_ID.toString()))
-        .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
         .andExpect(jsonPath("$.categoryId").value(CATEGORY_ID.toString()))
         .andExpect(jsonPath("$.imageId").value(IMAGE_ID.toString()))
         .andExpect(jsonPath("$.imageUrl").value(IMAGE_URL.toString()))
         .andExpect(jsonPath("$.name").value(VALID_PRODUCT))
         .andExpect(jsonPath("$.description").value(VALID_DESCRIPTION))
-        .andExpect(jsonPath("$.price").value(10.5))
-        .andExpect(jsonPath("$.active").value(true));
+        .andExpect(jsonPath("$.displayPrice").value(8.5))
+        .andExpect(jsonPath("$.hasVariants").value(true))
+        .andExpect(jsonPath("$.available").value(true))
+        .andExpect(jsonPath("$.variants").isArray())
+        .andExpect(jsonPath("$.variants[0].id").value(VARIANT_ID.toString()))
+        .andExpect(jsonPath("$.variants[0].name").value(VARIANT_NAME))
+        .andExpect(jsonPath("$.variants[0].price").value(8.5))
+        .andExpect(jsonPath("$.variants[0].displayPosition").value(0))
+        .andExpect(jsonPath("$.variants[0].imageId").value(IMAGE_ID.toString()))
+        .andExpect(jsonPath("$.variants[0].imageUrl").value(IMAGE_URL.toString()))
+        .andExpect(jsonPath("$.tenantId").doesNotExist())
+        .andExpect(jsonPath("$.price").doesNotExist())
+        .andExpect(jsonPath("$.active").doesNotExist());
 
     verify(catalogService).getProduct(TENANT_ID, PRODUCT_ID);
   }
@@ -474,5 +495,28 @@ class ProductControllerTest extends AbstractControllerTest {
         VALID_DESCRIPTION,
         VALID_PRICE,
         active);
+  }
+
+  private static ProductSummaryResult productSummaryResult() {
+    return new ProductSummaryResult(
+        PRODUCT_ID,
+        CATEGORY_ID,
+        IMAGE_ID,
+        IMAGE_URL,
+        VALID_PRODUCT,
+        VALID_DESCRIPTION,
+        VALID_PRICE,
+        true,
+        DISPLAY_PRICE,
+        true,
+        true);
+  }
+
+  private static ProductDetailResult productDetailResult() {
+    var variant =
+        new ProductVariantDetailResult(
+            VARIANT_ID, VARIANT_NAME, VARIANT_PRICE, 0, IMAGE_ID, IMAGE_URL);
+
+    return new ProductDetailResult(productSummaryResult(), List.of(variant));
   }
 }

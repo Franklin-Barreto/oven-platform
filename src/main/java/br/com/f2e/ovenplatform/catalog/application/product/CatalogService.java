@@ -1,12 +1,17 @@
 package br.com.f2e.ovenplatform.catalog.application.product;
 
 import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -21,14 +26,20 @@ public class CatalogService {
   private final ProductRepository productRepository;
   private final CategoryRepository categoryRepository;
   private final AvailableImageLookup availableImageLookup;
+  private final ProductVariantRepository variantRepository;
+  private final ProductVariantResultResolver variantResultResolver;
 
   public CatalogService(
       ProductRepository productRepository,
       CategoryRepository categoryRepository,
-      AvailableImageLookup availableImageLookup) {
+      AvailableImageLookup availableImageLookup,
+      ProductVariantRepository variantRepository,
+      ProductVariantResultResolver variantResultResolver) {
     this.productRepository = productRepository;
     this.categoryRepository = categoryRepository;
     this.availableImageLookup = availableImageLookup;
+    this.variantRepository = variantRepository;
+    this.variantResultResolver = variantResultResolver;
   }
 
   public ProductResult createProduct(UUID tenantId, CreateProductCommand command) {
@@ -52,19 +63,33 @@ public class CatalogService {
     return productRepository.findByIdAndTenantId(productId, tenantId).map(this::toResult);
   }
 
-  public ProductResult getProduct(UUID tenantId, UUID productId) {
-    return toResult(findRequiredProduct(tenantId, productId));
+  public ProductDetailResult getProduct(UUID tenantId, UUID productId) {
+    var product = findRequiredProduct(tenantId, productId);
+    var variants = variantRepository.findByTenantIdAndProductId(tenantId, productId);
+
+    return ProductDetailResult.from(
+        toResult(product), variantResultResolver.resolve(tenantId, variants));
   }
 
-  public List<ProductResult> listActiveProducts(UUID tenantId) {
+  public List<ProductSummaryResult> listActiveProducts(UUID tenantId) {
     var products = productRepository.findActiveByTenantId(tenantId);
     var imageIds = products.stream().map(Product::getImageId).collect(Collectors.toSet());
-    var imagesById =
-        availableImageLookup.getAvailableImages(tenantId, imageIds).stream()
-            .collect(Collectors.toMap(AvailableImage::id, Function.identity()));
+    var imagesById = getAvailableImagesById(tenantId, imageIds);
+
+    var variantsByProductId =
+        variantRepository
+            .findByTenantIdAndProductIds(
+                tenantId, products.stream().map(Product::getId).collect(Collectors.toSet()))
+            .stream()
+            .map(variant -> ProductVariantResult.from(variant, null))
+            .collect(Collectors.groupingBy(ProductVariantResult::productId));
 
     return products.stream()
-        .map(product -> ProductResult.from(product, imagesById.get(product.getImageId())))
+        .map(
+            product ->
+                ProductSummaryResult.from(
+                    ProductResult.from(product, imagesById.get(product.getImageId())),
+                    variantsByProductId.getOrDefault(product.getId(), List.of())))
         .toList();
   }
 
@@ -112,5 +137,15 @@ public class CatalogService {
     if (!category.isActive()) {
       throw new ResourceNotFoundException(CATEGORY_RESOURCE, categoryId);
     }
+  }
+
+  private Map<UUID, AvailableImage> getAvailableImagesById(UUID tenantId, Set<UUID> imageIds) {
+
+    if (imageIds.isEmpty()) {
+      return Map.of();
+    }
+
+    return availableImageLookup.getAvailableImages(tenantId, imageIds).stream()
+        .collect(Collectors.toMap(AvailableImage::id, Function.identity()));
   }
 }
