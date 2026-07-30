@@ -118,7 +118,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
             anotherFixture.product().getId(),
             fixture.tenant().getId(),
             null,
-                LARGE_VARIANT_NAME,
+            LARGE_VARIANT_NAME,
             new BigDecimal("41.00"),
             0);
     repository.save(variant);
@@ -150,7 +150,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
             UUID.randomUUID(),
             fixture.tenant().getId(),
             null,
-                LARGE_VARIANT_NAME,
+            LARGE_VARIANT_NAME,
             new BigDecimal("41.00"),
             0);
     repository.save(variant);
@@ -201,7 +201,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
             fixture.tenant().getId(),
             fixture.category().getId(),
             fixture.image().getId(),
-                "Pizza Margherita",
+            "Pizza Margherita",
             null,
             new BigDecimal("39.00"));
     entityManager.persist(product);

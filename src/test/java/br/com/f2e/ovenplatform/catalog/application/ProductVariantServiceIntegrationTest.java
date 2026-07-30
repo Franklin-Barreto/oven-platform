@@ -63,11 +63,13 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var command =
         new CreateProductVariantCommand(
             productFixture.image().getId(), MEDIUM_VARIANT_NAME, VARIANT_PRICE);
+    when(availableImageLookup.getAvailableImage(tenantId, productFixture.image().getId()))
+        .thenReturn(new AvailableImage(productFixture.image().getId(), IMAGE_URL));
 
     var variant = service.create(tenantId, productId, command);
 
     var persistedVariant =
-        variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId);
+        variantRepository.findByIdAndTenantIdAndProductId(variant.id(), tenantId, productId);
 
     assertThat(persistedVariant)
         .isPresent()
@@ -88,7 +90,10 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var imageId = productFixture.image().getId();
 
     var firstVariant = new CreateProductVariantCommand(imageId, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
-    var secondVariant = new CreateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"));
+    var secondVariant =
+        new CreateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"));
+    when(availableImageLookup.getAvailableImage(tenantId, imageId))
+        .thenReturn(new AvailableImage(imageId, IMAGE_URL));
 
     var first = service.create(tenantId, productId, firstVariant);
     flushAndClear();
@@ -98,7 +103,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(persistedVariants)
         .extracting(ProductVariant::getId, ProductVariant::getDisplayPosition)
-        .containsExactly(tuple(first.getId(), 0), tuple(second.getId(), 1));
+        .containsExactly(tuple(first.id(), 0), tuple(second.id(), 1));
   }
 
   @Test
@@ -112,8 +117,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var variant = service.create(tenantId, productId, command);
 
-    assertThat(
-            variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
+    assertThat(variantRepository.findByIdAndTenantIdAndProductId(variant.id(), tenantId, productId))
         .isPresent()
         .get()
         .extracting(ProductVariant::getImageId)
@@ -242,7 +246,8 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var large =
         variantRepository.save(
-            new ProductVariant(productId, tenantId, imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"), 1));
+            new ProductVariant(
+                productId, tenantId, imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"), 1));
     var medium =
         variantRepository.save(
             new ProductVariant(productId, tenantId, null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, 0));
@@ -313,7 +318,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
 
     var updatedPrice = new BigDecimal("37.50");
-    var command = new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, updatedPrice, false);
+    var command = new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, updatedPrice);
     when(availableImageLookup.getAvailableImage(tenantId, imageId))
         .thenReturn(new AvailableImage(imageId, IMAGE_URL));
 
@@ -329,7 +334,8 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
             ProductVariantResult::price,
             ProductVariantResult::active,
             ProductVariantResult::displayPosition)
-        .containsExactly(variant.getId(), imageId, IMAGE_URL, LARGE_VARIANT_NAME, updatedPrice, false, 3);
+        .containsExactly(
+            variant.getId(), imageId, IMAGE_URL, LARGE_VARIANT_NAME, updatedPrice, true, 3);
     assertThat(
             variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
         .isPresent()
@@ -340,7 +346,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
             ProductVariant::getPrice,
             ProductVariant::isActive,
             ProductVariant::getDisplayPosition)
-        .containsExactly(imageId, LARGE_VARIANT_NAME, updatedPrice, false, 3);
+        .containsExactly(imageId, LARGE_VARIANT_NAME, updatedPrice, true, 3);
   }
 
   @Test
@@ -360,7 +366,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
     clearInvocations(availableImageLookup);
 
-    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
 
     var result = service.update(tenantId, productId, variant.getId(), command);
     flushAndClear();
@@ -382,7 +388,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var tenantId = productFixture.tenant().getId();
     var productId = UUID.randomUUID();
     var variantId = UUID.randomUUID();
-    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
 
     assertThatThrownBy(() -> service.update(tenantId, productId, variantId, command))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -396,7 +402,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var tenantId = anotherTenant.getId();
     var productId = ownerFixture.product().getId();
     var variantId = UUID.randomUUID();
-    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
 
     assertThatThrownBy(() -> service.update(tenantId, productId, variantId, command))
         .isInstanceOf(ResourceNotFoundException.class)
@@ -423,7 +429,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
                 VARIANT_PRICE,
                 0));
     flushAndClear();
-    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
     var productId = secondProduct.getId();
     var variantId = variant.getId();
 
@@ -446,7 +452,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
                 VARIANT_PRICE,
                 0));
     flushAndClear();
-    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(null, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
     var tenantId = anotherFixture.tenant().getId();
     var productId = anotherFixture.product().getId();
     var variantId = variant.getId();
@@ -467,7 +473,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
     var imageId = UUID.randomUUID();
     var command =
-        new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"), false);
+        new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"));
     assertThrow(tenantId, imageId);
     var variantId = variant.getId();
 
@@ -499,8 +505,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
             new ProductVariant(productId, tenantId, null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, 0));
     flushAndClear();
     var imageId = anotherFixture.image().getId();
-    var command =
-        new UpdateProductVariantCommand(imageId, MEDIUM_VARIANT_NAME, VARIANT_PRICE, true);
+    var command = new UpdateProductVariantCommand(imageId, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
     assertThrow(tenantId, imageId);
     var variantId = variant.getId();
 
@@ -508,6 +513,65 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("StoredImage id: %s not found".formatted(imageId));
     verify(availableImageLookup).getAvailableImage(tenantId, imageId);
+  }
+
+  @Test
+  void shouldDeactivateVariant() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var variant = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    flushAndClear();
+
+    service.changeStatus(tenantId, productId, variant.getId(), false);
+    flushAndClear();
+
+    assertThat(
+            variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
+        .isPresent()
+        .get()
+        .extracting(ProductVariant::isActive)
+        .isEqualTo(false);
+  }
+
+  @Test
+  void shouldActivateVariant() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var variant = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    variant.changeStatusTo(false);
+    flushAndClear();
+
+    service.changeStatus(tenantId, productId, variant.getId(), true);
+    flushAndClear();
+
+    assertThat(
+            variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
+        .isPresent()
+        .get()
+        .extracting(ProductVariant::isActive)
+        .isEqualTo(true);
+  }
+
+  @Test
+  void shouldRejectStatusChangeWhenVariantDoesNotBelongToProduct() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var anotherProduct =
+        fixture.createProduct(
+            productFixture.tenant(),
+            productFixture.category(),
+            productFixture.image(),
+            "Pizza Margherita");
+    var tenantId = productFixture.tenant().getId();
+    var productId = anotherProduct.getId();
+    var variant = variant(productFixture.product().getId(), tenantId, MEDIUM_VARIANT_NAME, 0);
+    var variantId = variant.getId();
+    flushAndClear();
+
+    assertThatThrownBy(() -> service.changeStatus(tenantId, productId, variantId, false))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("ProductVariant id: %s not found".formatted(variantId));
   }
 
   @Test
@@ -615,7 +679,11 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var productId = productFixture.product().getId();
     var variant = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
     var foreignVariant =
-        variant(anotherFixture.product().getId(), anotherFixture.tenant().getId(), LARGE_VARIANT_NAME, 0);
+        variant(
+            anotherFixture.product().getId(),
+            anotherFixture.tenant().getId(),
+            LARGE_VARIANT_NAME,
+            0);
     flushAndClear();
     var command = new ReorderProductVariantsCommand(List.of(foreignVariant.getId()));
 

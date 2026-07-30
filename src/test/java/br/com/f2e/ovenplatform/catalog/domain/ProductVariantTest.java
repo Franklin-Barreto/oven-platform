@@ -116,7 +116,8 @@ class ProductVariantTest {
     var newImageId = UUID.randomUUID();
     var newPrice = new BigDecimal("64.90");
 
-    variant.updateDetails(newImageId, "  Família  ", newPrice, false);
+    variant.changeStatusTo(false);
+    variant.updateDetails(newImageId, "  Família  ", newPrice);
 
     assertThat(variant.getImageId()).isEqualTo(newImageId);
     assertThat(variant.getName()).isEqualTo("Família");
@@ -128,7 +129,7 @@ class ProductVariantTest {
   void shouldRemoveProductVariantImage() {
     var variant = variant(IMAGE_ID);
 
-    variant.updateDetails(null, VALID_NAME, VALID_PRICE, true);
+    variant.updateDetails(null, VALID_NAME, VALID_PRICE);
 
     assertThat(variant.getImageId()).isNull();
   }
@@ -138,7 +139,7 @@ class ProductVariantTest {
     var variant = variant(IMAGE_ID);
     var imageId = UUID.randomUUID();
 
-    assertThatThrownBy(() -> variant.updateDetails(imageId, "Família", BigDecimal.ZERO, false))
+    assertThatThrownBy(() -> variant.updateDetails(imageId, "Família", BigDecimal.ZERO))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("price must be greater than zero");
 
@@ -169,20 +170,20 @@ class ProductVariantTest {
   }
 
   @Test
-  void shouldDeactivateProductVariant() {
+  void shouldChangeProductVariantStatusToInactive() {
     var variant = variant(IMAGE_ID);
 
-    variant.deactivate();
+    variant.changeStatusTo(false);
 
     assertThat(variant.isActive()).isFalse();
   }
 
   @Test
-  void shouldActivateProductVariant() {
+  void shouldChangeProductVariantStatusToActive() {
     var variant = variant(IMAGE_ID);
-    variant.deactivate();
+    variant.changeStatusTo(false);
 
-    variant.activate();
+    variant.changeStatusTo(true);
 
     assertThat(variant.isActive()).isTrue();
   }
