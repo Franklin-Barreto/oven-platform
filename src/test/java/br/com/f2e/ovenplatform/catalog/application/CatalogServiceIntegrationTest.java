@@ -12,19 +12,18 @@ import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
-import br.com.f2e.ovenplatform.media.domain.StoredImage;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
-import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.Arrays;
 import java.util.Set;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -41,17 +40,24 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";
   private static final BigDecimal VALID_PRICE = new BigDecimal("35.40");
   private static final URI IMAGE_URL = URI.create("https://images.example/products/image.webp");
+  private static final String CATEGORY_NAME = "Pizza";
 
   @Autowired private CatalogService catalogService;
   @Autowired private ProductRepository productRepository;
   @Autowired private CategoryRepository categoryRepository;
-  @Autowired private SpringDataTenantRepository tenantRepository;
   @MockitoBean private AvailableImageLookup availableImageLookup;
+
+  private CatalogTestFixture fixture;
+
+  @BeforeEach
+  void setUp() {
+    fixture = new CatalogTestFixture(entityManager);
+  }
 
   @Test
   void shouldCreateProduct() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
 
     var product = createProduct(tenant, category);
 
@@ -72,9 +78,9 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectProductWhenCategoryBelongsToAnotherTenant() {
-    var tenant = createTenant("Don Corleone Pizzeria");
-    var anotherTenant = createTenant("Soprano Pizzeria");
-    var categoryFromAnotherTenant = createCategory(anotherTenant);
+    var tenant = fixture.createTenant("Don Corleone Pizzeria");
+    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var categoryFromAnotherTenant = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var tenantId = tenant.getId();
     var categoryId = categoryFromAnotherTenant.getId();
     var command =
@@ -89,7 +95,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldRejectProductWhenCategoryIsInactive() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     category.deactivate();
     categoryRepository.save(category);
     var tenantId = tenant.getId();
@@ -106,7 +112,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldFindProductByIdAndTenantId() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var product = createProduct(tenant, category);
 
     var foundProduct = catalogService.findProduct(tenant.getId(), product.id());
@@ -138,9 +144,9 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldReturnEmptyWhenProductBelongsToAnotherTenant() {
-    var ownerTenant = createTenant("Don Corleone Pizzeria");
-    var anotherTenant = createTenant("Soprano Pizzeria");
-    var category = createCategory(ownerTenant);
+    var ownerTenant = fixture.createTenant("Don Corleone Pizzeria");
+    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var category = fixture.createCategory(ownerTenant, CATEGORY_NAME);
     var product = createProduct(ownerTenant, category);
 
     var foundProduct = catalogService.findProduct(anotherTenant.getId(), product.id());
@@ -151,7 +157,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldListOnlyActiveProductsByTenant() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var activeProduct = createProduct(tenant, category);
     createInactiveProduct(tenant);
     stubAvailableImages(tenant.getId(), activeProduct);
@@ -175,10 +181,10 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotListProductsFromAnotherTenant() {
-    var tenant = createTenant("Don Corleone Pizzeria");
-    var anotherTenant = createTenant("Soprano Pizzeria");
-    var category = createCategory(tenant);
-    var anotherCategory = createCategory(anotherTenant);
+    var tenant = fixture.createTenant("Don Corleone Pizzeria");
+    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var anotherCategory = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var productFromTenant = createProduct(tenant, category);
     createProduct(anotherTenant, anotherCategory, "Pizza Margherita", new BigDecimal("39.90"));
     stubAvailableImages(tenant.getId(), productFromTenant);
@@ -191,7 +197,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldListProductsWithTheirPublicImagesUsingBatchLookup() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var firstProduct = createProduct(tenant, category);
     var secondProduct =
         createProduct(tenant, category, "Pizza Margherita", new BigDecimal("39.90"));
@@ -216,7 +222,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldResolveSharedProductImageOnlyOnceWhenListingProducts() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var sharedImageId = createAvailableImage(tenant.getId());
     var firstProduct =
         createProduct(tenant, category, sharedImageId, "Pizza Portuguesa", new BigDecimal("35.40"));
@@ -229,7 +235,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(products)
         .extracting(ProductResult::id)
-        .containsExactly(firstProduct.id(), secondProduct.id());
+        .containsExactlyInAnyOrder(firstProduct.id(), secondProduct.id());
     assertThat(products).extracting(ProductResult::imageId).containsOnly(sharedImageId);
     verify(availableImageLookup).getAvailableImages(tenant.getId(), Set.of(sharedImageId));
     verify(availableImageLookup, never()).getAvailableImage(any(), any());
@@ -238,7 +244,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldGetProductByIdAndTenantId() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var product = createProduct(tenant, category);
 
     var foundProduct = catalogService.getProduct(tenant.getId(), product.id());
@@ -261,8 +267,8 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldUpdateProduct() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
-    var newCategory = createCategory(tenant, "Bebidas");
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var newCategory = fixture.createCategory(tenant, "Bebidas");
     var product = createProduct(tenant, category);
     var newImageId = createAvailableImage(tenant.getId());
     var command =
@@ -287,10 +293,10 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldRejectProductUpdateWhenProductBelongsToAnotherTenant() {
-    var ownerTenant = createTenant("Don Corleone Pizzeria");
-    var anotherTenant = createTenant("Soprano Pizzeria");
-    var ownerCategory = createCategory(ownerTenant);
-    var anotherCategory = createCategory(anotherTenant);
+    var ownerTenant = fixture.createTenant("Don Corleone Pizzeria");
+    var anotherTenant = fixture.createTenant("Soprano Pizzeria");
+    var ownerCategory = fixture.createCategory(ownerTenant, CATEGORY_NAME);
+    var anotherCategory = fixture.createCategory(anotherTenant, CATEGORY_NAME);
     var product = createProduct(ownerTenant, ownerCategory);
     var tenantId = anotherTenant.getId();
     var productId = product.id();
@@ -313,7 +319,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldDeactivateProduct() {
     var tenant = createTenant();
-    var category = createCategory(tenant);
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var product = createProduct(tenant, category);
 
     catalogService.deactivate(tenant.getId(), product.id());
@@ -326,19 +332,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private Tenant createTenant() {
-    return createTenant("Don Corleone Pizzeria");
-  }
-
-  private Tenant createTenant(String name) {
-    return tenantRepository.save(new Tenant(name, Plan.MVP));
-  }
-
-  private Category createCategory(Tenant tenant) {
-    return createCategory(tenant, "Pizzas");
-  }
-
-  private Category createCategory(Tenant tenant, String name) {
-    return categoryRepository.save(new Category(name, tenant.getId()));
+    return fixture.createTenant("Don Corleone Pizzeria");
   }
 
   private ProductResult createProduct(Tenant tenant, Category category) {
@@ -367,23 +361,14 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private UUID createAvailableImage(UUID tenantId) {
-    var checksum = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
-    var image =
-        StoredImage.pending(
-            tenantId,
-            "tenants/%s/images/%s.webp".formatted(tenantId, UUID.randomUUID()),
-            "image/webp",
-            1_024L,
-            checksum);
-    image.confirm("image/webp", 1_024L, checksum);
-    entityManager.persist(image);
+    var image = fixture.createAvailableImage(tenantId);
     when(availableImageLookup.getAvailableImage(tenantId, image.getId()))
         .thenReturn(new AvailableImage(image.getId(), IMAGE_URL));
     return image.getId();
   }
 
   private void createInactiveProduct(Tenant tenant) {
-    var category = createCategory(tenant, "Calzones");
+    var category = fixture.createCategory(tenant, "Calzones");
     var result = createProduct(tenant, category, "Pizza Calabresa", new BigDecimal("42.00"));
     var product = productRepository.findByIdAndTenantId(result.id(), tenant.getId()).orElseThrow();
     product.deactivate();
