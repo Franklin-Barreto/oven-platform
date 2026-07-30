@@ -2,10 +2,10 @@ package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 
-import br.com.f2e.ovenplatform.catalog.application.CreateProductVariantCommand;
-import br.com.f2e.ovenplatform.catalog.application.ProductVariantService;
-import br.com.f2e.ovenplatform.catalog.application.ReorderProductVariantsCommand;
-import br.com.f2e.ovenplatform.catalog.application.UpdateProductVariantCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.CreateProductVariantCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantService;
+import br.com.f2e.ovenplatform.catalog.application.variant.ReorderProductVariantsCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.UpdateProductVariantCommand;
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;

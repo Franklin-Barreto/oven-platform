@@ -8,6 +8,12 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
+import br.com.f2e.ovenplatform.catalog.application.product.CreateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;

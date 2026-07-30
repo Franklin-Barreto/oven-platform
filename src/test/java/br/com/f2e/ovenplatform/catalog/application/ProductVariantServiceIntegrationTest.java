@@ -9,6 +9,12 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.catalog.application.variant.CreateProductVariantCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantService;
+import br.com.f2e.ovenplatform.catalog.application.variant.ReorderProductVariantsCommand;
+import br.com.f2e.ovenplatform.catalog.application.variant.UpdateProductVariantCommand;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;

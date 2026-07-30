@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.application;
+package br.com.f2e.ovenplatform.catalog.application.variant;
 
 import java.math.BigDecimal;
 import java.util.UUID;

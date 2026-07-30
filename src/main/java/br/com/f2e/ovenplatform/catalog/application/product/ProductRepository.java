@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.application;
+package br.com.f2e.ovenplatform.catalog.application.product;
 
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import java.util.List;

@@ -14,10 +14,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.f2e.ovenplatform.catalog.application.CatalogService;
-import br.com.f2e.ovenplatform.catalog.application.CreateProductCommand;
-import br.com.f2e.ovenplatform.catalog.application.ProductResult;
-import br.com.f2e.ovenplatform.catalog.application.UpdateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
+import br.com.f2e.ovenplatform.catalog.application.product.CreateProductCommand;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
