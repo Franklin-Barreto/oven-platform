@@ -2,10 +2,10 @@ package br.com.f2e.ovenplatform.e2e.steps;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.CategoryResponse;
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.CreateCategoryRequest;
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.CreateProductRequest;
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.ProductResponse;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.CategoryResponse;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.CreateCategoryRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.CreateProductRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.ProductResponse;
 import br.com.f2e.ovenplatform.e2e.context.E2eScenarioContext;
 import br.com.f2e.ovenplatform.e2e.support.E2eApiClient;
 import br.com.f2e.ovenplatform.media.application.StoredImageRepository;

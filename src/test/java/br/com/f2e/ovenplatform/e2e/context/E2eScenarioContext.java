@@ -1,7 +1,7 @@
 package br.com.f2e.ovenplatform.e2e.context;
 
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.CategoryResponse;
-import br.com.f2e.ovenplatform.catalog.infrastructure.web.ProductResponse;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.CategoryResponse;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.ProductResponse;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderResponse;
 import io.cucumber.spring.ScenarioScope;
 import java.util.HashMap;

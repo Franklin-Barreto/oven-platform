@@ -18,6 +18,11 @@ import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantService;
 import br.com.f2e.ovenplatform.catalog.application.variant.ReorderProductVariantsCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.UpdateProductVariantCommand;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.product.ChangeProductVariantStatusRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.variant.CreateProductVariantRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.variant.ProductVariantController;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.variant.ReorderProductVariantsRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.variant.UpdateProductVariantRequest;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -87,7 +92,7 @@ class ProductVariantControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidCreateRequests")
   void shouldReturn400WhenCreateRequestIsInvalid(
-      CreateProductVariantRequest request, String field, String message) throws Exception {
+          CreateProductVariantRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             post(BASE_URL)
@@ -174,7 +179,7 @@ class ProductVariantControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidUpdateRequests")
   void shouldReturn400WhenUpdateRequestIsInvalid(
-      UpdateProductVariantRequest request, String field, String message) throws Exception {
+          UpdateProductVariantRequest request, String field, String message) throws Exception {
     var path = BASE_URL + "/" + VARIANT_ID;
 
     mockMvc

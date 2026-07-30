@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.infrastructure.web;
+package br.com.f2e.ovenplatform.catalog.infrastructure.web.product;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 

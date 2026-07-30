@@ -12,18 +12,19 @@ public record ProductDetailResult(
   }
 
   public static ProductDetailResult from(
-      ProductResult product, List<ProductVariantResult> variants) {
-    var summary = ProductSummaryResult.from(product, variants);
-    var activeVariants =
-        variants.stream()
-            .filter(ProductVariantResult::active)
+      ProductResult product,
+      List<ProductVariantResult> allVariants,
+      List<ProductVariantResult> resolvedActiveVariants) {
+    var summary = ProductSummaryResult.from(product, allVariants);
+    var detailVariants =
+        resolvedActiveVariants.stream()
             .sorted(
                 Comparator.comparingInt(ProductVariantResult::displayPosition)
                     .thenComparing(ProductVariantResult::id))
             .map(variant -> ProductVariantDetailResult.from(variant, product))
             .toList();
 
-    return new ProductDetailResult(summary, activeVariants);
+    return new ProductDetailResult(summary, detailVariants);
   }
 
   @Override

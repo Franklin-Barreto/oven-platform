@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.infrastructure.web;
+package br.com.f2e.ovenplatform.catalog.infrastructure.web.category;
 
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import java.util.UUID;

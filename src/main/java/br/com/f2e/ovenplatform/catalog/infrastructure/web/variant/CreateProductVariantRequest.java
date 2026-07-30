@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.infrastructure.web;
+package br.com.f2e.ovenplatform.catalog.infrastructure.web.variant;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;

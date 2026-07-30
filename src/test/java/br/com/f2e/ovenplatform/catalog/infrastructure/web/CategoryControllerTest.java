@@ -17,6 +17,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.catalog.application.category.CategoryService;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.CategoryController;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.CreateCategoryRequest;
+import br.com.f2e.ovenplatform.catalog.infrastructure.web.category.UpdateCategoryRequest;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -79,7 +82,7 @@ class CategoryControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidCreateRequests")
   void shouldReturn400WhenCreateRequestIsInvalid(
-      CreateCategoryRequest request, String field, String message) throws Exception {
+          CreateCategoryRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             post(BASE_URL)
@@ -170,7 +173,7 @@ class CategoryControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidUpdateRequests")
   void shouldReturn400WhenUpdateRequestIsInvalid(
-      UpdateCategoryRequest request, String field, String message) throws Exception {
+          UpdateCategoryRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + CATEGORY_ID)

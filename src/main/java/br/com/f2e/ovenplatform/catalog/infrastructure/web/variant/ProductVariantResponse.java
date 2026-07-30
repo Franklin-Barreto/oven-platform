@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.infrastructure.web;
+package br.com.f2e.ovenplatform.catalog.infrastructure.web.variant;
 
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
 import java.math.BigDecimal;
