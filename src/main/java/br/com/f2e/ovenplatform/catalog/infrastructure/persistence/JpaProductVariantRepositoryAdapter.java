@@ -5,6 +5,7 @@ import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 import org.springframework.stereotype.Repository;
 
@@ -36,5 +37,11 @@ public class JpaProductVariantRepositoryAdapter implements ProductVariantReposit
   @Override
   public List<ProductVariant> findByTenantIdAndProductId(UUID tenantId, UUID productId) {
     return repository.findByTenantIdAndProductIdOrderByDisplayPositionAscIdAsc(tenantId, productId);
+  }
+
+  @Override
+  public List<ProductVariant> findByTenantIdAndProductIds(UUID tenantId, Set<UUID> productIds) {
+    return repository.findByTenantIdAndProductIdInOrderByProductIdAscDisplayPositionAscIdAsc(
+        tenantId, productIds);
   }
 }

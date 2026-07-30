@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
 
 public interface ProductVariantRepository {
@@ -15,4 +16,6 @@ public interface ProductVariantRepository {
   Optional<ProductVariant> findByIdAndTenantIdAndProductId(UUID id, UUID tenantId, UUID productId);
 
   List<ProductVariant> findByTenantIdAndProductId(UUID tenantId, UUID productId);
+
+  List<ProductVariant> findByTenantIdAndProductIds(UUID tenantId, Set<UUID> productIds);
 }

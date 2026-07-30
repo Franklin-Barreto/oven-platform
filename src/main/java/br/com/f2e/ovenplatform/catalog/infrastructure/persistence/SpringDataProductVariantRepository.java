@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.persistence;
 
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -12,4 +13,7 @@ public interface SpringDataProductVariantRepository extends JpaRepository<Produc
 
   List<ProductVariant> findByTenantIdAndProductIdOrderByDisplayPositionAscIdAsc(
       UUID tenantId, UUID productId);
+
+  List<ProductVariant> findByTenantIdAndProductIdInOrderByProductIdAscDisplayPositionAscIdAsc(
+      UUID tenantId, Collection<UUID> productIds);
 }
