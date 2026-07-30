@@ -4,6 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
 import br.com.f2e.ovenplatform.catalog.application.api.SellableProduct;
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.product.CatalogProductLookupService;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;

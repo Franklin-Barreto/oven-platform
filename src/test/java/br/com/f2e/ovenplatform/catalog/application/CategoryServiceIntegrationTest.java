@@ -3,6 +3,8 @@ package br.com.f2e.ovenplatform.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryService;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;

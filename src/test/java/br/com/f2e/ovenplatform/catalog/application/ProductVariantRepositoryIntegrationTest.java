@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;

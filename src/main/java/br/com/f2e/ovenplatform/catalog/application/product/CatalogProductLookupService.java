@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.application;
+package br.com.f2e.ovenplatform.catalog.application.product;
 
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
 import br.com.f2e.ovenplatform.catalog.application.api.SellableProduct;

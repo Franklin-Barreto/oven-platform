@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.persistence;
 
-import br.com.f2e.ovenplatform.catalog.application.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import java.util.List;
 import java.util.Optional;

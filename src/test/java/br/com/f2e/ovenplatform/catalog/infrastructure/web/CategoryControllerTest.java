@@ -15,7 +15,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import br.com.f2e.ovenplatform.catalog.application.CategoryService;
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryService;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;

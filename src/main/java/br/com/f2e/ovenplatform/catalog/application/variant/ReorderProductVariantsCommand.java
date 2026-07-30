@@ -1,4 +1,4 @@
-package br.com.f2e.ovenplatform.catalog.application;
+package br.com.f2e.ovenplatform.catalog.application.variant;
 
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 

@@ -1,5 +1,6 @@
-package br.com.f2e.ovenplatform.catalog.application;
+package br.com.f2e.ovenplatform.catalog.application.product;
 
+import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;

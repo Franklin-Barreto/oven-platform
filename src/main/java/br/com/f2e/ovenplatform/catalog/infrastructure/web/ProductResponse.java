@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
-import br.com.f2e.ovenplatform.catalog.application.ProductResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.UUID;

@@ -2,7 +2,7 @@ package br.com.f2e.ovenplatform.catalog.infrastructure.web;
 
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 
-import br.com.f2e.ovenplatform.catalog.application.CatalogService;
+import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
