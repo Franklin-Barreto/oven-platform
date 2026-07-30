@@ -82,7 +82,7 @@ class CategoryControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidCreateRequests")
   void shouldReturn400WhenCreateRequestIsInvalid(
-          CreateCategoryRequest request, String field, String message) throws Exception {
+      CreateCategoryRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             post(BASE_URL)
@@ -173,7 +173,7 @@ class CategoryControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidUpdateRequests")
   void shouldReturn400WhenUpdateRequestIsInvalid(
-          UpdateCategoryRequest request, String field, String message) throws Exception {
+      UpdateCategoryRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + CATEGORY_ID)

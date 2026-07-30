@@ -216,14 +216,18 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
                 anotherTenantFixture.product().getId()));
 
     assertThat(variants)
-        .extracting(
-            ProductVariant::getProductId,
-            ProductVariant::getName,
-            ProductVariant::getDisplayPosition)
+        .hasSize(3)
+        .allMatch(variant -> variant.getTenantId().equals(fixture.tenant().getId()));
+    assertThat(variants)
+        .filteredOn(variant -> variant.getProductId().equals(fixture.product().getId()))
+        .extracting(ProductVariant::getName, ProductVariant::getDisplayPosition)
         .containsExactly(
-            tuple(fixture.product().getId(), SMALL_VARIANT_NAME, 0),
-            tuple(fixture.product().getId(), LARGE_VARIANT_NAME, 1),
-            tuple(anotherProduct.getId(), MEDIUM_VARIANT_NAME, 0));
+            tuple(SMALL_VARIANT_NAME, 0),
+            tuple(LARGE_VARIANT_NAME, 1));
+    assertThat(variants)
+        .filteredOn(variant -> variant.getProductId().equals(anotherProduct.getId()))
+        .extracting(ProductVariant::getName, ProductVariant::getDisplayPosition)
+        .containsExactly(tuple(MEDIUM_VARIANT_NAME, 0));
   }
 
   private ProductVariant variant(

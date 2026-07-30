@@ -98,7 +98,7 @@ class ProductControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidRequestsCreate")
   void shouldReturn400WhenCreateRequestIsInvalid(
-          CreateProductRequest request, String field, String message) throws Exception {
+      CreateProductRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             post(BASE_URL)
@@ -258,7 +258,7 @@ class ProductControllerTest extends AbstractControllerTest {
   @ParameterizedTest
   @MethodSource("invalidRequestsUpdate")
   void shouldReturn400WhenUpdateRequestIsInvalid(
-          UpdateProductRequest request, String field, String message) throws Exception {
+      UpdateProductRequest request, String field, String message) throws Exception {
     mockMvc
         .perform(
             patch(BASE_URL + "/" + PRODUCT_ID)

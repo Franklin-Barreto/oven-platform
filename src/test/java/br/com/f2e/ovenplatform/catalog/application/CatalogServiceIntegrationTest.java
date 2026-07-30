@@ -298,10 +298,10 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(detail.product().available()).isTrue();
     assertThat(detail.variants())
         .extracting(
-                ProductVariantDetailResult::name,
-                ProductVariantDetailResult::displayPosition,
-                ProductVariantDetailResult::imageId,
-                ProductVariantDetailResult::imageUrl)
+            ProductVariantDetailResult::name,
+            ProductVariantDetailResult::displayPosition,
+            ProductVariantDetailResult::imageId,
+            ProductVariantDetailResult::imageUrl)
         .containsExactly(
             org.assertj.core.groups.Tuple.tuple("Pequena", 0, product.imageId(), IMAGE_URL),
             org.assertj.core.groups.Tuple.tuple("Grande", 2, product.imageId(), IMAGE_URL));
@@ -315,13 +315,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     var variantImageId = createAvailableImage(tenant.getId());
     var variant =
         createVariant(
-            tenant,
-            product,
-            variantImageId,
-            LARGE_VARIANT_NAME,
-            new BigDecimal("45.00"),
-            0,
-            true);
+            tenant, product, variantImageId, LARGE_VARIANT_NAME, new BigDecimal("45.00"), 0, true);
     when(availableImageLookup.getAvailableImages(tenant.getId(), Set.of(variantImageId)))
         .thenReturn(List.of(new AvailableImage(variantImageId, VARIANT_IMAGE_URL)));
 
@@ -343,14 +337,7 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     var category = fixture.createCategory(tenant, CATEGORY_NAME);
     var product = createProduct(tenant, category);
     var inactiveVariantImageId = createAvailableImage(tenant.getId());
-    createVariant(
-        tenant,
-        product,
-        null,
-        "Pequena",
-        new BigDecimal("39.00"),
-        0,
-        true);
+    createVariant(tenant, product, null, "Pequena", new BigDecimal("39.00"), 0, true);
     createVariant(
         tenant,
         product,
