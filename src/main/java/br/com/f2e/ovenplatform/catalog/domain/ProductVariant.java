@@ -83,25 +83,20 @@ public class ProductVariant extends BaseEntity {
     return displayPosition;
   }
 
-  public void updateDetails(UUID imageId, String name, BigDecimal price, boolean active) {
+  public void updateDetails(UUID imageId, String name, BigDecimal price) {
     var validatedName = requireSize(name, "name", 1, 80);
     var validatedPrice = requirePositive(price, "price");
 
     this.imageId = imageId;
     this.name = validatedName;
     this.price = validatedPrice;
-    this.active = active;
   }
 
   public void changeDisplayPosition(int displayPosition) {
     this.displayPosition = requireNonNegative(displayPosition, "displayPosition");
   }
 
-  public void activate() {
-    this.active = true;
-  }
-
-  public void deactivate() {
-    this.active = false;
+  public void changeStatusTo(boolean active) {
+    this.active = active;
   }
 }

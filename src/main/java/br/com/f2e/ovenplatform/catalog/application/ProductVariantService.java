@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import java.net.URI;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
@@ -34,10 +35,11 @@ public class ProductVariantService {
   }
 
   @Transactional
-  public ProductVariant create(UUID tenantId, UUID productId, CreateProductVariantCommand command) {
+  public ProductVariantResult create(
+      UUID tenantId, UUID productId, CreateProductVariantCommand command) {
 
     requireProduct(tenantId, productId);
-    requireAvailableImageWhenPresent(tenantId, command.imageId());
+    var uri = requireURIImageWhenPresent(tenantId, command.imageId());
 
     var nextPosition =
         variantRepository.findByTenantIdAndProductId(tenantId, productId).stream()
@@ -50,7 +52,7 @@ public class ProductVariantService {
         new ProductVariant(
             productId, tenantId, command.imageId(), command.name(), command.price(), nextPosition);
 
-    return variantRepository.save(variant);
+    return ProductVariantResult.from(variantRepository.save(variant), uri);
   }
 
   @Transactional(readOnly = true)
@@ -91,21 +93,26 @@ public class ProductVariantService {
 
     requireProduct(tenantId, productId);
 
-    var variant =
-        variantRepository
-            .findByIdAndTenantIdAndProductId(variantId, tenantId, productId)
-            .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_VARIANT_RESOURCE, variantId));
+    var variant = requireVariant(tenantId, productId, variantId);
 
     var availableImage =
         command.imageId() == null
             ? null
             : availableImageLookup.getAvailableImage(tenantId, command.imageId());
 
-    variant.updateDetails(command.imageId(), command.name(), command.price(), command.active());
+    variant.updateDetails(command.imageId(), command.name(), command.price());
 
     var imageUrl = availableImage == null ? null : availableImage.publicUrl();
 
     return ProductVariantResult.from(variant, imageUrl);
+  }
+
+  @Transactional
+  public void changeStatus(UUID tenantId, UUID productId, UUID variantId, boolean active) {
+
+    requireProduct(tenantId, productId);
+    var variant = requireVariant(tenantId, productId, variantId);
+    variant.changeStatusTo(active);
   }
 
   @Transactional
@@ -140,9 +147,16 @@ public class ProductVariantService {
         .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
   }
 
-  private void requireAvailableImageWhenPresent(UUID tenantId, UUID imageId) {
+  private ProductVariant requireVariant(UUID tenantId, UUID productId, UUID variantId) {
+    return variantRepository
+        .findByIdAndTenantIdAndProductId(variantId, tenantId, productId)
+        .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_VARIANT_RESOURCE, variantId));
+  }
+
+  private URI requireURIImageWhenPresent(UUID tenantId, UUID imageId) {
     if (imageId != null) {
-      availableImageLookup.getAvailableImage(tenantId, imageId);
+      return availableImageLookup.getAvailableImage(tenantId, imageId).publicUrl();
     }
+    return null;
   }
 }
