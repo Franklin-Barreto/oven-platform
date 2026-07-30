@@ -19,6 +19,7 @@ import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundExce
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.math.BigDecimal;
 import java.net.URI;
+import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final String TENANT_NAME = "Pizzaria do Paulão";
   private static final String MEDIUM_VARIANT_NAME = "Média";
+  private static final String LARGE_VARIANT_NAME = "Grande";
   private static final String LA_CASA_DO_PASTEL = "La casa do pastel";
   private static final BigDecimal VARIANT_PRICE = new BigDecimal("25.00");
   private static final URI IMAGE_URL = URI.create("https://images.example/variants/large.webp");
@@ -86,7 +88,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     var imageId = productFixture.image().getId();
 
     var firstVariant = new CreateProductVariantCommand(imageId, MEDIUM_VARIANT_NAME, VARIANT_PRICE);
-    var secondVariant = new CreateProductVariantCommand(imageId, "Grande", new BigDecimal("35.00"));
+    var secondVariant = new CreateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"));
 
     var first = service.create(tenantId, productId, firstVariant);
     flushAndClear();
@@ -240,7 +242,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
     var large =
         variantRepository.save(
-            new ProductVariant(productId, tenantId, imageId, "Grande", new BigDecimal("35.00"), 1));
+            new ProductVariant(productId, tenantId, imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"), 1));
     var medium =
         variantRepository.save(
             new ProductVariant(productId, tenantId, null, MEDIUM_VARIANT_NAME, VARIANT_PRICE, 0));
@@ -311,7 +313,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
 
     var updatedPrice = new BigDecimal("37.50");
-    var command = new UpdateProductVariantCommand(imageId, "Grande", updatedPrice, false);
+    var command = new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, updatedPrice, false);
     when(availableImageLookup.getAvailableImage(tenantId, imageId))
         .thenReturn(new AvailableImage(imageId, IMAGE_URL));
 
@@ -327,7 +329,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
             ProductVariantResult::price,
             ProductVariantResult::active,
             ProductVariantResult::displayPosition)
-        .containsExactly(variant.getId(), imageId, IMAGE_URL, "Grande", updatedPrice, false, 3);
+        .containsExactly(variant.getId(), imageId, IMAGE_URL, LARGE_VARIANT_NAME, updatedPrice, false, 3);
     assertThat(
             variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
         .isPresent()
@@ -338,7 +340,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
             ProductVariant::getPrice,
             ProductVariant::isActive,
             ProductVariant::getDisplayPosition)
-        .containsExactly(imageId, "Grande", updatedPrice, false, 3);
+        .containsExactly(imageId, LARGE_VARIANT_NAME, updatedPrice, false, 3);
   }
 
   @Test
@@ -465,7 +467,7 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
     var imageId = UUID.randomUUID();
     var command =
-        new UpdateProductVariantCommand(imageId, "Grande", new BigDecimal("35.00"), false);
+        new UpdateProductVariantCommand(imageId, LARGE_VARIANT_NAME, new BigDecimal("35.00"), false);
     assertThrow(tenantId, imageId);
     var variantId = variant.getId();
 
@@ -506,6 +508,145 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("StoredImage id: %s not found".formatted(imageId));
     verify(availableImageLookup).getAvailableImage(tenantId, imageId);
+  }
+
+  @Test
+  void shouldReorderAllProductVariants() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var medium = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    var large = variant(productId, tenantId, LARGE_VARIANT_NAME, 1);
+    var family = variant(productId, tenantId, "Família", 2);
+    flushAndClear();
+
+    service.reorder(
+        tenantId,
+        productId,
+        new ReorderProductVariantsCommand(List.of(family.getId(), medium.getId(), large.getId())));
+    flushAndClear();
+
+    assertThat(variantRepository.findByTenantIdAndProductId(tenantId, productId))
+        .extracting(ProductVariant::getId, ProductVariant::getDisplayPosition)
+        .containsExactly(
+            tuple(family.getId(), 0), tuple(medium.getId(), 1), tuple(large.getId(), 2));
+  }
+
+  @Test
+  void shouldAllowEmptyOrderWhenProductHasNoVariants() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+
+    service.reorder(tenantId, productId, new ReorderProductVariantsCommand(List.of()));
+
+    assertThat(variantRepository.findByTenantIdAndProductId(tenantId, productId)).isEmpty();
+  }
+
+  @Test
+  void shouldRejectReorderWithMissingVariantWithoutChangingPositions() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var medium = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    var large = variant(productId, tenantId, LARGE_VARIANT_NAME, 1);
+    flushAndClear();
+    var command = new ReorderProductVariantsCommand(List.of(large.getId()));
+
+    assertThatThrownBy(() -> service.reorder(tenantId, productId, command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variantIds must contain exactly all product variant ids");
+    flushAndClear();
+
+    assertThat(variantRepository.findByTenantIdAndProductId(tenantId, productId))
+        .extracting(ProductVariant::getId, ProductVariant::getDisplayPosition)
+        .containsExactly(tuple(medium.getId(), 0), tuple(large.getId(), 1));
+  }
+
+  @Test
+  void shouldRejectReorderWithDuplicatedVariant() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var variant = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    flushAndClear();
+    var command = new ReorderProductVariantsCommand(List.of(variant.getId(), variant.getId()));
+
+    assertThatThrownBy(() -> service.reorder(tenantId, productId, command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variantIds must not contain duplicates");
+  }
+
+  @Test
+  void shouldRejectReorderWithVariantFromAnotherProduct() {
+    var firstFixture = fixture.createProductFixture(TENANT_NAME);
+    var secondProduct =
+        fixture.createProduct(
+            firstFixture.tenant(),
+            firstFixture.category(),
+            firstFixture.image(),
+            "Pizza Margherita");
+    var tenantId = firstFixture.tenant().getId();
+    var firstVariant = variant(firstFixture.product().getId(), tenantId, MEDIUM_VARIANT_NAME, 0);
+    var secondVariant = variant(secondProduct.getId(), tenantId, LARGE_VARIANT_NAME, 0);
+    flushAndClear();
+    var productId = firstFixture.product().getId();
+    var command = new ReorderProductVariantsCommand(List.of(secondVariant.getId()));
+
+    assertThatThrownBy(() -> service.reorder(tenantId, productId, command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variantIds must contain exactly all product variant ids");
+    flushAndClear();
+
+    assertThat(
+            variantRepository.findByIdAndTenantIdAndProductId(
+                firstVariant.getId(), tenantId, productId))
+        .isPresent()
+        .get()
+        .extracting(ProductVariant::getDisplayPosition)
+        .isEqualTo(0);
+  }
+
+  @Test
+  void shouldRejectReorderWithVariantFromAnotherTenant() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var anotherFixture = fixture.createProductFixture("Pizzaria do Silvio");
+    var tenantId = productFixture.tenant().getId();
+    var productId = productFixture.product().getId();
+    var variant = variant(productId, tenantId, MEDIUM_VARIANT_NAME, 0);
+    var foreignVariant =
+        variant(anotherFixture.product().getId(), anotherFixture.tenant().getId(), LARGE_VARIANT_NAME, 0);
+    flushAndClear();
+    var command = new ReorderProductVariantsCommand(List.of(foreignVariant.getId()));
+
+    assertThatThrownBy(() -> service.reorder(tenantId, productId, command))
+        .isInstanceOf(IllegalArgumentException.class)
+        .hasMessage("variantIds must contain exactly all product variant ids");
+    flushAndClear();
+
+    assertThat(
+            variantRepository.findByIdAndTenantIdAndProductId(variant.getId(), tenantId, productId))
+        .isPresent()
+        .get()
+        .extracting(ProductVariant::getDisplayPosition)
+        .isEqualTo(0);
+  }
+
+  @Test
+  void shouldRejectReorderWhenProductDoesNotExist() {
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
+    var tenantId = productFixture.tenant().getId();
+    var productId = UUID.randomUUID();
+    var command = new ReorderProductVariantsCommand(List.of());
+
+    assertThatThrownBy(() -> service.reorder(tenantId, productId, command))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Product id: %s not found".formatted(productId));
+  }
+
+  private ProductVariant variant(UUID productId, UUID tenantId, String name, int displayPosition) {
+    return variantRepository.save(
+        new ProductVariant(productId, tenantId, null, name, VARIANT_PRICE, displayPosition));
   }
 
   private void assertThrow(UUID tenantId, UUID imageId) {

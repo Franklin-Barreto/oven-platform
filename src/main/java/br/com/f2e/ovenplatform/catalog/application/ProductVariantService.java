@@ -5,6 +5,7 @@ import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.UUID;
@@ -107,10 +108,36 @@ public class ProductVariantService {
     return ProductVariantResult.from(variant, imageUrl);
   }
 
+  @Transactional
+  public void reorder(UUID tenantId, UUID productId, ReorderProductVariantsCommand command) {
+
+    requireProduct(tenantId, productId);
+
+    var variants = variantRepository.findByTenantIdAndProductId(tenantId, productId);
+    var requestedIds = command.variantIds();
+    var uniqueRequestedIds = new HashSet<>(requestedIds);
+
+    if (uniqueRequestedIds.size() != requestedIds.size()) {
+      throw new IllegalArgumentException("variantIds must not contain duplicates");
+    }
+
+    var variantsById =
+        variants.stream().collect(Collectors.toMap(ProductVariant::getId, Function.identity()));
+
+    if (requestedIds.size() != variants.size()
+        || !variantsById.keySet().equals(uniqueRequestedIds)) {
+      throw new IllegalArgumentException("variantIds must contain exactly all product variant ids");
+    }
+
+    for (var position = 0; position < requestedIds.size(); position++) {
+      variantsById.get(requestedIds.get(position)).changeDisplayPosition(position);
+    }
+  }
+
   private void requireProduct(UUID tenantId, UUID productId) {
     productRepository
-            .findByIdAndTenantId(productId, tenantId)
-            .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
+        .findByIdAndTenantId(productId, tenantId)
+        .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
   }
 
   private void requireAvailableImageWhenPresent(UUID tenantId, UUID imageId) {
