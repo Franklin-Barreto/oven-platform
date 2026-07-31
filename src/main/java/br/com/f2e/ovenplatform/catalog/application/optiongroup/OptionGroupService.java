@@ -32,7 +32,7 @@ public class OptionGroupService {
     requireProduct(tenantId, productId);
 
     int nextDisplayPosition =
-        optionGroupRepository.findByTenantIdAndProductId(tenantId, productId).stream()
+        optionGroupRepository.findByProductId(productId).stream()
                 .mapToInt(OptionGroup::getDisplayPosition)
                 .max()
                 .orElse(-1)
@@ -40,7 +40,6 @@ public class OptionGroupService {
     OptionGroup optionGroup =
         new OptionGroup(
             productId,
-            tenantId,
             command.name(),
             command.minimumSelections(),
             command.maximumSelections(),
@@ -53,7 +52,7 @@ public class OptionGroupService {
   public List<OptionGroupResult> list(UUID tenantId, UUID productId) {
     requireProduct(tenantId, productId);
 
-    return optionGroupRepository.findByTenantIdAndProductId(tenantId, productId).stream()
+    return optionGroupRepository.findByProductId(productId).stream()
         .map(OptionGroupResult::from)
         .toList();
   }
@@ -80,8 +79,7 @@ public class OptionGroupService {
   public void reorder(UUID tenantId, UUID productId, ReorderOptionGroupsCommand command) {
     requireProduct(tenantId, productId);
 
-    List<OptionGroup> optionGroups =
-        optionGroupRepository.findByTenantIdAndProductId(tenantId, productId);
+    List<OptionGroup> optionGroups = optionGroupRepository.findByProductId(productId);
     List<UUID> requestedIds = command.optionGroupIds();
     HashSet<UUID> uniqueRequestedIds = new HashSet<>(requestedIds);
 
@@ -110,7 +108,7 @@ public class OptionGroupService {
 
   private OptionGroup requireOptionGroup(UUID tenantId, UUID productId, UUID optionGroupId) {
     return optionGroupRepository
-        .findByIdAndTenantIdAndProductId(optionGroupId, tenantId, productId)
+        .findByIdAndProductId(optionGroupId, productId)
         .orElseThrow(() -> new ResourceNotFoundException(OPTION_GROUP_RESOURCE, optionGroupId));
   }
 }

@@ -1,17 +1,16 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web.optiongroup;
 
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
+
 import br.com.f2e.ovenplatform.catalog.application.optiongroup.*;
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
+import java.util.List;
+import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
-
-import java.util.List;
-import java.util.UUID;
-
-import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 
 @RestController
 @RequestMapping("/products/{productId}/option-groups")

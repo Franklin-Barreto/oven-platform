@@ -5,7 +5,6 @@ import java.util.UUID;
 
 public record OptionGroupResult(
     UUID id,
-    UUID tenantId,
     UUID productId,
     String name,
     int minimumSelections,
@@ -16,7 +15,6 @@ public record OptionGroupResult(
   public static OptionGroupResult from(OptionGroup optionGroup) {
     return new OptionGroupResult(
         optionGroup.getId(),
-        optionGroup.getTenantId(),
         optionGroup.getProductId(),
         optionGroup.getName(),
         optionGroup.getMinimumSelections(),
