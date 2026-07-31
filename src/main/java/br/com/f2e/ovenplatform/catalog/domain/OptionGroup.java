@@ -1,8 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.domain;
 
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNonNegative;
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireSize;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.*;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import edu.umd.cs.findbugs.annotations.SuppressFBWarnings;
@@ -17,9 +15,6 @@ public class OptionGroup extends BaseEntity {
 
   @Column(nullable = false)
   private UUID productId;
-
-  @Column(nullable = false)
-  private UUID tenantId;
 
   @Column(nullable = false, length = 80)
   private String name;
@@ -44,13 +39,11 @@ public class OptionGroup extends BaseEntity {
       justification = "Domain invariants are validated while constructing the aggregate.")
   public OptionGroup(
       UUID productId,
-      UUID tenantId,
       String name,
       int minimumSelections,
       int maximumSelections,
       int displayPosition) {
     this.productId = requireNotNull(productId, "productId");
-    this.tenantId = requireNotNull(tenantId, "tenantId");
     this.name = requireSize(name, "name", 1, 80);
     validateSelectionLimits(minimumSelections, maximumSelections);
     this.minimumSelections = minimumSelections;
@@ -61,10 +54,6 @@ public class OptionGroup extends BaseEntity {
 
   public UUID getProductId() {
     return productId;
-  }
-
-  public UUID getTenantId() {
-    return tenantId;
   }
 
   public String getName() {

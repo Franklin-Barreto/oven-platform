@@ -379,7 +379,8 @@ class StoredImageServiceTest {
   private static StoredImage availableImage(String objectKey) {
     var image =
         withId(
-            StoredImage.pending(TENANT_ID, objectKey, CONTENT_TYPE, SIZE_BYTES, CHECKSUM), StoredImageServiceTest.SECOND_IMAGE_ID);
+            StoredImage.pending(TENANT_ID, objectKey, CONTENT_TYPE, SIZE_BYTES, CHECKSUM),
+            StoredImageServiceTest.SECOND_IMAGE_ID);
     image.confirm(CONTENT_TYPE, SIZE_BYTES, CHECKSUM);
     return image;
   }
