@@ -1,25 +1,17 @@
 package br.com.f2e.ovenplatform.catalog.infrastructure.web.optiongroup;
 
-import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
-
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.CreateOptionGroupCommand;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupService;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.ReorderOptionGroupsCommand;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.UpdateOptionGroupCommand;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.*;
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
-import java.util.List;
-import java.util.UUID;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.UUID;
+
+import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 
 @RestController
 @RequestMapping("/products/{productId}/option-groups")
@@ -37,13 +29,13 @@ public class OptionGroupController {
       @CurrentTenantId UUID tenantId,
       @PathVariable UUID productId,
       @Valid @RequestBody CreateOptionGroupRequest request) {
-    var result =
+    OptionGroupResult result =
         service.create(
             tenantId,
             productId,
             new CreateOptionGroupCommand(
                 request.name(), request.minimumSelections(), request.maximumSelections()));
-    var response = OptionGroupResponse.from(result);
+    OptionGroupResponse response = OptionGroupResponse.from(result);
 
     return ResponseEntity.created(ResourceUriBuilder.buildLocation(response.id())).body(response);
   }
@@ -63,7 +55,7 @@ public class OptionGroupController {
       @PathVariable UUID productId,
       @PathVariable UUID optionGroupId,
       @Valid @RequestBody UpdateOptionGroupRequest request) {
-    var result =
+    OptionGroupResult result =
         service.update(
             tenantId,
             productId,
