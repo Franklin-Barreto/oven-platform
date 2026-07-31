@@ -1,6 +1,8 @@
 package br.com.f2e.ovenplatform.catalog.domain;
 
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.*;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNonNegative;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
+import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireSize;
 
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
