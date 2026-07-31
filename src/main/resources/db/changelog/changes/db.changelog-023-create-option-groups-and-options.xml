@@ -1,0 +1,179 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="023-create-option-groups-and-options" author="leandrocoutinho">
+        <createTable tableName="option_groups">
+            <column name="id" type="uuid">
+                <constraints
+                        primaryKey="true"
+                        primaryKeyName="pk_option_groups"
+                        nullable="false"/>
+            </column>
+
+            <column name="product_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="tenant_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="name" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="minimum_selections" type="integer">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="maximum_selections" type="integer">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="display_position" type="integer">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="active" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint
+                tableName="option_groups"
+                columnNames="tenant_id,id"
+                constraintName="uk_option_groups_tenant_id_id"/>
+
+        <addForeignKeyConstraint
+                baseTableName="option_groups"
+                baseColumnNames="tenant_id"
+                referencedTableName="tenants"
+                referencedColumnNames="id"
+                constraintName="fk_option_groups_tenant_id"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableName="option_groups"
+                baseColumnNames="tenant_id,product_id"
+                referencedTableName="products"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_option_groups_tenant_product"
+                onDelete="RESTRICT"/>
+
+        <sql>
+            ALTER TABLE option_groups
+                ADD CONSTRAINT ck_option_groups_minimum_selections
+                CHECK (minimum_selections >= 0)
+        </sql>
+
+        <sql>
+            ALTER TABLE option_groups
+                ADD CONSTRAINT ck_option_groups_maximum_selections
+                CHECK (maximum_selections >= minimum_selections)
+        </sql>
+
+        <sql>
+            ALTER TABLE option_groups
+                ADD CONSTRAINT ck_option_groups_display_position
+                CHECK (display_position >= 0)
+        </sql>
+
+        <createIndex
+                indexName="idx_option_groups_tenant_product_position"
+                tableName="option_groups">
+            <column name="tenant_id"/>
+            <column name="product_id"/>
+            <column name="display_position"/>
+        </createIndex>
+
+        <createTable tableName="options">
+            <column name="id" type="uuid">
+                <constraints
+                        primaryKey="true"
+                        primaryKeyName="pk_options"
+                        nullable="false"/>
+            </column>
+
+            <column name="option_group_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="tenant_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="name" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="price_adjustment" type="numeric(19,2)">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="display_position" type="integer">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="active" type="boolean">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="created_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="updated_at" type="timestamp">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addForeignKeyConstraint
+                baseTableName="options"
+                baseColumnNames="tenant_id"
+                referencedTableName="tenants"
+                referencedColumnNames="id"
+                constraintName="fk_options_tenant_id"
+                onDelete="RESTRICT"/>
+
+        <addForeignKeyConstraint
+                baseTableName="options"
+                baseColumnNames="tenant_id,option_group_id"
+                referencedTableName="option_groups"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_options_tenant_option_group"
+                onDelete="RESTRICT"/>
+
+        <sql>
+            ALTER TABLE options
+                ADD CONSTRAINT ck_options_price_adjustment
+                CHECK (price_adjustment >= 0)
+        </sql>
+
+        <sql>
+            ALTER TABLE options
+                ADD CONSTRAINT ck_options_display_position
+                CHECK (display_position >= 0)
+        </sql>
+
+        <createIndex
+                indexName="idx_options_tenant_group_position"
+                tableName="options">
+            <column name="tenant_id"/>
+            <column name="option_group_id"/>
+            <column name="display_position"/>
+        </createIndex>
+    </changeSet>
+</databaseChangeLog>

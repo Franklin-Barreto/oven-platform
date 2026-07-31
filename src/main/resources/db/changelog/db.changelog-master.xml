@@ -28,4 +28,5 @@
     <include file="db/changelog/changes/db.changelog-020-create-stored-images-table.xml"/>
     <include file="db/changelog/changes/db.changelog-021-add-product-image.xml"/>
     <include file="db/changelog/changes/db.changelog-022-create-product-variants-table.xml"/>
+    <include file="db/changelog/changes/db.changelog-023-create-option-groups-and-options.xml"/>
 </databaseChangeLog>
