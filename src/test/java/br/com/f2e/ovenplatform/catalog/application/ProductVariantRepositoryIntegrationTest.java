@@ -221,9 +221,7 @@ class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
     assertThat(variants)
         .filteredOn(variant -> variant.getProductId().equals(fixture.product().getId()))
         .extracting(ProductVariant::getName, ProductVariant::getDisplayPosition)
-        .containsExactly(
-            tuple(SMALL_VARIANT_NAME, 0),
-            tuple(LARGE_VARIANT_NAME, 1));
+        .containsExactly(tuple(SMALL_VARIANT_NAME, 0), tuple(LARGE_VARIANT_NAME, 1));
     assertThat(variants)
         .filteredOn(variant -> variant.getProductId().equals(anotherProduct.getId()))
         .extracting(ProductVariant::getName, ProductVariant::getDisplayPosition)
