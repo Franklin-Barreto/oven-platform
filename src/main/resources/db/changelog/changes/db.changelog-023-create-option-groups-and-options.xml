@@ -19,6 +19,10 @@
                 <constraints nullable="false"/>
             </column>
 
+            <column name="tenant_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
             <column name="name" type="varchar(80)">
                 <constraints nullable="false"/>
             </column>
@@ -50,15 +54,15 @@
 
         <addUniqueConstraint
                 tableName="option_groups"
-                columnNames="id"
-                constraintName="uk_option_groups_id"/>
+                columnNames="tenant_id,id"
+                constraintName="uk_option_groups_tenant_id_id"/>
 
         <addForeignKeyConstraint
                 baseTableName="option_groups"
-                baseColumnNames="product_id"
+                baseColumnNames="tenant_id,product_id"
                 referencedTableName="products"
-                referencedColumnNames="id"
-                constraintName="fk_option_groups_product"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_option_groups_tenant_product"
                 onDelete="RESTRICT"/>
 
         <sql>
@@ -80,8 +84,9 @@
         </sql>
 
         <createIndex
-                indexName="idx_option_groups_product_position"
+                indexName="idx_option_groups_tenant_product_position"
                 tableName="option_groups">
+            <column name="tenant_id"/>
             <column name="product_id"/>
             <column name="display_position"/>
         </createIndex>
@@ -95,6 +100,10 @@
             </column>
 
             <column name="option_group_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+
+            <column name="tenant_id" type="uuid">
                 <constraints nullable="false"/>
             </column>
 
@@ -125,10 +134,10 @@
 
         <addForeignKeyConstraint
                 baseTableName="options"
-                baseColumnNames="option_group_id"
+                baseColumnNames="tenant_id,option_group_id"
                 referencedTableName="option_groups"
-                referencedColumnNames="id"
-                constraintName="fk_options_option_group"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_options_tenant_option_group"
                 onDelete="RESTRICT"/>
 
         <sql>
@@ -144,8 +153,9 @@
         </sql>
 
         <createIndex
-                indexName="idx_options_group_position"
+                indexName="idx_options_tenant_group_position"
                 tableName="options">
+            <column name="tenant_id"/>
             <column name="option_group_id"/>
             <column name="display_position"/>
         </createIndex>
