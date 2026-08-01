@@ -28,12 +28,14 @@ public class JpaOptionRepositoryAdapter implements OptionRepository {
   }
 
   @Override
-  public Optional<Option> findByIdAndOptionGroupId(UUID id, UUID optionGroupId) {
-    return repository.findByIdAndOptionGroupId(id, optionGroupId);
+  public Optional<Option> findByIdAndTenantIdAndOptionGroupId(
+      UUID id, UUID tenantId, UUID optionGroupId) {
+    return repository.findByIdAndTenantIdAndOptionGroupId(id, tenantId, optionGroupId);
   }
 
   @Override
-  public List<Option> findByOptionGroupId(UUID optionGroupId) {
-    return repository.findByOptionGroupIdOrderByDisplayPositionAscIdAsc(optionGroupId);
+  public List<Option> findByTenantIdAndOptionGroupId(UUID tenantId, UUID optionGroupId) {
+    return repository.findByTenantIdAndOptionGroupIdOrderByDisplayPositionAscIdAsc(
+        tenantId, optionGroupId);
   }
 }
