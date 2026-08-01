@@ -12,7 +12,7 @@ public interface OptionGroupRepository {
 
   List<OptionGroup> saveAll(Collection<OptionGroup> optionGroups);
 
-  Optional<OptionGroup> findByIdAndProductId(UUID id, UUID productId);
+  Optional<OptionGroup> findByIdAndTenantIdAndProductId(UUID id, UUID tenantId, UUID productId);
 
-  List<OptionGroup> findByProductId(UUID productId);
+  List<OptionGroup> findByTenantIdAndProductId(UUID tenantId, UUID productId);
 }
