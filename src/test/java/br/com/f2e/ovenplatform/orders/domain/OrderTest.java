@@ -17,7 +17,9 @@ class OrderTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
+  private static final UUID VARIANT_ID = UUID.fromString("c6c7d4e3-4a70-46d6-9b5c-9e7e9b0d2345");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
+  private static final String VARIANT_NAME = "Grande";
   private static final int VALID_QUANTITY = 2;
   private static final BigDecimal VALID_UNIT_PRICE = new BigDecimal("35.40");
 
@@ -72,10 +74,10 @@ class OrderTest {
   }
 
   @Test
-  void shouldAddItemToOrder() {
+  void shouldAddSimpleItemToOrder() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addSimpleItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     assertThat(order.getItems()).hasSize(1);
 
@@ -84,15 +86,39 @@ class OrderTest {
     assertThat(item.getQuantity()).isEqualTo(VALID_QUANTITY);
     assertThat(item.getProductId()).isEqualTo(PRODUCT_ID);
     assertThat(item.getProductName()).isEqualTo(PRODUCT_NAME);
+    assertThat(item.getVariantId()).isNull();
+    assertThat(item.getVariantName()).isNull();
     assertThat(item.getUnitPrice()).isEqualByComparingTo(VALID_UNIT_PRICE);
     assertThat(item.getSubtotal()).isEqualByComparingTo("70.80");
+  }
+
+  @Test
+  void shouldAddVariantItemToOrder() {
+    var order = order();
+
+    order.addVariantItem(
+        PRODUCT_ID, PRODUCT_NAME, VARIANT_ID, VARIANT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
+
+    assertThat(order.getItems())
+        .singleElement()
+        .satisfies(
+            item -> {
+              assertThat(item.getProductId()).isEqualTo(PRODUCT_ID);
+              assertThat(item.getProductName()).isEqualTo(PRODUCT_NAME);
+              assertThat(item.getVariantId()).isEqualTo(VARIANT_ID);
+              assertThat(item.getVariantName()).isEqualTo(VARIANT_NAME);
+              assertThat(item.getQuantity()).isEqualTo(VALID_QUANTITY);
+              assertThat(item.getUnitPrice()).isEqualByComparingTo(VALID_UNIT_PRICE);
+              assertThat(item.getSubtotal()).isEqualByComparingTo("70.80");
+            });
+    assertThat(order.getTotalAmount()).isEqualByComparingTo("70.80");
   }
 
   @Test
   void shouldRecalculateTotalWhenAddingOneItem() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addSimpleItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     assertThat(order.getTotalAmount()).isEqualByComparingTo("70.80");
   }
@@ -101,8 +127,8 @@ class OrderTest {
   void shouldRecalculateTotalWhenAddingMultipleItems() {
     var order = order();
 
-    order.addItem(PRODUCT_ID, PRODUCT_NAME, 2, new BigDecimal("35.40"));
-    order.addItem(UUID.randomUUID(), "Coca-cola lata", 3, new BigDecimal("10.00"));
+    order.addSimpleItem(PRODUCT_ID, PRODUCT_NAME, 2, new BigDecimal("35.40"));
+    order.addSimpleItem(UUID.randomUUID(), "Coca-cola lata", 3, new BigDecimal("10.00"));
 
     assertThat(order.getTotalAmount()).isEqualByComparingTo("100.80");
   }
@@ -116,7 +142,7 @@ class OrderTest {
       BigDecimal unitPrice,
       String expectedMessage) {
     var order = new Order(TENANT_ID, OrderServiceType.COUNTER);
-    assertThatThrownBy(() -> order.addItem(productId, productName, quantity, unitPrice))
+    assertThatThrownBy(() -> order.addSimpleItem(productId, productName, quantity, unitPrice))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -124,7 +150,7 @@ class OrderTest {
   @Test
   void shouldExposeItemsAsReadOnlyCollection() {
     var order = order();
-    order.addItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
+    order.addSimpleItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY, VALID_UNIT_PRICE);
 
     var items = order.getItems();
 
