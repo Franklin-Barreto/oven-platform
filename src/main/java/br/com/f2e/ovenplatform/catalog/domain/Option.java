@@ -60,8 +60,8 @@ public class Option extends BaseEntity {
   }
 
   public void updateDetails(String name, BigDecimal priceAdjustment) {
-    var validatedName = requireSize(name, "name", 1, 80);
-    var validatedPriceAdjustment = requireNonNegative(priceAdjustment, "priceAdjustment");
+    String validatedName = requireSize(name, "name", 1, 80);
+    BigDecimal validatedPriceAdjustment = requireNonNegative(priceAdjustment, "priceAdjustment");
 
     this.name = validatedName;
     this.priceAdjustment = validatedPriceAdjustment;
