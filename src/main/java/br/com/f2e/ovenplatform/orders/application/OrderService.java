@@ -17,6 +17,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Function;
 import java.util.stream.Collectors;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
@@ -52,14 +53,16 @@ public class OrderService {
 
   @Transactional
   public Order createOrder(UUID tenantId, CreateOrderCommand orderCommand) {
-    var productIds =
+    var selections =
         orderCommand.items().stream()
-            .map(CreateOrderItemCommand::productId)
-            .collect(Collectors.toSet());
+            .map(item -> new OrderableProductSelection(item.productId(), item.variantId()))
+            .toList();
 
     var orderableProducts =
-        orderableProductProvider.findOrderableProducts(tenantId, productIds).stream()
-            .collect(Collectors.toMap(OrderableProduct::productId, product -> product));
+        orderableProductProvider.findOrderableProducts(tenantId, selections).stream()
+            .collect(
+                Collectors.toMap(
+                    OrderableProduct::selection, Function.identity(), (first, duplicate) -> first));
 
     var order = new Order(tenantId, orderCommand.serviceType());
     attachDeliveryCustomerSnapshotIfNeeded(tenantId, orderCommand, order);
@@ -68,17 +71,28 @@ public class OrderService {
         .items()
         .forEach(
             item -> {
-              var orderableProduct = orderableProducts.get(item.productId());
+              var selection = new OrderableProductSelection(item.productId(), item.variantId());
+              var orderableProduct = orderableProducts.get(selection);
 
               if (orderableProduct == null) {
                 throw new ProductNotAvailableForOrderingException(item.productId());
               }
 
-              order.addItem(
-                  item.productId(),
-                  orderableProduct.productName(),
-                  item.quantity(),
-                  orderableProduct.unitPrice());
+              if (orderableProduct.variantId() == null) {
+                order.addSimpleItem(
+                    item.productId(),
+                    orderableProduct.productName(),
+                    item.quantity(),
+                    orderableProduct.unitPrice());
+              } else {
+                order.addVariantItem(
+                    item.productId(),
+                    orderableProduct.productName(),
+                    orderableProduct.variantId(),
+                    orderableProduct.variantName(),
+                    item.quantity(),
+                    orderableProduct.unitPrice());
+              }
             });
 
     var savedOrder = orderRepository.save(order);

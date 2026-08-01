@@ -2,6 +2,7 @@ package br.com.f2e.ovenplatform.orders.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.tuple;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -9,6 +10,7 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
+import br.com.f2e.ovenplatform.orders.domain.OrderItem;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
@@ -21,7 +23,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
@@ -73,9 +74,9 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var fixtures = createOrderItemFixtures();
     var command = createOrderCommand(fixtures);
     var orderableProducts = createOrderableProducts(fixtures);
-    var productIds = extractProductIds(command);
+    var selections = extractSelections(command);
 
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, selections))
         .thenReturn(orderableProducts);
 
     var order = orderService.createOrder(TENANT_ID, command);
@@ -90,7 +91,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertOrderItemsMatchFixtures(order, fixtures);
 
-    verify(orderableProductProvider).findOrderableProducts(TENANT_ID, productIds);
+    verify(orderableProductProvider).findOrderableProducts(TENANT_ID, selections);
     verifyNoInteractions(customerDeliveryInfoProvider);
 
     var orderCreatedEvents = applicationEvents.stream(OrderCreatedEvent.class).toList();
@@ -121,11 +122,53 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
+  void shouldCreateDistinctItemsForVariantsOfTheSameProduct() {
+    var productId = UUID.randomUUID();
+    var largeVariantId = UUID.randomUUID();
+    var mediumVariantId = UUID.randomUUID();
+    var command =
+        new CreateOrderCommand(
+            List.of(
+                new CreateOrderItemCommand(productId, largeVariantId, 1),
+                new CreateOrderItemCommand(productId, mediumVariantId, 2)),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+            OrderServiceType.COUNTER);
+    var selections = extractSelections(command);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, selections))
+        .thenReturn(
+            List.of(
+                new OrderableProduct(
+                    productId, PRODUCT_NAME, largeVariantId, "Grande", new BigDecimal("50.00")),
+                new OrderableProduct(
+                    productId, PRODUCT_NAME, mediumVariantId, "Media", new BigDecimal("40.00"))));
+
+    var savedOrder = orderService.createOrder(TENANT_ID, command);
+    flushAndClear();
+
+    var persistedOrder =
+        orderService.findOrderWithItems(TENANT_ID, savedOrder.getId()).orElseThrow();
+
+    assertThat(persistedOrder.getItems())
+        .extracting(
+            OrderItem::getProductId,
+            OrderItem::getVariantId,
+            OrderItem::getVariantName,
+            OrderItem::getQuantity,
+            OrderItem::getUnitPrice)
+        .containsExactly(
+            tuple(productId, largeVariantId, "Grande", 1, new BigDecimal("50.00")),
+            tuple(productId, mediumVariantId, "Media", 2, new BigDecimal("40.00")));
+    assertThat(persistedOrder.getTotalAmount()).isEqualByComparingTo("130.00");
+    verify(orderableProductProvider).findOrderableProducts(TENANT_ID, selections);
+  }
+
+  @Test
   void shouldCreateDeliveryOrderWithCustomerSnapshot() {
     var fixtures = createOrderItemFixtures();
     var command = createDeliveryOrderCommand(fixtures, CUSTOMER_ID, CUSTOMER_ADDRESS_ID);
     var orderableProducts = createOrderableProducts(fixtures);
-    var productIds = extractProductIds(command);
+    var productIds = extractSelections(command);
 
     when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
         .thenReturn(orderableProducts);
@@ -163,7 +206,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   void shouldPersistDeliveryCustomerSnapshot() {
     var fixtures = createOrderItemFixtures();
     var command = createDeliveryOrderCommand(fixtures, CUSTOMER_ID, CUSTOMER_ADDRESS_ID);
-    var productIds = extractProductIds(command);
+    var productIds = extractSelections(command);
 
     when(orderableProductProvider.findOrderableProducts(TENANT_ID, productIds))
         .thenReturn(createOrderableProducts(fixtures));
@@ -231,7 +274,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             paymentInfo,
             OrderServiceType.COUNTER);
 
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(productId)))
+    when(orderableProductProvider.findOrderableProducts(
+            TENANT_ID, List.of(new OrderableProductSelection(productId, null))))
         .thenReturn(List.of(new OrderableProduct(productId, originalProductName, originalPrice)))
         .thenReturn(List.of(new OrderableProduct(productId, updatedProductName, updatedPrice)));
 
@@ -546,7 +590,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private Order createOrderWithItems(UUID tenantId, int itemQuantity) {
     var order = new Order(tenantId, OrderServiceType.DELIVERY);
-    order.addItem(UUID.randomUUID(), PRODUCT_NAME, itemQuantity, BigDecimal.ONE);
+    order.addSimpleItem(UUID.randomUUID(), PRODUCT_NAME, itemQuantity, BigDecimal.ONE);
     return order;
   }
 
@@ -604,10 +648,10 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     return fixtures.stream().map(OrderItemFixture::orderableProduct).toList();
   }
 
-  private Set<UUID> extractProductIds(CreateOrderCommand command) {
+  private List<OrderableProductSelection> extractSelections(CreateOrderCommand command) {
     return command.items().stream()
-        .map(CreateOrderItemCommand::productId)
-        .collect(Collectors.toSet());
+        .map(item -> new OrderableProductSelection(item.productId(), item.variantId()))
+        .toList();
   }
 
   private Order createReadyOrder() {
