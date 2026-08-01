@@ -7,6 +7,7 @@ import java.util.UUID;
 public record OptionResponse(
     UUID id,
     UUID optionGroupId,
+    UUID tenantId,
     String name,
     BigDecimal priceAdjustment,
     boolean active,
@@ -16,6 +17,7 @@ public record OptionResponse(
     return new OptionResponse(
         option.id(),
         option.optionGroupId(),
+        option.tenantId(),
         option.name(),
         option.priceAdjustment(),
         option.active(),

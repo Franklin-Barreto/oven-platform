@@ -4,17 +4,9 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import br.com.f2e.ovenplatform.catalog.application.option.CreateOptionCommand;
-import br.com.f2e.ovenplatform.catalog.application.option.OptionRepository;
-import br.com.f2e.ovenplatform.catalog.application.option.OptionResult;
-import br.com.f2e.ovenplatform.catalog.application.option.OptionService;
-import br.com.f2e.ovenplatform.catalog.application.option.ReorderOptionsCommand;
-import br.com.f2e.ovenplatform.catalog.application.option.UpdateOptionCommand;
+import br.com.f2e.ovenplatform.catalog.application.option.*;
 import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Option;
@@ -52,15 +44,17 @@ class OptionServiceTest {
     service = new OptionService(productRepository, optionGroupRepository, optionRepository);
     lenient()
         .when(productRepository.findByIdAndTenantId(PRODUCT_ID, TENANT_ID))
-        .thenReturn(Optional.of(org.mockito.Mockito.mock(Product.class)));
+        .thenReturn(Optional.of(mock(Product.class)));
     lenient()
-        .when(optionGroupRepository.findByIdAndProductId(OPTION_GROUP_ID, PRODUCT_ID))
-        .thenReturn(Optional.of(org.mockito.Mockito.mock(OptionGroup.class)));
+        .when(
+            optionGroupRepository.findByIdAndTenantIdAndProductId(
+                OPTION_GROUP_ID, TENANT_ID, PRODUCT_ID))
+        .thenReturn(Optional.of(mock(OptionGroup.class)));
   }
 
   @Test
   void shouldCreateOptionAfterCurrentLastPosition() {
-    when(optionRepository.findByOptionGroupId(OPTION_GROUP_ID))
+    when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(List.of(option("Sauce", new BigDecimal("1.00"), 3, UUID.randomUUID())));
     when(optionRepository.save(any(Option.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_ID));
@@ -75,7 +69,7 @@ class OptionServiceTest {
     assertThat(result)
         .isEqualTo(
             new OptionResult(
-                OPTION_ID, OPTION_GROUP_ID, "Cheese", new BigDecimal("2.50"), true, 4));
+                OPTION_ID, OPTION_GROUP_ID, TENANT_ID, "Cheese", new BigDecimal("2.50"), true, 4));
     var saved = ArgumentCaptor.forClass(Option.class);
     verify(optionRepository).save(saved.capture());
     assertThat(saved.getValue().getDisplayPosition()).isEqualTo(4);
@@ -83,7 +77,8 @@ class OptionServiceTest {
 
   @Test
   void shouldCreateFirstOptionAtPositionZero() {
-    when(optionRepository.findByOptionGroupId(OPTION_GROUP_ID)).thenReturn(List.of());
+    when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
+        .thenReturn(List.of());
     when(optionRepository.save(any(Option.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_ID));
 
@@ -100,7 +95,7 @@ class OptionServiceTest {
 
   @Test
   void shouldListOptions() {
-    when(optionRepository.findByOptionGroupId(OPTION_GROUP_ID))
+    when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(
             List.of(
                 option("Sauce", BigDecimal.ZERO, 0, OPTION_ID),
@@ -116,7 +111,8 @@ class OptionServiceTest {
   @Test
   void shouldUpdateOptionDetailsAndStatus() {
     var option = option("Sauce", BigDecimal.ZERO, 0, OPTION_ID);
-    when(optionRepository.findByIdAndOptionGroupId(OPTION_ID, OPTION_GROUP_ID))
+    when(optionRepository.findByIdAndTenantIdAndOptionGroupId(
+            OPTION_ID, TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(Optional.of(option));
     when(optionRepository.save(option)).thenReturn(option);
 
@@ -141,7 +137,8 @@ class OptionServiceTest {
     var first = option("First", BigDecimal.ZERO, 0, OPTION_ID);
     var secondId = UUID.randomUUID();
     var second = option("Second", BigDecimal.ZERO, 1, secondId);
-    when(optionRepository.findByOptionGroupId(OPTION_GROUP_ID)).thenReturn(List.of(first, second));
+    when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
+        .thenReturn(List.of(first, second));
 
     service.reorder(
         TENANT_ID,
@@ -155,25 +152,16 @@ class OptionServiceTest {
 
   @Test
   void shouldRejectInvalidReorders() {
-    when(optionRepository.findByOptionGroupId(OPTION_GROUP_ID))
+    when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(List.of(option("First", BigDecimal.ZERO, 0, OPTION_ID)));
-
+    var optionsCommand = new ReorderOptionsCommand(List.of(OPTION_ID, OPTION_ID));
+    var reorderOptionsCommand = new ReorderOptionsCommand(List.of(UUID.randomUUID()));
     assertThatThrownBy(
-            () ->
-                service.reorder(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    OPTION_GROUP_ID,
-                    new ReorderOptionsCommand(List.of(OPTION_ID, OPTION_ID))))
+            () -> service.reorder(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, optionsCommand))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("optionIds must not contain duplicates");
     assertThatThrownBy(
-            () ->
-                service.reorder(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    OPTION_GROUP_ID,
-                    new ReorderOptionsCommand(List.of(UUID.randomUUID()))))
+            () -> service.reorder(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, reorderOptionsCommand))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("optionIds must contain exactly all option group option ids");
   }
@@ -183,9 +171,10 @@ class OptionServiceTest {
     var unknownProductId = UUID.randomUUID();
     assertThatThrownBy(() -> service.list(TENANT_ID, unknownProductId, OPTION_GROUP_ID))
         .isInstanceOf(ResourceNotFoundException.class);
-    verify(optionRepository, never()).findByOptionGroupId(OPTION_GROUP_ID);
+    verify(optionRepository, never()).findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID);
 
-    when(optionGroupRepository.findByIdAndProductId(OPTION_GROUP_ID, PRODUCT_ID))
+    when(optionGroupRepository.findByIdAndTenantIdAndProductId(
+            OPTION_GROUP_ID, TENANT_ID, PRODUCT_ID))
         .thenReturn(Optional.empty());
     assertThatThrownBy(() -> service.list(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID))
         .isInstanceOf(ResourceNotFoundException.class);
@@ -193,22 +182,18 @@ class OptionServiceTest {
 
   @Test
   void shouldRejectOptionOutsideOptionGroup() {
-    when(optionRepository.findByIdAndOptionGroupId(OPTION_ID, OPTION_GROUP_ID))
+    when(optionRepository.findByIdAndTenantIdAndOptionGroupId(
+            OPTION_ID, TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(Optional.empty());
+    var optionCommand = new UpdateOptionCommand("Cheese", BigDecimal.ZERO);
 
     assertThatThrownBy(
-            () ->
-                service.update(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    OPTION_GROUP_ID,
-                    OPTION_ID,
-                    new UpdateOptionCommand("Cheese", BigDecimal.ZERO)))
+            () -> service.update(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, OPTION_ID, optionCommand))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Option id: %s not found".formatted(OPTION_ID));
   }
 
   private static Option option(String name, BigDecimal priceAdjustment, int position, UUID id) {
-    return withId(new Option(OPTION_GROUP_ID, name, priceAdjustment, position), id);
+    return withId(new Option(OPTION_GROUP_ID, TENANT_ID, name, priceAdjustment, position), id);
   }
 }

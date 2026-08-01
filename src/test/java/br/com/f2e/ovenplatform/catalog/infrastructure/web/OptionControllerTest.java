@@ -70,6 +70,7 @@ class OptionControllerTest extends AbstractControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(OPTION_ID.toString()))
             .andExpect(jsonPath("$.optionGroupId").value(OPTION_GROUP_ID.toString()))
+            .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
             .andExpect(jsonPath("$.priceAdjustment").value(2.5))
             .andReturn();
 
@@ -208,6 +209,6 @@ class OptionControllerTest extends AbstractControllerTest {
 
   private static OptionResult result(boolean active) {
     return new OptionResult(
-        OPTION_ID, OPTION_GROUP_ID, "Cheese", new BigDecimal("2.50"), active, 0);
+        OPTION_ID, OPTION_GROUP_ID, TENANT_ID, "Cheese", new BigDecimal("2.50"), active, 0);
   }
 }

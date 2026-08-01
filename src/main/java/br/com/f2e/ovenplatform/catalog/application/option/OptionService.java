@@ -39,16 +39,21 @@ public class OptionService {
   public OptionResult create(
       UUID tenantId, UUID productId, UUID optionGroupId, CreateOptionCommand command) {
     requireProduct(tenantId, productId);
-    requireOptionGroup(productId, optionGroupId);
+    requireOptionGroup(tenantId, productId, optionGroupId);
 
     int nextDisplayPosition =
-        optionRepository.findByOptionGroupId(optionGroupId).stream()
+        optionRepository.findByTenantIdAndOptionGroupId(tenantId, optionGroupId).stream()
                 .mapToInt(Option::getDisplayPosition)
                 .max()
                 .orElse(-1)
             + 1;
     Option option =
-        new Option(optionGroupId, command.name(), command.priceAdjustment(), nextDisplayPosition);
+        new Option(
+            optionGroupId,
+            tenantId,
+            command.name(),
+            command.priceAdjustment(),
+            nextDisplayPosition);
 
     return OptionResult.from(optionRepository.save(option));
   }
@@ -56,9 +61,9 @@ public class OptionService {
   @Transactional(readOnly = true)
   public List<OptionResult> list(UUID tenantId, UUID productId, UUID optionGroupId) {
     requireProduct(tenantId, productId);
-    requireOptionGroup(productId, optionGroupId);
+    requireOptionGroup(tenantId, productId, optionGroupId);
 
-    return optionRepository.findByOptionGroupId(optionGroupId).stream()
+    return optionRepository.findByTenantIdAndOptionGroupId(tenantId, optionGroupId).stream()
         .map(OptionResult::from)
         .toList();
   }
@@ -71,8 +76,8 @@ public class OptionService {
       UUID optionId,
       UpdateOptionCommand command) {
     requireProduct(tenantId, productId);
-    requireOptionGroup(productId, optionGroupId);
-    Option option = requireOption(optionGroupId, optionId);
+    requireOptionGroup(tenantId, productId, optionGroupId);
+    Option option = requireOption(tenantId, optionGroupId, optionId);
     option.updateDetails(command.name(), command.priceAdjustment());
 
     return OptionResult.from(optionRepository.save(option));
@@ -82,17 +87,17 @@ public class OptionService {
   public void changeStatus(
       UUID tenantId, UUID productId, UUID optionGroupId, UUID optionId, boolean active) {
     requireProduct(tenantId, productId);
-    requireOptionGroup(productId, optionGroupId);
-    requireOption(optionGroupId, optionId).changeStatusTo(active);
+    requireOptionGroup(tenantId, productId, optionGroupId);
+    requireOption(tenantId, optionGroupId, optionId).changeStatusTo(active);
   }
 
   @Transactional
   public void reorder(
       UUID tenantId, UUID productId, UUID optionGroupId, ReorderOptionsCommand command) {
     requireProduct(tenantId, productId);
-    requireOptionGroup(productId, optionGroupId);
+    requireOptionGroup(tenantId, productId, optionGroupId);
 
-    List<Option> options = optionRepository.findByOptionGroupId(optionGroupId);
+    List<Option> options = optionRepository.findByTenantIdAndOptionGroupId(tenantId, optionGroupId);
     List<UUID> requestedIds = command.optionIds();
     Set<UUID> uniqueRequestedIds = new HashSet<>(requestedIds);
     if (uniqueRequestedIds.size() != requestedIds.size()) {
@@ -117,15 +122,15 @@ public class OptionService {
         .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
   }
 
-  private OptionGroup requireOptionGroup(UUID productId, UUID optionGroupId) {
+  private OptionGroup requireOptionGroup(UUID tenantId, UUID productId, UUID optionGroupId) {
     return optionGroupRepository
-        .findByIdAndProductId(optionGroupId, productId)
+        .findByIdAndTenantIdAndProductId(optionGroupId, tenantId, productId)
         .orElseThrow(() -> new ResourceNotFoundException(OPTION_GROUP_RESOURCE, optionGroupId));
   }
 
-  private Option requireOption(UUID optionGroupId, UUID optionId) {
+  private Option requireOption(UUID tenantId, UUID optionGroupId, UUID optionId) {
     return optionRepository
-        .findByIdAndOptionGroupId(optionId, optionGroupId)
+        .findByIdAndTenantIdAndOptionGroupId(optionId, tenantId, optionGroupId)
         .orElseThrow(() -> new ResourceNotFoundException(OPTION_RESOURCE, optionId));
   }
 }
