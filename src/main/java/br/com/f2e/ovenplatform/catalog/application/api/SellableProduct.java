@@ -3,4 +3,10 @@ package br.com.f2e.ovenplatform.catalog.application.api;
 import java.math.BigDecimal;
 import java.util.UUID;
 
-public record SellableProduct(UUID productId, String productName, BigDecimal price) {}
+public record SellableProduct(
+    UUID productId, String productName, UUID variantId, String variantName, BigDecimal price) {
+
+  public SellableProduct(UUID productId, String productName, BigDecimal price) {
+    this(productId, productName, null, null, price);
+  }
+}

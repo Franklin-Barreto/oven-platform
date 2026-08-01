@@ -3,27 +3,24 @@ package br.com.f2e.ovenplatform.catalog.application;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
+import br.com.f2e.ovenplatform.catalog.application.api.ProductSelection;
 import br.com.f2e.ovenplatform.catalog.application.api.SellableProduct;
-import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
 import br.com.f2e.ovenplatform.catalog.application.product.CatalogProductLookupService;
-import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
-import br.com.f2e.ovenplatform.catalog.domain.Category;
+import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
+import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
-import br.com.f2e.ovenplatform.media.domain.StoredImage;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import br.com.f2e.ovenplatform.tenant.domain.Plan;
-import br.com.f2e.ovenplatform.tenant.domain.Tenant;
-import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
-import jakarta.persistence.EntityManager;
 import java.math.BigDecimal;
-import java.util.ArrayList;
 import java.util.List;
-import java.util.Set;
+import java.util.Map;
 import java.util.UUID;
+import java.util.function.Function;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
@@ -31,159 +28,237 @@ import org.springframework.context.annotation.Import;
 @Import({
   CatalogProductLookupService.class,
   JpaProductRepositoryAdapter.class,
-  JpaCategoryRepositoryAdapter.class
+  JpaCategoryRepositoryAdapter.class,
+  JpaProductVariantRepositoryAdapter.class
 })
 class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private CatalogProductLookup catalogProductLookup;
-  @Autowired private ProductRepository productRepository;
-  @Autowired private CategoryRepository categoryRepository;
-  @Autowired private SpringDataTenantRepository tenantRepository;
-  @Autowired private EntityManager entityManager;
+  @Autowired private ProductVariantRepository variantRepository;
 
-  @Test
-  void shouldFindSellableProductsWithCurrentPricesByTenantIdAndIds() {
+  private CatalogTestFixture fixture;
 
-    var tenant = createTenant();
-    var products = createProducts(tenant, 4, true);
-
-    entityManager.flush();
-    entityManager.clear();
-
-    var expectedProductsById =
-        products.stream().collect(Collectors.toMap(Product::getId, product -> product));
-    var sellableProducts =
-        catalogProductLookup.findSellableProducts(tenant.getId(), expectedProductsById.keySet());
-
-    var actualProductsById =
-        sellableProducts.stream()
-            .collect(Collectors.toMap(SellableProduct::productId, product -> product));
-
-    assertThat(actualProductsById.keySet())
-        .containsExactlyInAnyOrderElementsOf(expectedProductsById.keySet());
-
-    expectedProductsById.forEach(
-        (productId, expectedProduct) -> {
-          var actualProduct = actualProductsById.get(productId);
-
-          assertThat(actualProduct.productName()).isEqualTo(expectedProduct.getName());
-          assertThat(actualProduct.price()).isEqualByComparingTo(expectedProduct.getPrice());
-        });
+  @BeforeEach
+  void setUp() {
+    fixture = new CatalogTestFixture(entityManager);
   }
 
   @Test
-  void shouldNotReturnInactiveProducts() {
-    var tenant = createTenant();
-    var activeProducts = createProducts(tenant, 2, true);
-    var inactiveProducts = createProducts(tenant, 4, false);
+  void shouldResolveSimpleProductWithCurrentBasePrice() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    var selection = new ProductSelection(product.getId(), null);
 
-    entityManager.flush();
-    entityManager.clear();
+    clearPersistenceContext();
 
-    var requestedProductIds =
-        Stream.concat(activeProducts.stream(), inactiveProducts.stream())
-            .map(Product::getId)
-            .collect(Collectors.toSet());
+    var result = find(product.getTenantId(), selection);
 
-    var activeProductIds = activeProducts.stream().map(Product::getId).toList();
-
-    var sellableProducts =
-        catalogProductLookup.findSellableProducts(tenant.getId(), requestedProductIds);
-
-    assertThat(sellableProducts).hasSize(activeProducts.size());
-
-    assertThat(sellableProducts)
-        .extracting(SellableProduct::productId)
-        .containsExactlyInAnyOrderElementsOf(activeProductIds);
+    assertThat(result).hasSize(1);
+    assertSimpleProduct(result.getFirst(), product);
   }
 
   @Test
-  void shouldNotReturnProductsFromAnotherTenant() {
-    var tenant = createTenant();
-    var productsFromTenant = createProducts(tenant, 1, true);
+  void shouldResolveRequestedVariantsOfSameProductIndependently() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    var medium = createVariant(product, "Pizza Calabresa Media", "38.50", true);
+    var large = createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    createVariant(product, "Pizza Calabresa Família", "59.90", true);
+    var mediumSelection = selectionOf(product, medium);
+    var largeSelection = selectionOf(product, large);
 
-    var anotherTenant = createTenant("La bella pizza");
-    var productsFromAnotherTenant = createProducts(anotherTenant, 4, true);
+    clearPersistenceContext();
 
-    entityManager.flush();
-    entityManager.clear();
+    var actualBySelection =
+        bySelection(find(product.getTenantId(), mediumSelection, largeSelection));
 
-    var requestedProductIds =
-        Stream.concat(productsFromTenant.stream(), productsFromAnotherTenant.stream())
-            .map(Product::getId)
-            .collect(Collectors.toSet());
-
-    var expectedProductIds = productsFromTenant.stream().map(Product::getId).toList();
-    var anotherTenantProductIds = productsFromAnotherTenant.stream().map(Product::getId).toList();
-
-    var sellableProducts =
-        catalogProductLookup.findSellableProducts(tenant.getId(), requestedProductIds);
-
-    assertThat(sellableProducts).hasSize(productsFromTenant.size());
-
-    assertThat(sellableProducts)
-        .extracting(SellableProduct::productId)
-        .containsExactlyInAnyOrderElementsOf(expectedProductIds);
-
-    assertThat(sellableProducts)
-        .extracting(SellableProduct::productId)
-        .doesNotContainAnyElementsOf(anotherTenantProductIds);
+    assertThat(actualBySelection.keySet())
+        .containsExactlyInAnyOrder(mediumSelection, largeSelection);
+    assertVariant(actualBySelection.get(mediumSelection), product, medium);
+    assertVariant(actualBySelection.get(largeSelection), product, large);
   }
 
   @Test
-  void shouldReturnEmptyWhenNoProductMatches() {
+  void shouldResolveSimpleAndVariantProductsInSameLookup() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var tenant = productFixture.tenant();
+    var simpleProduct = productFixture.product();
+    var variantProduct =
+        fixture.createProduct(
+            tenant, productFixture.category(), productFixture.image(), "Pizza Portuguesa");
+    var large = createVariant(variantProduct, "Pizza Portuguesa Grande", "49.90", true);
+    var simpleSelection = new ProductSelection(simpleProduct.getId(), null);
+    var variantSelection = selectionOf(variantProduct, large);
 
-    var tenant = createTenant();
-    createProducts(tenant, 3, true);
+    clearPersistenceContext();
 
+    var actualBySelection = bySelection(find(tenant.getId(), simpleSelection, variantSelection));
+
+    assertThat(actualBySelection.keySet())
+        .containsExactlyInAnyOrder(simpleSelection, variantSelection);
+    assertSimpleProduct(actualBySelection.get(simpleSelection), simpleProduct);
+    assertVariant(actualBySelection.get(variantSelection), variantProduct, large);
+  }
+
+  @Test
+  void shouldNotResolveProductConfiguredWithVariantsWithoutVariantSelection() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+
+    clearPersistenceContext();
+
+    var result = find(product.getTenantId(), new ProductSelection(product.getId(), null));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveProductConfiguredOnlyWithInactiveVariantsAsSimpleProduct() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    createVariant(product, "Pizza Calabresa Grande", "47.90", false);
+
+    clearPersistenceContext();
+
+    var result = find(product.getTenantId(), new ProductSelection(product.getId(), null));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveInactiveProductEvenWhenSelectedVariantIsActive() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    var variant = createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    product.deactivate();
+
+    clearPersistenceContext();
+
+    var result = find(product.getTenantId(), selectionOf(product, variant));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveInactiveVariant() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    var variant = createVariant(product, "Pizza Calabresa Grande", "47.90", false);
+
+    clearPersistenceContext();
+
+    var result = find(product.getTenantId(), selectionOf(product, variant));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveVariantOwnedByAnotherProduct() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var tenant = productFixture.tenant();
+    var calabresa = productFixture.product();
+    var portuguesa =
+        fixture.createProduct(
+            tenant, productFixture.category(), productFixture.image(), "Pizza Portuguesa");
+    var portuguesaLarge = createVariant(portuguesa, "Pizza Portuguesa Grande", "49.90", true);
+    var invalidSelection = new ProductSelection(calabresa.getId(), portuguesaLarge.getId());
+
+    clearPersistenceContext();
+
+    var result = find(tenant.getId(), invalidSelection);
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveProductOrVariantFromAnotherTenant() {
+    var currentTenantFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var currentProduct = currentTenantFixture.product();
+    var currentVariant = createVariant(currentProduct, "Pizza Calabresa Grande", "47.90", true);
+    var anotherTenantFixture = fixture.createProductFixture("Sicilia Pizzeria");
+    var foreignProduct = anotherTenantFixture.product();
+    var foreignVariant = createVariant(foreignProduct, "Pizza Margherita Grande", "45.90", true);
+    var currentSelection = selectionOf(currentProduct, currentVariant);
+    var foreignSelection = selectionOf(foreignProduct, foreignVariant);
+
+    clearPersistenceContext();
+
+    var result = find(currentTenantFixture.tenant().getId(), currentSelection, foreignSelection);
+
+    assertThat(result).hasSize(1);
+    assertVariant(result.getFirst(), currentProduct, currentVariant);
+  }
+
+  @Test
+  void shouldNotResolveNonexistentVariantForExistingProduct() {
+    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var product = productFixture.product();
+    createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+
+    clearPersistenceContext();
+
+    var result =
+        find(product.getTenantId(), new ProductSelection(product.getId(), UUID.randomUUID()));
+
+    assertThat(result).isEmpty();
+  }
+
+  @Test
+  void shouldNotResolveNonexistentProduct() {
+    var tenant = fixture.createTenant("Don Corleone Pizzeria");
+
+    clearPersistenceContext();
+
+    var result = find(tenant.getId(), new ProductSelection(UUID.randomUUID(), null));
+
+    assertThat(result).isEmpty();
+  }
+
+  private List<SellableProduct> find(UUID tenantId, ProductSelection... selections) {
+    return catalogProductLookup.findSellableProducts(tenantId, List.of(selections));
+  }
+
+  private Map<ProductSelection, SellableProduct> bySelection(
+      List<SellableProduct> sellableProducts) {
+    return sellableProducts.stream()
+        .collect(
+            Collectors.toMap(
+                product -> new ProductSelection(product.productId(), product.variantId()),
+                Function.identity()));
+  }
+
+  private ProductVariant createVariant(Product product, String name, String price, boolean active) {
+    var variant =
+        new ProductVariant(
+            product.getId(), product.getTenantId(), null, name, new BigDecimal(price), 0);
+    variant.changeStatusTo(active);
+    return variantRepository.save(variant);
+  }
+
+  private ProductSelection selectionOf(Product product, ProductVariant variant) {
+    return new ProductSelection(product.getId(), variant.getId());
+  }
+
+  private void assertSimpleProduct(SellableProduct actual, Product expected) {
+    assertThat(actual.productId()).isEqualTo(expected.getId());
+    assertThat(actual.productName()).isEqualTo(expected.getName());
+    assertThat(actual.variantId()).isNull();
+    assertThat(actual.variantName()).isNull();
+    assertThat(actual.price()).isEqualByComparingTo(expected.getPrice());
+  }
+
+  private void assertVariant(
+      SellableProduct actual, Product expectedProduct, ProductVariant expectedVariant) {
+    assertThat(actual.productId()).isEqualTo(expectedProduct.getId());
+    assertThat(actual.productName()).isEqualTo(expectedProduct.getName());
+    assertThat(actual.variantId()).isEqualTo(expectedVariant.getId());
+    assertThat(actual.variantName()).isEqualTo(expectedVariant.getName());
+    assertThat(actual.price()).isEqualByComparingTo(expectedVariant.getPrice());
+  }
+
+  private void clearPersistenceContext() {
     entityManager.flush();
     entityManager.clear();
-
-    assertThat(catalogProductLookup.findSellableProducts(tenant.getId(), Set.of(UUID.randomUUID())))
-        .isEmpty();
-  }
-
-  private List<Product> createProducts(Tenant tenant, int quantity, boolean active) {
-    List<Product> products = new ArrayList<>(quantity);
-    var category = categoryRepository.save(new Category("Pizzas", tenant.getId()));
-    var imageId = createAvailableImage(tenant.getId());
-
-    for (int i = 1; i <= quantity; i++) {
-      Product product =
-          new Product(
-              tenant.getId(),
-              category.getId(),
-              imageId,
-              "Product %d".formatted(i),
-              null,
-              new BigDecimal(i));
-      if (!active) {
-        product.deactivate();
-      }
-      products.add(productRepository.save(product));
-    }
-    return products;
-  }
-
-  private UUID createAvailableImage(UUID tenantId) {
-    var checksum = "0t/CUcGnJF1Ot9leX4FUcsbbz37maQu9fBkS9He2wio=";
-    var image =
-        StoredImage.pending(
-            tenantId,
-            "tenants/%s/images/%s.webp".formatted(tenantId, UUID.randomUUID()),
-            "image/webp",
-            1_024L,
-            checksum);
-    image.confirm("image/webp", 1_024L, checksum);
-    entityManager.persist(image);
-    return image.getId();
-  }
-
-  private Tenant createTenant(String name) {
-    return tenantRepository.save(new Tenant(name, Plan.MVP));
-  }
-
-  private Tenant createTenant() {
-    return createTenant("Pizarria da mama");
   }
 }
