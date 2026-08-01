@@ -28,6 +28,11 @@ public class OrderItem extends BaseEntity {
   @Column(nullable = false, length = 80)
   private String productName;
 
+  @Column private UUID variantId;
+
+  @Column(length = 80)
+  private String variantName;
+
   @Column(nullable = false)
   private int quantity;
 
@@ -49,12 +54,38 @@ public class OrderItem extends BaseEntity {
     this.subtotal = this.unitPrice.multiply(BigDecimal.valueOf(this.quantity));
   }
 
+  OrderItem(
+      Order order,
+      UUID productId,
+      String productName,
+      UUID variantId,
+      String variantName,
+      int quantity,
+      BigDecimal unitPrice) {
+    this.order = requireNotNull(order, "order");
+    this.productId = requireNotNull(productId, "productId");
+    this.productName = requireMinimumSize(productName, "productName", 5);
+    this.variantId = requireNotNull(variantId, "variantId");
+    this.variantName = requireMinimumSize(variantName, "variantName", 1);
+    this.quantity = requirePositive(quantity, "quantity");
+    this.unitPrice = requirePositive(unitPrice, "unitPrice");
+    this.subtotal = this.unitPrice.multiply(BigDecimal.valueOf(this.quantity));
+  }
+
   public UUID getProductId() {
     return productId;
   }
 
   public String getProductName() {
     return productName;
+  }
+
+  public UUID getVariantId() {
+    return variantId;
+  }
+
+  public String getVariantName() {
+    return variantName;
   }
 
   public int getQuantity() {

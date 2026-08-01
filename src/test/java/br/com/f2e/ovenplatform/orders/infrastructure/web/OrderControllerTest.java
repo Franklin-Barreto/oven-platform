@@ -494,7 +494,7 @@ class OrderControllerTest extends AbstractControllerTest {
   private Order createOrder(UUID orderId, int quantity, BigDecimal unitPrice) {
     var order =
         withId(new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.COUNTER), orderId);
-    order.addItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, quantity, unitPrice);
+    order.addSimpleItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, quantity, unitPrice);
     return order;
   }
 
@@ -503,7 +503,7 @@ class OrderControllerTest extends AbstractControllerTest {
         withId(
             new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.DELIVERY),
             OrderControllerTest.ORDER_ID);
-    order.addItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, 3, unitPrice);
+    order.addSimpleItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, 3, unitPrice);
     return order;
   }
 

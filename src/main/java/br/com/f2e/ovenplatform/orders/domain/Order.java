@@ -68,8 +68,22 @@ public class Order extends BaseEntity {
     return totalAmount;
   }
 
-  public void addItem(UUID productId, String productName, int quantity, BigDecimal unitPrice) {
+  public void addSimpleItem(
+      UUID productId, String productName, int quantity, BigDecimal unitPrice) {
     var item = new OrderItem(this, productId, productName, quantity, unitPrice);
+    items.add(item);
+    recalculateTotal();
+  }
+
+  public void addVariantItem(
+      UUID productId,
+      String productName,
+      UUID variantId,
+      String variantName,
+      int quantity,
+      BigDecimal unitPrice) {
+    var item =
+        new OrderItem(this, productId, productName, variantId, variantName, quantity, unitPrice);
     items.add(item);
     recalculateTotal();
   }
