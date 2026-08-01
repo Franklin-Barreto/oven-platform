@@ -10,6 +10,7 @@ import br.com.f2e.ovenplatform.orders.application.CreateOrderItemCommand;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProduct;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
+import br.com.f2e.ovenplatform.orders.application.OrderableProductSelection;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
@@ -21,7 +22,6 @@ import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTe
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -69,7 +69,8 @@ class PaymentModuleEventsIntegrationTest {
 
   @Test
   void shouldRegisterPaymentWhenOrderIsCreated() {
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(PRODUCT_ID)))
+    when(orderableProductProvider.findOrderableProducts(
+            TENANT_ID, List.of(new OrderableProductSelection(PRODUCT_ID, null))))
         .thenReturn(List.of(new OrderableProduct(PRODUCT_ID, "Pizza Portuguesa", UNIT_PRICE)));
 
     var order = orderService.createOrder(TENANT_ID, createOrderCommand());

@@ -22,7 +22,6 @@ import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenan
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +65,8 @@ class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
         customerService.addAddress(tenant.getId(), customer.getId(), originalAddressCommand());
     var addressId = customerWithAddress.getAddresses().getFirst().getId();
 
-    when(orderableProductProvider.findOrderableProducts(tenant.getId(), Set.of(PRODUCT_ID)))
+    when(orderableProductProvider.findOrderableProducts(
+            tenant.getId(), List.of(new OrderableProductSelection(PRODUCT_ID, null))))
         .thenReturn(
             List.of(new OrderableProduct(PRODUCT_ID, "Pizza Portuguesa", new BigDecimal("35.40"))));
 

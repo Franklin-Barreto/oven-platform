@@ -10,6 +10,7 @@ import br.com.f2e.ovenplatform.orders.application.CustomerDeliveryInfoProvider;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProduct;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
+import br.com.f2e.ovenplatform.orders.application.OrderableProductSelection;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
 import br.com.f2e.ovenplatform.orders.application.ProductNotAvailableForOrderingException;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
@@ -21,7 +22,6 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.util.List;
-import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,7 +68,8 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
     var timerCountBefore = timerCount();
     var command = createOrderCommand();
 
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(PRODUCT_ID)))
+    when(orderableProductProvider.findOrderableProducts(
+            TENANT_ID, List.of(new OrderableProductSelection(PRODUCT_ID, null))))
         .thenReturn(
             List.of(new OrderableProduct(PRODUCT_ID, "Pizza Portuguesa", new BigDecimal("35.40"))));
 
@@ -86,7 +87,8 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
     var timerCountBefore = timerCount();
     var command = createOrderCommand();
 
-    when(orderableProductProvider.findOrderableProducts(TENANT_ID, Set.of(PRODUCT_ID)))
+    when(orderableProductProvider.findOrderableProducts(
+            TENANT_ID, List.of(new OrderableProductSelection(PRODUCT_ID, null))))
         .thenReturn(List.of());
 
     assertThatThrownBy(() -> orderService.createOrder(TENANT_ID, command))
