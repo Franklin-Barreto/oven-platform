@@ -1,0 +1,27 @@
+package br.com.f2e.ovenplatform.catalog.application.optiongroup;
+
+import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
+import java.util.UUID;
+
+public record OptionGroupResult(
+    UUID id,
+    UUID productId,
+    UUID tenantId,
+    String name,
+    int minimumSelections,
+    int maximumSelections,
+    boolean active,
+    int displayPosition) {
+
+  public static OptionGroupResult from(OptionGroup optionGroup) {
+    return new OptionGroupResult(
+        optionGroup.getId(),
+        optionGroup.getProductId(),
+        optionGroup.getTenantId(),
+        optionGroup.getName(),
+        optionGroup.getMinimumSelections(),
+        optionGroup.getMaximumSelections(),
+        optionGroup.isActive(),
+        optionGroup.getDisplayPosition());
+  }
+}
