@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.orders.infrastructure.catalog;
 
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
+import br.com.f2e.ovenplatform.catalog.application.api.ProductSelection;
 import br.com.f2e.ovenplatform.orders.application.OrderableProduct;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
 import java.util.List;
@@ -19,7 +20,10 @@ public class CatalogOrderableProductProvider implements OrderableProductProvider
 
   @Override
   public List<OrderableProduct> findOrderableProducts(UUID tenantId, Set<UUID> productIds) {
-    return catalogProductLookup.findSellableProducts(tenantId, productIds).stream()
+    var selections =
+        productIds.stream().map(productId -> new ProductSelection(productId, null)).toList();
+
+    return catalogProductLookup.findSellableProducts(tenantId, selections).stream()
         .map(
             sellableProduct ->
                 new OrderableProduct(
