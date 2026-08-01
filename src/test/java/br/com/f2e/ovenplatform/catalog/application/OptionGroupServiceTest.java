@@ -4,17 +4,9 @@ import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.Ent
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.CreateOptionGroupCommand;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupResult;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupService;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.ReorderOptionGroupsCommand;
-import br.com.f2e.ovenplatform.catalog.application.optiongroup.UpdateOptionGroupCommand;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.*;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductRepository;
 import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
@@ -48,13 +40,14 @@ class OptionGroupServiceTest {
     service = new OptionGroupService(productRepository, optionGroupRepository);
     lenient()
         .when(productRepository.findByIdAndTenantId(PRODUCT_ID, TENANT_ID))
-        .thenReturn(Optional.of(org.mockito.Mockito.mock(Product.class)));
+        .thenReturn(Optional.of(mock(Product.class)));
   }
 
   @Test
   void shouldCreateOptionGroupAfterCurrentLastPosition() {
     var existing = optionGroup("Existing", 3, UUID.randomUUID());
-    when(optionGroupRepository.findByProductId(PRODUCT_ID)).thenReturn(List.of(existing));
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
+        .thenReturn(List.of(existing));
     when(optionGroupRepository.save(any(OptionGroup.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_GROUP_ID));
 
@@ -62,7 +55,8 @@ class OptionGroupServiceTest {
         service.create(TENANT_ID, PRODUCT_ID, new CreateOptionGroupCommand("Extras", 1, 2));
 
     assertThat(result)
-        .isEqualTo(new OptionGroupResult(OPTION_GROUP_ID, PRODUCT_ID, "Extras", 1, 2, true, 4));
+        .isEqualTo(
+            new OptionGroupResult(OPTION_GROUP_ID, PRODUCT_ID, TENANT_ID, "Extras", 1, 2, true, 4));
     var saved = ArgumentCaptor.forClass(OptionGroup.class);
     verify(optionGroupRepository).save(saved.capture());
     assertThat(saved.getValue().getDisplayPosition()).isEqualTo(4);
@@ -70,7 +64,8 @@ class OptionGroupServiceTest {
 
   @Test
   void shouldCreateFirstOptionGroupAtPositionZero() {
-    when(optionGroupRepository.findByProductId(PRODUCT_ID)).thenReturn(List.of());
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
+        .thenReturn(List.of());
     when(optionGroupRepository.save(any(OptionGroup.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_GROUP_ID));
 
@@ -83,7 +78,8 @@ class OptionGroupServiceTest {
   void shouldListOptionGroups() {
     var first = optionGroup("Sauces", 0, OPTION_GROUP_ID);
     var second = optionGroup("Extras", 1, UUID.randomUUID());
-    when(optionGroupRepository.findByProductId(PRODUCT_ID)).thenReturn(List.of(first, second));
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
+        .thenReturn(List.of(first, second));
 
     assertThat(service.list(TENANT_ID, PRODUCT_ID))
         .extracting(OptionGroupResult::name, OptionGroupResult::displayPosition)
@@ -95,7 +91,8 @@ class OptionGroupServiceTest {
   @Test
   void shouldUpdateOptionGroupDetails() {
     var optionGroup = optionGroup("Sauces", 0, OPTION_GROUP_ID);
-    when(optionGroupRepository.findByIdAndProductId(OPTION_GROUP_ID, PRODUCT_ID))
+    when(optionGroupRepository.findByIdAndTenantIdAndProductId(
+            OPTION_GROUP_ID, TENANT_ID, PRODUCT_ID))
         .thenReturn(Optional.of(optionGroup));
     when(optionGroupRepository.save(optionGroup)).thenReturn(optionGroup);
 
@@ -115,7 +112,8 @@ class OptionGroupServiceTest {
   @Test
   void shouldChangeOptionGroupStatus() {
     var optionGroup = optionGroup("Sauces", 0, OPTION_GROUP_ID);
-    when(optionGroupRepository.findByIdAndProductId(OPTION_GROUP_ID, PRODUCT_ID))
+    when(optionGroupRepository.findByIdAndTenantIdAndProductId(
+            OPTION_GROUP_ID, TENANT_ID, PRODUCT_ID))
         .thenReturn(Optional.of(optionGroup));
 
     service.changeStatus(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, false);
@@ -128,7 +126,8 @@ class OptionGroupServiceTest {
     var first = optionGroup("First", 0, OPTION_GROUP_ID);
     var secondId = UUID.randomUUID();
     var second = optionGroup("Second", 1, secondId);
-    when(optionGroupRepository.findByProductId(PRODUCT_ID)).thenReturn(List.of(first, second));
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
+        .thenReturn(List.of(first, second));
 
     service.reorder(
         TENANT_ID, PRODUCT_ID, new ReorderOptionGroupsCommand(List.of(secondId, OPTION_GROUP_ID)));
@@ -139,30 +138,23 @@ class OptionGroupServiceTest {
 
   @Test
   void shouldRejectReorderWithDuplicateIds() {
-    when(optionGroupRepository.findByProductId(PRODUCT_ID))
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
         .thenReturn(List.of(optionGroup("First", 0, OPTION_GROUP_ID)));
 
-    assertThatThrownBy(
-            () ->
-                service.reorder(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    new ReorderOptionGroupsCommand(List.of(OPTION_GROUP_ID, OPTION_GROUP_ID))))
+    var optionGroupsCommand =
+        new ReorderOptionGroupsCommand(List.of(OPTION_GROUP_ID, OPTION_GROUP_ID));
+
+    assertThatThrownBy(() -> service.reorder(TENANT_ID, PRODUCT_ID, optionGroupsCommand))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("optionGroupIds must not contain duplicates");
   }
 
   @Test
   void shouldRejectReorderThatDoesNotContainExactlyTheProductOptionGroups() {
-    when(optionGroupRepository.findByProductId(PRODUCT_ID))
+    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
         .thenReturn(List.of(optionGroup("First", 0, OPTION_GROUP_ID)));
-
-    assertThatThrownBy(
-            () ->
-                service.reorder(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    new ReorderOptionGroupsCommand(List.of(UUID.randomUUID()))))
+    var optionGroupsCommand = new ReorderOptionGroupsCommand(List.of(UUID.randomUUID()));
+    assertThatThrownBy(() -> service.reorder(TENANT_ID, PRODUCT_ID, optionGroupsCommand))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("optionGroupIds must contain exactly all product option group ids");
   }
@@ -174,21 +166,19 @@ class OptionGroupServiceTest {
     assertThatThrownBy(() -> service.list(TENANT_ID, unknownProductId))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Product id: %s not found".formatted(unknownProductId));
-    verify(optionGroupRepository, never()).findByProductId(unknownProductId);
+    verify(optionGroupRepository, never()).findByTenantIdAndProductId(TENANT_ID, unknownProductId);
   }
 
   @Test
   void shouldRejectUpdateWhenOptionGroupDoesNotBelongToProduct() {
-    when(optionGroupRepository.findByIdAndProductId(OPTION_GROUP_ID, PRODUCT_ID))
+    when(optionGroupRepository.findByIdAndTenantIdAndProductId(
+            OPTION_GROUP_ID, TENANT_ID, PRODUCT_ID))
         .thenReturn(Optional.empty());
 
+    var optionGroupCommand = new UpdateOptionGroupCommand("Extras", 0, 1);
+
     assertThatThrownBy(
-            () ->
-                service.update(
-                    TENANT_ID,
-                    PRODUCT_ID,
-                    OPTION_GROUP_ID,
-                    new UpdateOptionGroupCommand("Extras", 0, 1)))
+            () -> service.update(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, optionGroupCommand))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("OptionGroup id: %s not found".formatted(OPTION_GROUP_ID));
   }
@@ -197,14 +187,17 @@ class OptionGroupServiceTest {
   void shouldDefensivelyCopyReorderCommandIds() {
     var ids = new ArrayList<>(List.of(OPTION_GROUP_ID));
     var command = new ReorderOptionGroupsCommand(ids);
+
     ids.clear();
 
     assertThat(command.optionGroupIds()).containsExactly(OPTION_GROUP_ID);
-    assertThatThrownBy(() -> command.optionGroupIds().add(UUID.randomUUID()))
+    var copiedIds = command.optionGroupIds();
+    var newId = UUID.randomUUID();
+    assertThatThrownBy(() -> copiedIds.add(newId))
         .isInstanceOf(UnsupportedOperationException.class);
   }
 
   private static OptionGroup optionGroup(String name, int position, UUID id) {
-    return withId(new OptionGroup(PRODUCT_ID, name, 0, 3, position), id);
+    return withId(new OptionGroup(PRODUCT_ID, TENANT_ID, name, 0, 3, position), id);
   }
 }
