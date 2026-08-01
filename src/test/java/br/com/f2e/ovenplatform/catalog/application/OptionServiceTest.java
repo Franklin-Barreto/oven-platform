@@ -170,11 +170,9 @@ class OptionServiceTest {
   void shouldRejectReorderWhenOptionCountDoesNotMatch() {
     when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, OPTION_GROUP_ID))
         .thenReturn(List.of(option("First", BigDecimal.ZERO, 0, OPTION_ID)));
-
+    var commandOptions = new ReorderOptionsCommand(List.of());
     assertThatThrownBy(
-            () ->
-                service.reorder(
-                    TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, new ReorderOptionsCommand(List.of())))
+            () -> service.reorder(TENANT_ID, PRODUCT_ID, OPTION_GROUP_ID, commandOptions))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("optionIds must contain exactly all option group option ids");
   }

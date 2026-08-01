@@ -3,9 +3,7 @@ package br.com.f2e.ovenplatform.catalog.application;
 import static br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils.withId;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 import br.com.f2e.ovenplatform.catalog.application.option.OptionRepository;
 import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
@@ -64,7 +62,7 @@ class CatalogProductOptionLookupServiceTest {
     var activeOption = option("Cheese", new BigDecimal("2.50"), OPTION_ID, true);
     var inactiveOption = option("Unavailable", BigDecimal.ONE, UUID.randomUUID(), false);
     when(productRepository.findActiveByTenantIdAndIdIn(TENANT_ID, Set.of(PRODUCT_ID)))
-        .thenReturn(List.of(org.mockito.Mockito.mock(Product.class)));
+        .thenReturn(List.of(mock(Product.class)));
     when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
         .thenReturn(List.of(activeGroup, inactiveGroup));
     when(optionRepository.findByTenantIdAndOptionGroupId(TENANT_ID, GROUP_ID))
@@ -105,19 +103,17 @@ class CatalogProductOptionLookupServiceTest {
     groups.add(
         new br.com.f2e.ovenplatform.catalog.application.api.ActiveProductOptionGroup(
             GROUP_ID, "Extras", 0, 1, List.of()));
+    var optionGroups = configuration.optionGroups();
+    var firstGroup = groups.getFirst();
+    var options = firstGroup.options();
+    var option =
+        new br.com.f2e.ovenplatform.catalog.application.api.ActiveProductOption(
+            OPTION_ID, "Cheese", BigDecimal.ONE);
 
-    assertThat(configuration.optionGroups()).isEmpty();
-    assertThatThrownBy(() -> configuration.optionGroups().add(groups.getFirst()))
+    assertThat(optionGroups).isEmpty();
+    assertThatThrownBy(() -> optionGroups.add(firstGroup))
         .isInstanceOf(UnsupportedOperationException.class);
-    assertThatThrownBy(
-            () ->
-                groups
-                    .getFirst()
-                    .options()
-                    .add(
-                        new br.com.f2e.ovenplatform.catalog.application.api.ActiveProductOption(
-                            OPTION_ID, "Cheese", BigDecimal.ONE)))
-        .isInstanceOf(UnsupportedOperationException.class);
+    assertThatThrownBy(() -> options.add(option)).isInstanceOf(UnsupportedOperationException.class);
   }
 
   private static OptionGroup optionGroup(
