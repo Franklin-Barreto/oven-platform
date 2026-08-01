@@ -6,6 +6,7 @@ import java.util.UUID;
 public record OptionGroupResponse(
     UUID id,
     UUID productId,
+    UUID tenantId,
     String name,
     int minimumSelections,
     int maximumSelections,
@@ -16,6 +17,7 @@ public record OptionGroupResponse(
     return new OptionGroupResponse(
         optionGroup.id(),
         optionGroup.productId(),
+        optionGroup.tenantId(),
         optionGroup.name(),
         optionGroup.minimumSelections(),
         optionGroup.maximumSelections(),

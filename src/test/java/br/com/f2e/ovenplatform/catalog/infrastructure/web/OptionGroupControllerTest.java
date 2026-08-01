@@ -65,6 +65,7 @@ class OptionGroupControllerTest extends AbstractControllerTest {
             .andExpect(status().isCreated())
             .andExpect(jsonPath("$.id").value(OPTION_GROUP_ID.toString()))
             .andExpect(jsonPath("$.productId").value(PRODUCT_ID.toString()))
+            .andExpect(jsonPath("$.tenantId").value(TENANT_ID.toString()))
             .andExpect(jsonPath("$.name").value("Extras"))
             .andExpect(jsonPath("$.minimumSelections").value(1))
             .andExpect(jsonPath("$.maximumSelections").value(3))
@@ -212,6 +213,6 @@ class OptionGroupControllerTest extends AbstractControllerTest {
   }
 
   private static OptionGroupResult result(boolean active) {
-    return new OptionGroupResult(OPTION_GROUP_ID, PRODUCT_ID, "Extras", 1, 3, active, 0);
+    return new OptionGroupResult(OPTION_GROUP_ID, PRODUCT_ID, TENANT_ID, "Extras", 1, 3, active, 0);
   }
 }
