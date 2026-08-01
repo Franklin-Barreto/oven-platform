@@ -90,7 +90,7 @@ public class OptionGroup extends BaseEntity {
   }
 
   public void updateDetails(String name, int minimumSelections, int maximumSelections) {
-    var validatedName = requireSize(name, "name", 1, 80);
+    String validatedName = requireSize(name, "name", 1, 80);
     validateSelectionLimits(minimumSelections, maximumSelections);
 
     this.name = validatedName;
