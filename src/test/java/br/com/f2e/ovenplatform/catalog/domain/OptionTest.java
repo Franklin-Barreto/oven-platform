@@ -74,13 +74,15 @@ class OptionTest {
 
   @Test
   void shouldRejectNegativePriceAdjustment() {
+    var negativePriceAdjustment = new BigDecimal("-0.01");
+
     assertThatThrownBy(
             () ->
                 new Option(
                     OPTION_GROUP_ID,
                     TENANT_ID,
                     VALID_NAME,
-                    new BigDecimal("-0.01"),
+                    negativePriceAdjustment,
                     DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("priceAdjustment must not be negative");
@@ -110,8 +112,9 @@ class OptionTest {
   @Test
   void shouldKeepDetailsUnchangedWhenUpdateIsInvalid() {
     var option = option(PRICE_ADJUSTMENT);
+    var priceAdjustment = new BigDecimal("-0.01");
 
-    assertThatThrownBy(() -> option.updateDetails("Australiano", new BigDecimal("-0.01")))
+    assertThatThrownBy(() -> option.updateDetails("Australiano", priceAdjustment))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("priceAdjustment must not be negative");
 
