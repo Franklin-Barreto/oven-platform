@@ -19,6 +19,8 @@ import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
+import br.com.f2e.ovenplatform.catalog.domain.Option;
+import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
@@ -284,6 +286,48 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(foundProduct.product().hasVariants()).isFalse();
     assertThat(foundProduct.product().available()).isTrue();
     assertThat(foundProduct.variants()).isEmpty();
+  }
+
+  @Test
+  void shouldGetOnlyActiveOptionGroupsAndOptionsInProductDetail() {
+    var tenant = createTenant();
+    var category = fixture.createCategory(tenant, CATEGORY_NAME);
+    var product = createProduct(tenant, category);
+    var activeGroup = new OptionGroup(product.id(), tenant.getId(), "Extras", 1, 2, 0);
+    var inactiveGroup = new OptionGroup(product.id(), tenant.getId(), "Hidden", 0, 1, 1);
+    inactiveGroup.changeStatusTo(false);
+    entityManager.persist(activeGroup);
+    entityManager.persist(inactiveGroup);
+    var activeOption =
+        new Option(activeGroup.getId(), tenant.getId(), "Cheese", new BigDecimal("2.50"), 0);
+    var inactiveOption =
+        new Option(activeGroup.getId(), tenant.getId(), "Unavailable", BigDecimal.ONE, 1);
+    inactiveOption.changeStatusTo(false);
+    entityManager.persist(activeOption);
+    entityManager.persist(inactiveOption);
+    entityManager.flush();
+
+    var detail = catalogService.getProduct(tenant.getId(), product.id());
+
+    assertThat(detail.optionGroups())
+        .singleElement()
+        .satisfies(
+            group -> {
+              assertThat(group.id()).isEqualTo(activeGroup.getId());
+              assertThat(group.name()).isEqualTo("Extras");
+              assertThat(group.minimumSelections()).isEqualTo(1);
+              assertThat(group.maximumSelections()).isEqualTo(2);
+              assertThat(group.displayPosition()).isZero();
+              assertThat(group.options())
+                  .singleElement()
+                  .satisfies(
+                      option -> {
+                        assertThat(option.id()).isEqualTo(activeOption.getId());
+                        assertThat(option.name()).isEqualTo("Cheese");
+                        assertThat(option.priceAdjustment()).isEqualByComparingTo("2.50");
+                        assertThat(option.displayPosition()).isZero();
+                      });
+            });
   }
 
   @Test

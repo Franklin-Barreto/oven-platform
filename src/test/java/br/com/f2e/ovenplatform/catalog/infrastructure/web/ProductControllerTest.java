@@ -17,6 +17,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.f2e.ovenplatform.catalog.application.product.CatalogService;
 import br.com.f2e.ovenplatform.catalog.application.product.CreateProductCommand;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductDetailResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductOptionDetailResult;
+import br.com.f2e.ovenplatform.catalog.application.product.ProductOptionGroupDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductSummaryResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductVariantDetailResult;
@@ -60,6 +62,9 @@ class ProductControllerTest extends AbstractControllerTest {
   private static final UUID VARIANT_ID = UUID.fromString("8baacf2f-6e97-4633-a798-f36e678e2aa4");
   private static final String VARIANT_NAME = "Lata 350ml";
   private static final BigDecimal VARIANT_PRICE = new BigDecimal("8.50");
+  private static final UUID OPTION_GROUP_ID =
+      UUID.fromString("431e5f0b-a762-4d31-846f-e4fe83db6b19");
+  private static final UUID OPTION_ID = UUID.fromString("3e9cba8e-6d8d-4b41-8c89-4f5fe8045bca");
 
   @MockitoBean private CatalogService catalogService;
 
@@ -200,6 +205,15 @@ class ProductControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$.variants[0].displayPosition").value(0))
         .andExpect(jsonPath("$.variants[0].imageId").value(IMAGE_ID.toString()))
         .andExpect(jsonPath("$.variants[0].imageUrl").value(IMAGE_URL.toString()))
+        .andExpect(jsonPath("$.optionGroups[0].id").value(OPTION_GROUP_ID.toString()))
+        .andExpect(jsonPath("$.optionGroups[0].name").value("Extras"))
+        .andExpect(jsonPath("$.optionGroups[0].minimumSelections").value(1))
+        .andExpect(jsonPath("$.optionGroups[0].maximumSelections").value(2))
+        .andExpect(jsonPath("$.optionGroups[0].displayPosition").value(0))
+        .andExpect(jsonPath("$.optionGroups[0].options[0].id").value(OPTION_ID.toString()))
+        .andExpect(jsonPath("$.optionGroups[0].options[0].name").value("Cheese"))
+        .andExpect(jsonPath("$.optionGroups[0].options[0].priceAdjustment").value(2.5))
+        .andExpect(jsonPath("$.optionGroups[0].options[0].displayPosition").value(0))
         .andExpect(jsonPath("$.tenantId").doesNotExist())
         .andExpect(jsonPath("$.price").doesNotExist())
         .andExpect(jsonPath("$.active").doesNotExist());
@@ -519,7 +533,10 @@ class ProductControllerTest extends AbstractControllerTest {
     var variant =
         new ProductVariantDetailResult(
             VARIANT_ID, VARIANT_NAME, VARIANT_PRICE, 0, IMAGE_ID, IMAGE_URL);
+    var option = new ProductOptionDetailResult(OPTION_ID, "Cheese", new BigDecimal("2.50"), 0);
+    var optionGroup =
+        new ProductOptionGroupDetailResult(OPTION_GROUP_ID, "Extras", 1, 2, 0, List.of(option));
 
-    return new ProductDetailResult(productSummaryResult(), List.of(variant));
+    return new ProductDetailResult(productSummaryResult(), List.of(variant), List.of(optionGroup));
   }
 }
