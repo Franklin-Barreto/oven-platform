@@ -16,10 +16,12 @@ public record ProductDetailResponse(
     BigDecimal displayPrice,
     boolean hasVariants,
     boolean available,
-    List<ProductVariantDetailResponse> variants) {
+    List<ProductVariantDetailResponse> variants,
+    List<ProductOptionGroupDetailResponse> optionGroups) {
 
   public ProductDetailResponse {
     variants = List.copyOf(variants);
+    optionGroups = List.copyOf(optionGroups);
   }
 
   public static ProductDetailResponse from(ProductDetailResult detail) {
@@ -35,11 +37,17 @@ public record ProductDetailResponse(
         product.displayPrice(),
         product.hasVariants(),
         product.available(),
-        detail.variants().stream().map(ProductVariantDetailResponse::from).toList());
+        detail.variants().stream().map(ProductVariantDetailResponse::from).toList(),
+        detail.optionGroups().stream().map(ProductOptionGroupDetailResponse::from).toList());
   }
 
   @Override
   public List<ProductVariantDetailResponse> variants() {
     return List.copyOf(variants);
+  }
+
+  @Override
+  public List<ProductOptionGroupDetailResponse> optionGroups() {
+    return List.copyOf(optionGroups);
   }
 }
