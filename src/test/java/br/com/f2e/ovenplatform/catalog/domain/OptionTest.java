@@ -14,6 +14,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class OptionTest {
 
   private static final UUID OPTION_GROUP_ID = UUID.randomUUID();
+  private static final UUID TENANT_ID = UUID.randomUUID();
   private static final String VALID_NAME = "Brioche";
   private static final BigDecimal PRICE_ADJUSTMENT = new BigDecimal("3.00");
   private static final int DISPLAY_POSITION = 1;
@@ -23,6 +24,7 @@ class OptionTest {
     var option = option(PRICE_ADJUSTMENT);
 
     assertThat(option.getOptionGroupId()).isEqualTo(OPTION_GROUP_ID);
+    assertThat(option.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(option.getName()).isEqualTo(VALID_NAME);
     assertThat(option.getPriceAdjustment()).isEqualByComparingTo(PRICE_ADJUSTMENT);
     assertThat(option.getDisplayPosition()).isEqualTo(DISPLAY_POSITION);
@@ -36,16 +38,19 @@ class OptionTest {
 
   @Test
   void shouldTrimName() {
-    var option = new Option(OPTION_GROUP_ID, "  " + VALID_NAME + "  ", PRICE_ADJUSTMENT, 0);
+    var option =
+        new Option(OPTION_GROUP_ID, TENANT_ID, "  " + VALID_NAME + "  ", PRICE_ADJUSTMENT, 0);
 
     assertThat(option.getName()).isEqualTo(VALID_NAME);
   }
 
   @ParameterizedTest
   @MethodSource("missingRequiredIdentifiers")
-  void shouldRejectMissingRequiredIdentifier(UUID optionGroupId, String expectedMessage) {
+  void shouldRejectMissingRequiredIdentifier(
+      UUID optionGroupId, UUID tenantId, String expectedMessage) {
     assertThatThrownBy(
-            () -> new Option(optionGroupId, VALID_NAME, PRICE_ADJUSTMENT, DISPLAY_POSITION))
+            () ->
+                new Option(optionGroupId, tenantId, VALID_NAME, PRICE_ADJUSTMENT, DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -53,14 +58,16 @@ class OptionTest {
   @ParameterizedTest
   @MethodSource("invalidNames")
   void shouldRejectInvalidName(String name, String expectedMessage) {
-    assertThatThrownBy(() -> new Option(OPTION_GROUP_ID, name, PRICE_ADJUSTMENT, DISPLAY_POSITION))
+    assertThatThrownBy(
+            () -> new Option(OPTION_GROUP_ID, TENANT_ID, name, PRICE_ADJUSTMENT, DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
 
   @Test
   void shouldRejectNullPriceAdjustment() {
-    assertThatThrownBy(() -> new Option(OPTION_GROUP_ID, VALID_NAME, null, DISPLAY_POSITION))
+    assertThatThrownBy(
+            () -> new Option(OPTION_GROUP_ID, TENANT_ID, VALID_NAME, null, DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("priceAdjustment must not be null");
   }
@@ -69,14 +76,20 @@ class OptionTest {
   void shouldRejectNegativePriceAdjustment() {
     assertThatThrownBy(
             () ->
-                new Option(OPTION_GROUP_ID, VALID_NAME, new BigDecimal("-0.01"), DISPLAY_POSITION))
+                new Option(
+                    OPTION_GROUP_ID,
+                    TENANT_ID,
+                    VALID_NAME,
+                    new BigDecimal("-0.01"),
+                    DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("priceAdjustment must not be negative");
   }
 
   @Test
   void shouldRejectNegativeDisplayPosition() {
-    assertThatThrownBy(() -> new Option(OPTION_GROUP_ID, VALID_NAME, PRICE_ADJUSTMENT, -1))
+    assertThatThrownBy(
+            () -> new Option(OPTION_GROUP_ID, TENANT_ID, VALID_NAME, PRICE_ADJUSTMENT, -1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("displayPosition must not be negative");
   }
@@ -118,7 +131,9 @@ class OptionTest {
   }
 
   private static Stream<Arguments> missingRequiredIdentifiers() {
-    return Stream.of(Arguments.of(null, "optionGroupId must not be null"));
+    return Stream.of(
+        Arguments.of(null, TENANT_ID, "optionGroupId must not be null"),
+        Arguments.of(OPTION_GROUP_ID, null, "tenantId must not be null"));
   }
 
   private static Stream<Arguments> invalidNames() {
@@ -130,6 +145,6 @@ class OptionTest {
   }
 
   private static Option option(BigDecimal priceAdjustment) {
-    return new Option(OPTION_GROUP_ID, VALID_NAME, priceAdjustment, DISPLAY_POSITION);
+    return new Option(OPTION_GROUP_ID, TENANT_ID, VALID_NAME, priceAdjustment, DISPLAY_POSITION);
   }
 }

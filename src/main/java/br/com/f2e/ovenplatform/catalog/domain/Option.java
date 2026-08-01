@@ -16,6 +16,9 @@ public class Option extends BaseEntity {
   @Column(nullable = false)
   private UUID optionGroupId;
 
+  @Column(nullable = false)
+  private UUID tenantId;
+
   @Column(nullable = false, length = 80)
   private String name;
 
@@ -31,8 +34,14 @@ public class Option extends BaseEntity {
   @SuppressWarnings("unused")
   protected Option() {}
 
-  public Option(UUID optionGroupId, String name, BigDecimal priceAdjustment, int displayPosition) {
+  public Option(
+      UUID optionGroupId,
+      UUID tenantId,
+      String name,
+      BigDecimal priceAdjustment,
+      int displayPosition) {
     this.optionGroupId = requireNotNull(optionGroupId, "optionGroupId");
+    this.tenantId = requireNotNull(tenantId, "tenantId");
     this.name = requireSize(name, "name", 1, 80);
     this.priceAdjustment = requireNonNegative(priceAdjustment, "priceAdjustment");
     this.displayPosition = requireNonNegative(displayPosition, "displayPosition");
@@ -41,6 +50,10 @@ public class Option extends BaseEntity {
 
   public UUID getOptionGroupId() {
     return optionGroupId;
+  }
+
+  public UUID getTenantId() {
+    return tenantId;
   }
 
   public String getName() {

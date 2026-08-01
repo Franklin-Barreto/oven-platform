@@ -13,6 +13,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 class OptionGroupTest {
 
   private static final UUID PRODUCT_ID = UUID.randomUUID();
+  private static final UUID TENANT_ID = UUID.randomUUID();
   private static final String VALID_NAME = "Escolha o pão";
   private static final int MINIMUM_SELECTIONS = 1;
   private static final int MAXIMUM_SELECTIONS = 2;
@@ -23,6 +24,7 @@ class OptionGroupTest {
     var group = group();
 
     assertThat(group.getProductId()).isEqualTo(PRODUCT_ID);
+    assertThat(group.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(group.getName()).isEqualTo(VALID_NAME);
     assertThat(group.getMinimumSelections()).isEqualTo(MINIMUM_SELECTIONS);
     assertThat(group.getMaximumSelections()).isEqualTo(MAXIMUM_SELECTIONS);
@@ -33,14 +35,14 @@ class OptionGroupTest {
 
   @Test
   void shouldCreateOptionalOptionGroupWhenMinimumSelectionsIsZero() {
-    var group = new OptionGroup(PRODUCT_ID, VALID_NAME, 0, 4, DISPLAY_POSITION);
+    var group = new OptionGroup(PRODUCT_ID, TENANT_ID, VALID_NAME, 0, 4, DISPLAY_POSITION);
 
     assertThat(group.isRequired()).isFalse();
   }
 
   @Test
   void shouldAllowZeroMaximumSelections() {
-    var group = new OptionGroup(PRODUCT_ID, VALID_NAME, 0, 0, DISPLAY_POSITION);
+    var group = new OptionGroup(PRODUCT_ID, TENANT_ID, VALID_NAME, 0, 0, DISPLAY_POSITION);
 
     assertThat(group.getMaximumSelections()).isZero();
   }
@@ -50,6 +52,7 @@ class OptionGroupTest {
     var group =
         new OptionGroup(
             PRODUCT_ID,
+            TENANT_ID,
             "  " + VALID_NAME + "  ",
             MINIMUM_SELECTIONS,
             MAXIMUM_SELECTIONS,
@@ -60,11 +63,13 @@ class OptionGroupTest {
 
   @ParameterizedTest
   @MethodSource("missingRequiredIdentifiers")
-  void shouldRejectMissingRequiredIdentifier(UUID productId, String expectedMessage) {
+  void shouldRejectMissingRequiredIdentifier(
+      UUID productId, UUID tenantId, String expectedMessage) {
     assertThatThrownBy(
             () ->
                 new OptionGroup(
                     productId,
+                    tenantId,
                     VALID_NAME,
                     MINIMUM_SELECTIONS,
                     MAXIMUM_SELECTIONS,
@@ -79,7 +84,12 @@ class OptionGroupTest {
     assertThatThrownBy(
             () ->
                 new OptionGroup(
-                    PRODUCT_ID, name, MINIMUM_SELECTIONS, MAXIMUM_SELECTIONS, DISPLAY_POSITION))
+                    PRODUCT_ID,
+                    TENANT_ID,
+                    name,
+                    MINIMUM_SELECTIONS,
+                    MAXIMUM_SELECTIONS,
+                    DISPLAY_POSITION))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -87,7 +97,8 @@ class OptionGroupTest {
   @ParameterizedTest
   @MethodSource("invalidSelectionLimits")
   void shouldRejectInvalidSelectionLimits(int minimum, int maximum, String expectedMessage) {
-    assertThatThrownBy(() -> new OptionGroup(PRODUCT_ID, VALID_NAME, minimum, maximum, 0))
+    assertThatThrownBy(
+            () -> new OptionGroup(PRODUCT_ID, TENANT_ID, VALID_NAME, minimum, maximum, 0))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -96,7 +107,8 @@ class OptionGroupTest {
   void shouldRejectNegativeDisplayPosition() {
     assertThatThrownBy(
             () ->
-                new OptionGroup(PRODUCT_ID, VALID_NAME, MINIMUM_SELECTIONS, MAXIMUM_SELECTIONS, -1))
+                new OptionGroup(
+                    PRODUCT_ID, TENANT_ID, VALID_NAME, MINIMUM_SELECTIONS, MAXIMUM_SELECTIONS, -1))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("displayPosition must not be negative");
   }
@@ -141,7 +153,9 @@ class OptionGroupTest {
   }
 
   private static Stream<Arguments> missingRequiredIdentifiers() {
-    return Stream.of(Arguments.of(null, "productId must not be null"));
+    return Stream.of(
+        Arguments.of(null, TENANT_ID, "productId must not be null"),
+        Arguments.of(PRODUCT_ID, null, "tenantId must not be null"));
   }
 
   private static Stream<Arguments> invalidNames() {
@@ -161,6 +175,11 @@ class OptionGroupTest {
 
   private static OptionGroup group() {
     return new OptionGroup(
-        PRODUCT_ID, VALID_NAME, MINIMUM_SELECTIONS, MAXIMUM_SELECTIONS, DISPLAY_POSITION);
+        PRODUCT_ID,
+        TENANT_ID,
+        VALID_NAME,
+        MINIMUM_SELECTIONS,
+        MAXIMUM_SELECTIONS,
+        DISPLAY_POSITION);
   }
 }
