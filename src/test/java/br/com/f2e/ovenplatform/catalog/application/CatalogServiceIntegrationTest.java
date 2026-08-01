@@ -22,6 +22,8 @@ import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaOptionGroupRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaOptionRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
@@ -47,7 +49,9 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
   ProductVariantResultResolver.class,
   JpaProductRepositoryAdapter.class,
   JpaCategoryRepositoryAdapter.class,
-  JpaProductVariantRepositoryAdapter.class
+  JpaProductVariantRepositoryAdapter.class,
+  JpaOptionGroupRepositoryAdapter.class,
+  JpaOptionRepositoryAdapter.class
 })
 class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
 
