@@ -1,9 +1,13 @@
 package br.com.f2e.ovenplatform.catalog.application.product;
 
 import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
+import br.com.f2e.ovenplatform.catalog.application.option.OptionRepository;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
+import br.com.f2e.ovenplatform.catalog.domain.Option;
+import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
@@ -29,18 +33,24 @@ public class CatalogService {
   private final AvailableImageLookup availableImageLookup;
   private final ProductVariantRepository variantRepository;
   private final ProductVariantResultResolver variantResultResolver;
+  private final OptionGroupRepository optionGroupRepository;
+  private final OptionRepository optionRepository;
 
   public CatalogService(
       ProductRepository productRepository,
       CategoryRepository categoryRepository,
       AvailableImageLookup availableImageLookup,
       ProductVariantRepository variantRepository,
-      ProductVariantResultResolver variantResultResolver) {
+      ProductVariantResultResolver variantResultResolver,
+      OptionGroupRepository optionGroupRepository,
+      OptionRepository optionRepository) {
     this.productRepository = productRepository;
     this.categoryRepository = categoryRepository;
     this.availableImageLookup = availableImageLookup;
     this.variantRepository = variantRepository;
     this.variantResultResolver = variantResultResolver;
+    this.optionGroupRepository = optionGroupRepository;
+    this.optionRepository = optionRepository;
   }
 
   public ProductResult createProduct(UUID tenantId, CreateProductCommand command) {
@@ -72,7 +82,14 @@ public class CatalogService {
     var activeVariants = variants.stream().filter(ProductVariant::isActive).toList();
     var resolvedActiveVariants = variantResultResolver.resolve(tenantId, activeVariants);
 
-    return ProductDetailResult.from(toResult(product), allVariantResults, resolvedActiveVariants);
+    List<ProductOptionGroupDetailResult> optionGroups =
+        optionGroupRepository.findByTenantIdAndProductId(tenantId, productId).stream()
+            .filter(OptionGroup::isActive)
+            .map(optionGroup -> toProductOptionGroupDetail(tenantId, optionGroup))
+            .toList();
+
+    return ProductDetailResult.from(
+        toResult(product), allVariantResults, resolvedActiveVariants, optionGroups);
   }
 
   public List<ProductSummaryResult> listActiveProducts(UUID tenantId) {
@@ -124,6 +141,29 @@ public class CatalogService {
     var image = availableImageLookup.getAvailableImage(product.getTenantId(), product.getImageId());
 
     return ProductResult.from(product, image);
+  }
+
+  private ProductOptionGroupDetailResult toProductOptionGroupDetail(
+      UUID tenantId, OptionGroup optionGroup) {
+    List<ProductOptionDetailResult> options =
+        optionRepository.findByTenantIdAndOptionGroupId(tenantId, optionGroup.getId()).stream()
+            .filter(Option::isActive)
+            .map(
+                option ->
+                    new ProductOptionDetailResult(
+                        option.getId(),
+                        option.getName(),
+                        option.getPriceAdjustment(),
+                        option.getDisplayPosition()))
+            .toList();
+
+    return new ProductOptionGroupDetailResult(
+        optionGroup.getId(),
+        optionGroup.getName(),
+        optionGroup.getMinimumSelections(),
+        optionGroup.getMaximumSelections(),
+        optionGroup.getDisplayPosition(),
+        options);
   }
 
   private Product findRequiredProduct(UUID tenantId, UUID productId) {
