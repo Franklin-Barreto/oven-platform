@@ -8,7 +8,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface SpringDataOptionRepository extends JpaRepository<Option, UUID> {
 
-  Optional<Option> findByIdAndOptionGroupId(UUID id, UUID optionGroupId);
+  Optional<Option> findByIdAndTenantIdAndOptionGroupId(UUID id, UUID tenantId, UUID optionGroupId);
 
-  List<Option> findByOptionGroupIdOrderByDisplayPositionAscIdAsc(UUID optionGroupId);
+  List<Option> findByTenantIdAndOptionGroupIdOrderByDisplayPositionAscIdAsc(
+      UUID tenantId, UUID optionGroupId);
 }
