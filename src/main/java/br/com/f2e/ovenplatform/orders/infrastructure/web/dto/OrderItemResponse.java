@@ -6,12 +6,20 @@ import java.util.List;
 import java.util.UUID;
 
 public record OrderItemResponse(
-    UUID productId, String productName, int quantity, BigDecimal unitPrice, BigDecimal subtotal) {
+    UUID productId,
+    String productName,
+    UUID variantId,
+    String variantName,
+    int quantity,
+    BigDecimal unitPrice,
+    BigDecimal subtotal) {
 
   public static OrderItemResponse from(OrderItem item) {
     return new OrderItemResponse(
         item.getProductId(),
         item.getProductName(),
+        item.getVariantId(),
+        item.getVariantName(),
         item.getQuantity(),
         item.getUnitPrice(),
         item.getSubtotal());
