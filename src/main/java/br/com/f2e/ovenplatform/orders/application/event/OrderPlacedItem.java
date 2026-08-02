@@ -5,10 +5,24 @@ import java.math.BigDecimal;
 import java.util.UUID;
 
 public record OrderPlacedItem(
-    UUID productId, String productName, int quantity, BigDecimal unitPrice) {
+    UUID productId,
+    String productName,
+    UUID variantId,
+    String variantName,
+    int quantity,
+    BigDecimal unitPrice) {
+
+  public OrderPlacedItem(UUID productId, String productName, int quantity, BigDecimal unitPrice) {
+    this(productId, productName, null, null, quantity, unitPrice);
+  }
 
   public static OrderPlacedItem from(OrderItem item) {
     return new OrderPlacedItem(
-        item.getProductId(), item.getProductName(), item.getQuantity(), item.getUnitPrice());
+        item.getProductId(),
+        item.getProductName(),
+        item.getVariantId(),
+        item.getVariantName(),
+        item.getQuantity(),
+        item.getUnitPrice());
   }
 }

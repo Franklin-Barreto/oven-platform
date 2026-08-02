@@ -115,6 +115,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
                       .orElseThrow();
 
               assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
+              assertThat(item.variantId()).isEqualTo(fixture.orderableProduct().variantId());
+              assertThat(item.variantName()).isEqualTo(fixture.orderableProduct().variantName());
               assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
               assertThat(item.unitPrice())
                   .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
@@ -296,6 +298,44 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(item.getProductName()).isEqualTo(originalProductName);
     assertThat(item.getUnitPrice()).isEqualByComparingTo(originalPrice);
     assertThat(item.getSubtotal()).isEqualByComparingTo("84.00");
+  }
+
+  @Test
+  void shouldKeepVariantSnapshotAfterVariantInformationChanges() {
+    var productId = UUID.randomUUID();
+    var variantId = UUID.randomUUID();
+    var command =
+        new CreateOrderCommand(
+            List.of(new CreateOrderItemCommand(productId, variantId, 2)),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+            OrderServiceType.COUNTER);
+    var selection = new OrderableProductSelection(productId, variantId);
+
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, List.of(selection)))
+        .thenReturn(
+            List.of(
+                new OrderableProduct(
+                    productId, PRODUCT_NAME, variantId, "Grande", new BigDecimal("42.00"))))
+        .thenReturn(
+            List.of(
+                new OrderableProduct(
+                    productId, PRODUCT_NAME, variantId, "Familia", new BigDecimal("55.00"))));
+
+    var savedOrder = orderService.createOrder(TENANT_ID, command);
+    flushAndClear();
+    orderService.createOrder(TENANT_ID, command);
+    flushAndClear();
+
+    var item =
+        orderService
+            .findOrderWithItems(TENANT_ID, savedOrder.getId())
+            .orElseThrow()
+            .getItems()
+            .getFirst();
+
+    assertThat(item.getVariantId()).isEqualTo(variantId);
+    assertThat(item.getVariantName()).isEqualTo("Grande");
+    assertThat(item.getUnitPrice()).isEqualByComparingTo("42.00");
   }
 
   @Test
