@@ -6,10 +6,8 @@ import static org.assertj.core.api.Assertions.tuple;
 
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture.ProductFixture;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.PersistenceException;
 import java.math.BigDecimal;
 import java.util.List;
@@ -18,10 +16,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 
-@Import(JpaProductVariantRepositoryAdapter.class)
-class ProductVariantRepositoryIntegrationTest extends DataJpaIntegrationTest {
+class ProductVariantRepositoryIntegrationTest extends CatalogDataJpaIntegrationTest {
 
   private static final String LARGE_VARIANT_NAME = "Grande";
   private static final String MEDIUM_VARIANT_NAME = "Média";

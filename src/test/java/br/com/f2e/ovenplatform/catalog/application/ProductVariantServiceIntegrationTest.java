@@ -12,18 +12,13 @@ import static org.mockito.Mockito.when;
 import br.com.f2e.ovenplatform.catalog.application.variant.CreateProductVariantCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResult;
-import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantService;
 import br.com.f2e.ovenplatform.catalog.application.variant.ReorderProductVariantsCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.UpdateProductVariantCommand;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
-import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.math.BigDecimal;
 import java.net.URI;
 import java.util.List;
@@ -32,16 +27,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@Import({
-  ProductVariantService.class,
-  ProductVariantResultResolver.class,
-  JpaProductRepositoryAdapter.class,
-  JpaProductVariantRepositoryAdapter.class
-})
-class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
+class ProductVariantServiceIntegrationTest extends CatalogDataJpaIntegrationTest {
 
   private static final String TENANT_NAME = "Pizzaria do Paulão";
   private static final String MEDIUM_VARIANT_NAME = "Média";
@@ -52,7 +39,6 @@ class ProductVariantServiceIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private ProductVariantService service;
   @Autowired private ProductVariantRepository variantRepository;
-  @MockitoBean private AvailableImageLookup availableImageLookup;
 
   private CatalogTestFixture fixture;
 

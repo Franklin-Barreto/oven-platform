@@ -17,18 +17,12 @@ import br.com.f2e.ovenplatform.catalog.application.product.ProductSummaryResult;
 import br.com.f2e.ovenplatform.catalog.application.product.ProductVariantDetailResult;
 import br.com.f2e.ovenplatform.catalog.application.product.UpdateProductCommand;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
-import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantResultResolver;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.media.application.api.AvailableImage;
-import br.com.f2e.ovenplatform.media.application.api.AvailableImageLookup;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -39,17 +33,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
-@Import({
-  CatalogService.class,
-  ProductVariantResultResolver.class,
-  JpaProductRepositoryAdapter.class,
-  JpaCategoryRepositoryAdapter.class,
-  JpaProductVariantRepositoryAdapter.class
-})
-class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
+class CatalogServiceIntegrationTest extends CatalogDataJpaIntegrationTest {
 
   private static final String VALID_NAME = "Pizza Portuguesa";
   private static final String VALID_DESCRIPTION = "Pizza com queijo, presunto e ovos";
@@ -67,8 +52,6 @@ class CatalogServiceIntegrationTest extends DataJpaIntegrationTest {
   @Autowired private ProductRepository productRepository;
   @Autowired private CategoryRepository categoryRepository;
   @Autowired private ProductVariantRepository variantRepository;
-
-  @MockitoBean private AvailableImageLookup availableImageLookup;
 
   private CatalogTestFixture fixture;
 
