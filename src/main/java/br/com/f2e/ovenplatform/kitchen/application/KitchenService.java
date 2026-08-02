@@ -87,7 +87,14 @@ public class KitchenService {
   private Ticket createAndSaveTicket(CreateTicketCommand command) {
     var items =
         command.items().stream()
-            .map(item -> new TicketItem(item.productId(), item.productName(), item.quantity()))
+            .map(
+                item ->
+                    new TicketItem(
+                        item.productId(),
+                        item.productName(),
+                        item.variantId(),
+                        item.variantName(),
+                        item.quantity()))
             .toList();
 
     var ticket = new Ticket(command.tenantId(), command.orderId(), items);

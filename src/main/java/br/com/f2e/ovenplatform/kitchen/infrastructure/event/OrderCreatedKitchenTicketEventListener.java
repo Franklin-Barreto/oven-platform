@@ -42,7 +42,11 @@ public class OrderCreatedKitchenTicketEventListener {
             .map(
                 item ->
                     new CreateTicketItemCommand(
-                        item.productId(), item.productName(), item.quantity()))
+                        item.productId(),
+                        item.productName(),
+                        item.variantId(),
+                        item.variantName(),
+                        item.quantity()))
             .toList();
 
     return new CreateTicketCommand(event.tenantId(), event.orderId(), commandItems);

@@ -40,6 +40,7 @@ class KitchenModuleEventsIntegrationTest {
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
+  private static final UUID VARIANT_ID = UUID.fromString("c5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
 
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private KitchenService kitchenService;
@@ -77,6 +78,8 @@ class KitchenModuleEventsIntegrationTest {
             item -> {
               assertThat(item.getProductId()).isEqualTo(PRODUCT_ID);
               assertThat(item.getProductName()).isEqualTo("Pizza Portuguesa");
+              assertThat(item.getVariantId()).isEqualTo(VARIANT_ID);
+              assertThat(item.getVariantName()).isEqualTo("Grande");
               assertThat(item.getQuantity()).isEqualTo(2);
             });
   }
@@ -93,7 +96,9 @@ class KitchenModuleEventsIntegrationTest {
         PaymentMethod.CASH,
         PaymentStatus.PAID,
         new BigDecimal("120.00"),
-        List.of(new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", 2, new BigDecimal("60.00"))));
+        List.of(
+            new OrderPlacedItem(
+                PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, new BigDecimal("60.00"))));
   }
 
   private int ticketCount(UUID orderId) {
