@@ -68,6 +68,8 @@ class OrderControllerTest extends AbstractControllerTest {
   private static final String BASE_URL = "/orders";
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecd");
+  private static final UUID VARIANT_ID = UUID.fromString("e6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final String VARIANT_NAME = "Grande";
   private static final UUID CUSTOMER_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID CUSTOMER_ADDRESS_ID =
       UUID.fromString("d6210129-f1d5-4942-8d0a-b144e518aecc");
@@ -78,9 +80,13 @@ class OrderControllerTest extends AbstractControllerTest {
 
   @Test
   void shouldCreateOrderWithItems() throws Exception {
-    var orderRequest = createOrderRequest(OrderServiceType.COUNTER, PRODUCT_ID, 3);
+    var orderRequest =
+        new CreateOrderRequest(
+            OrderServiceType.COUNTER,
+            List.of(new OrderItemRequest(PRODUCT_ID, VARIANT_ID, 3)),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
 
-    var order = createOrder(ORDER_ID, 3, new BigDecimal("35.40"));
+    var order = createVariantOrder(ORDER_ID, 3, new BigDecimal("35.40"));
 
     when(orderService.createOrder(eq(TENANT_ID), any(CreateOrderCommand.class))).thenReturn(order);
 
@@ -101,6 +107,8 @@ class OrderControllerTest extends AbstractControllerTest {
             .andExpect(jsonPath("$.items.length()").value(1))
             .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
             .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
+            .andExpect(jsonPath("$.items[0].variantId").value(VARIANT_ID.toString()))
+            .andExpect(jsonPath("$.items[0].variantName").value(VARIANT_NAME))
             .andExpect(jsonPath("$.items[0].quantity").value(3))
             .andExpect(jsonPath("$.items[0].unitPrice").value(35.40))
             .andExpect(jsonPath("$.items[0].subtotal").value(106.20))
@@ -119,6 +127,7 @@ class OrderControllerTest extends AbstractControllerTest {
     assertThat(command.customerId()).isNull();
     assertThat(command.customerAddressId()).isNull();
     assertThat(command.items().getFirst().productId()).isEqualTo(PRODUCT_ID);
+    assertThat(command.items().getFirst().variantId()).isEqualTo(VARIANT_ID);
     assertThat(command.items().getFirst().quantity()).isEqualTo(3);
     assertThat(command.paymentInfo()).isNotNull();
     assertThat(command.paymentInfo().method()).isEqualTo(PaymentMethod.CASH);
@@ -495,6 +504,19 @@ class OrderControllerTest extends AbstractControllerTest {
     var order =
         withId(new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.COUNTER), orderId);
     order.addSimpleItem(OrderControllerTest.PRODUCT_ID, PRODUCT_NAME, quantity, unitPrice);
+    return order;
+  }
+
+  private Order createVariantOrder(UUID orderId, int quantity, BigDecimal unitPrice) {
+    var order =
+        withId(new Order(AbstractControllerTest.TENANT_ID, OrderServiceType.COUNTER), orderId);
+    order.addVariantItem(
+        OrderControllerTest.PRODUCT_ID,
+        PRODUCT_NAME,
+        VARIANT_ID,
+        VARIANT_NAME,
+        quantity,
+        unitPrice);
     return order;
   }
 
