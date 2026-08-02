@@ -1,10 +1,10 @@
 package br.com.f2e.ovenplatform.kitchen.domain;
 
-import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireMinimumSize;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.Embedded;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
@@ -27,11 +27,7 @@ public class TicketItem {
   @JoinColumn(name = "kitchen_ticket_id", nullable = false)
   private Ticket ticket;
 
-  @Column(nullable = false)
-  private UUID productId;
-
-  @Column(nullable = false, length = 80)
-  private String productName;
+  @Embedded private TicketItemSnapshot snapshot;
 
   @Column(nullable = false)
   private int quantity;
@@ -39,8 +35,12 @@ public class TicketItem {
   protected TicketItem() {}
 
   public TicketItem(UUID productId, String productName, int quantity) {
-    this.productId = requireNotNull(productId, "productId");
-    this.productName = requireMinimumSize(productName, "productName", 5);
+    this(productId, productName, null, null, quantity);
+  }
+
+  public TicketItem(
+      UUID productId, String productName, UUID variantId, String variantName, int quantity) {
+    this.snapshot = new TicketItemSnapshot(productId, productName, variantId, variantName);
     this.quantity = requirePositive(quantity, "quantity");
   }
 
@@ -53,11 +53,19 @@ public class TicketItem {
   }
 
   public UUID getProductId() {
-    return productId;
+    return snapshot.productId();
   }
 
   public String getProductName() {
-    return productName;
+    return snapshot.productName();
+  }
+
+  public UUID getVariantId() {
+    return snapshot.variantId();
+  }
+
+  public String getVariantName() {
+    return snapshot.variantName();
   }
 
   public int getQuantity() {

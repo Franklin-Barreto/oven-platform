@@ -47,7 +47,9 @@ class KitchenTicketControllerTest extends AbstractControllerTest {
   private static final UUID TICKET_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
+  private static final UUID VARIANT_ID = UUID.fromString("c5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
+  private static final String VARIANT_NAME = "Grande";
   private static final int VALID_QUANTITY = 2;
 
   @MockitoBean private KitchenService kitchenService;
@@ -75,6 +77,8 @@ class KitchenTicketControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$[0].items.length()").value(1))
         .andExpect(jsonPath("$[0].items[0].productId").value(PRODUCT_ID.toString()))
         .andExpect(jsonPath("$[0].items[0].productName").value(PRODUCT_NAME))
+        .andExpect(jsonPath("$[0].items[0].variantId").value(VARIANT_ID.toString()))
+        .andExpect(jsonPath("$[0].items[0].variantName").value(VARIANT_NAME))
         .andExpect(jsonPath("$[0].items[0].quantity").value(2));
 
     verify(kitchenService).list(TENANT_ID);
@@ -101,6 +105,8 @@ class KitchenTicketControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$.items.length()").value(1))
         .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
         .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
+        .andExpect(jsonPath("$.items[0].variantId").value(VARIANT_ID.toString()))
+        .andExpect(jsonPath("$.items[0].variantName").value(VARIANT_NAME))
         .andExpect(jsonPath("$.items[0].quantity").value(2));
 
     verify(kitchenService).findByIdWithItems(TENANT_ID, TICKET_ID);
@@ -241,6 +247,8 @@ class KitchenTicketControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$.items.length()").value(1))
         .andExpect(jsonPath("$.items[0].productId").value(PRODUCT_ID.toString()))
         .andExpect(jsonPath("$.items[0].productName").value(PRODUCT_NAME))
+        .andExpect(jsonPath("$.items[0].variantId").value(VARIANT_ID.toString()))
+        .andExpect(jsonPath("$.items[0].variantName").value(VARIANT_NAME))
         .andExpect(jsonPath("$.items[0].quantity").value(2));
 
     verify(kitchenService).findByOrderIdWithItems(TENANT_ID, ORDER_ID);
@@ -367,7 +375,11 @@ class KitchenTicketControllerTest extends AbstractControllerTest {
   private static @NotNull Ticket createTicket() {
     return withId(
         new Ticket(
-            TENANT_ID, ORDER_ID, List.of(new TicketItem(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY))),
+            TENANT_ID,
+            ORDER_ID,
+            List.of(
+                new TicketItem(
+                    PRODUCT_ID, PRODUCT_NAME, VARIANT_ID, VARIANT_NAME, VALID_QUANTITY))),
         TICKET_ID);
   }
 }

@@ -15,10 +15,10 @@ import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -31,15 +31,12 @@ class OrderCreatedKitchenTicketEventListenerTest {
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final UUID SECOND_PRODUCT_ID =
       UUID.fromString("c6c7d4e3-4f70-46d6-9b5c-9e7e9b0d5678");
+  private static final UUID VARIANT_ID = UUID.fromString("d6c7d4e3-4f70-46d6-9b5c-9e7e9b0d5678");
 
   @Mock private KitchenService kitchenService;
 
+  @InjectMocks
   private OrderCreatedKitchenTicketEventListener listener;
-
-  @BeforeEach
-  void setUp() {
-    listener = new OrderCreatedKitchenTicketEventListener(kitchenService);
-  }
 
   @Test
   void shouldCreateKitchenTicketFromCanonicalOrderCreatedEvent() {
@@ -58,11 +55,15 @@ class OrderCreatedKitchenTicketEventListenerTest {
             firstItem -> {
               assertThat(firstItem.productId()).isEqualTo(PRODUCT_ID);
               assertThat(firstItem.productName()).isEqualTo("Pizza Portuguesa");
+              assertThat(firstItem.variantId()).isEqualTo(VARIANT_ID);
+              assertThat(firstItem.variantName()).isEqualTo("Grande");
               assertThat(firstItem.quantity()).isEqualTo(2);
             },
             secondItem -> {
               assertThat(secondItem.productId()).isEqualTo(SECOND_PRODUCT_ID);
               assertThat(secondItem.productName()).isEqualTo("Pizza Calabresa");
+              assertThat(secondItem.variantId()).isNull();
+              assertThat(secondItem.variantName()).isNull();
               assertThat(secondItem.quantity()).isOne();
             });
   }
@@ -84,7 +85,8 @@ class OrderCreatedKitchenTicketEventListenerTest {
         PaymentStatus.PAID,
         new BigDecimal("180.00"),
         List.of(
-            new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", 2, new BigDecimal("60.00")),
+            new OrderPlacedItem(
+                PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, new BigDecimal("60.00")),
             new OrderPlacedItem(SECOND_PRODUCT_ID, "Pizza Calabresa", 1, new BigDecimal("60.00"))));
   }
 }

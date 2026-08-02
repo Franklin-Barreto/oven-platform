@@ -33,6 +33,7 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
       UUID.fromString("c7210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
   private static final UUID PRODUCT_ID = UUID.fromString("b5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
+  private static final UUID VARIANT_ID = UUID.fromString("c5b6c3d2-3f69-45c5-8a4b-8d6d8a9c1234");
   private static final String PRODUCT_NAME = "Pizza Portuguesa";
   private static final int VALID_QUANTITY = 2;
 
@@ -57,7 +58,27 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
 
     assertThat(item.getProductId()).isEqualTo(PRODUCT_ID);
     assertThat(item.getProductName()).isEqualTo(PRODUCT_NAME);
+    assertThat(item.getVariantId()).isEqualTo(VARIANT_ID);
+    assertThat(item.getVariantName()).isEqualTo("Grande");
     assertThat(item.getQuantity()).isEqualTo(VALID_QUANTITY);
+  }
+
+  @Test
+  void shouldPersistSimpleProductWithoutVariantSnapshot() {
+    var command =
+        new CreateTicketCommand(
+            TENANT_ID,
+            ORDER_ID,
+            List.of(new CreateTicketItemCommand(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY)));
+
+    var ticket = kitchenService.createTicketFromOrder(command);
+
+    flushAndClear();
+
+    var item = kitchenService.findByIdWithItems(TENANT_ID, ticket.getId()).getItems().getFirst();
+
+    assertThat(item.getVariantId()).isNull();
+    assertThat(item.getVariantName()).isNull();
   }
 
   @Test
@@ -240,6 +261,7 @@ class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private CreateTicketItemCommand createTicketItemCommand() {
-    return new CreateTicketItemCommand(PRODUCT_ID, PRODUCT_NAME, VALID_QUANTITY);
+    return new CreateTicketItemCommand(
+        PRODUCT_ID, PRODUCT_NAME, VARIANT_ID, "Grande", VALID_QUANTITY);
   }
 }
