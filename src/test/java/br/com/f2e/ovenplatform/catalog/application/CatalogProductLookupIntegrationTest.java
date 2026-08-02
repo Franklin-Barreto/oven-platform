@@ -5,15 +5,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import br.com.f2e.ovenplatform.catalog.application.api.CatalogProductLookup;
 import br.com.f2e.ovenplatform.catalog.application.api.ProductSelection;
 import br.com.f2e.ovenplatform.catalog.application.api.SellableProduct;
-import br.com.f2e.ovenplatform.catalog.application.product.CatalogProductLookupService;
 import br.com.f2e.ovenplatform.catalog.application.variant.ProductVariantRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Product;
 import br.com.f2e.ovenplatform.catalog.domain.ProductVariant;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductVariantRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -23,15 +18,8 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 
-@Import({
-  CatalogProductLookupService.class,
-  JpaProductRepositoryAdapter.class,
-  JpaCategoryRepositoryAdapter.class,
-  JpaProductVariantRepositoryAdapter.class
-})
-class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
+class CatalogProductLookupIntegrationTest extends CatalogDataJpaIntegrationTest {
 
   private static final String TENANT_NAME = "Don Corleone Pizzeria";
   private static final String LARGE_VARIANT_NAME = "Pizza Calabresa Grande";
