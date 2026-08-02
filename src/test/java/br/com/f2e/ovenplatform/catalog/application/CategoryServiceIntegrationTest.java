@@ -6,9 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import br.com.f2e.ovenplatform.catalog.application.category.CategoryRepository;
 import br.com.f2e.ovenplatform.catalog.application.category.CategoryService;
 import br.com.f2e.ovenplatform.catalog.domain.Category;
-import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaCategoryRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
 import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
@@ -16,10 +14,8 @@ import java.util.UUID;
 import org.assertj.core.api.ThrowableAssert;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
 
-@Import({CategoryService.class, JpaCategoryRepositoryAdapter.class})
-class CategoryServiceIntegrationTest extends DataJpaIntegrationTest {
+class CategoryServiceIntegrationTest extends CatalogDataJpaIntegrationTest {
 
   private static final String VALID_NAME = "Pizzas";
 
