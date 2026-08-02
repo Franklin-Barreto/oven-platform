@@ -33,6 +33,10 @@ import org.springframework.context.annotation.Import;
 })
 class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
+  private static final String TENANT_NAME = "Don Corleone Pizzeria";
+  private static final String LARGE_VARIANT_NAME = "Pizza Calabresa Grande";
+  private static final String LARGE_VARIANT_PRICE = "47.90";
+
   @Autowired private CatalogProductLookup catalogProductLookup;
   @Autowired private ProductVariantRepository variantRepository;
 
@@ -45,7 +49,7 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldResolveSimpleProductWithCurrentBasePrice() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
     var selection = new ProductSelection(product.getId(), null);
 
@@ -59,10 +63,10 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldResolveRequestedVariantsOfSameProductIndependently() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
     var medium = createVariant(product, "Pizza Calabresa Media", "38.50", true);
-    var large = createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    var large = createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, true);
     createVariant(product, "Pizza Calabresa Família", "59.90", true);
     var mediumSelection = selectionOf(product, medium);
     var largeSelection = selectionOf(product, large);
@@ -80,7 +84,7 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldResolveSimpleAndVariantProductsInSameLookup() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var tenant = productFixture.tenant();
     var simpleProduct = productFixture.product();
     var variantProduct =
@@ -102,9 +106,9 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveProductConfiguredWithVariantsWithoutVariantSelection() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
-    createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, true);
 
     clearPersistenceContext();
 
@@ -115,9 +119,9 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveProductConfiguredOnlyWithInactiveVariantsAsSimpleProduct() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
-    createVariant(product, "Pizza Calabresa Grande", "47.90", false);
+    createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, false);
 
     clearPersistenceContext();
 
@@ -128,9 +132,9 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveInactiveProductEvenWhenSelectedVariantIsActive() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
-    var variant = createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    var variant = createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, true);
     product.deactivate();
 
     clearPersistenceContext();
@@ -142,9 +146,9 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveInactiveVariant() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
-    var variant = createVariant(product, "Pizza Calabresa Grande", "47.90", false);
+    var variant = createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, false);
 
     clearPersistenceContext();
 
@@ -155,7 +159,7 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveVariantOwnedByAnotherProduct() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var tenant = productFixture.tenant();
     var calabresa = productFixture.product();
     var portuguesa =
@@ -173,9 +177,10 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveProductOrVariantFromAnotherTenant() {
-    var currentTenantFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var currentTenantFixture = fixture.createProductFixture(TENANT_NAME);
     var currentProduct = currentTenantFixture.product();
-    var currentVariant = createVariant(currentProduct, "Pizza Calabresa Grande", "47.90", true);
+    var currentVariant =
+        createVariant(currentProduct, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, true);
     var anotherTenantFixture = fixture.createProductFixture("Sicilia Pizzeria");
     var foreignProduct = anotherTenantFixture.product();
     var foreignVariant = createVariant(foreignProduct, "Pizza Margherita Grande", "45.90", true);
@@ -192,9 +197,9 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveNonexistentVariantForExistingProduct() {
-    var productFixture = fixture.createProductFixture("Don Corleone Pizzeria");
+    var productFixture = fixture.createProductFixture(TENANT_NAME);
     var product = productFixture.product();
-    createVariant(product, "Pizza Calabresa Grande", "47.90", true);
+    createVariant(product, LARGE_VARIANT_NAME, LARGE_VARIANT_PRICE, true);
 
     clearPersistenceContext();
 
@@ -206,7 +211,7 @@ class CatalogProductLookupIntegrationTest extends DataJpaIntegrationTest {
 
   @Test
   void shouldNotResolveNonexistentProduct() {
-    var tenant = fixture.createTenant("Don Corleone Pizzeria");
+    var tenant = fixture.createTenant(TENANT_NAME);
 
     clearPersistenceContext();
 
