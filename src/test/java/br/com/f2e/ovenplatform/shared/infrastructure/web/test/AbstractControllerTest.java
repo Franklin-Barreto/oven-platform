@@ -12,6 +12,8 @@ import io.micrometer.tracing.TraceContext;
 import io.micrometer.tracing.Tracer;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -20,6 +22,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 @Import({ApiErrorResponseFactory.class, WebSecurityTestConfig.class, SecurityConfig.class})
+@Execution(ExecutionMode.SAME_THREAD)
 public abstract class AbstractControllerTest {
 
   protected static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");

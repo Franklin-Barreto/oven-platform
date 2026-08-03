@@ -16,6 +16,8 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -36,6 +38,7 @@ import org.springframework.transaction.support.TransactionTemplate;
     classes = EventPublicationRegistryIntegrationTest.TestApplication.class,
     properties = "oven.events.publication.maintenance.enabled=false")
 @Import({PostgresTestContainerConfiguration.class, TimeConfig.class})
+@Execution(ExecutionMode.SAME_THREAD)
 class EventPublicationRegistryIntegrationTest {
 
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(10);

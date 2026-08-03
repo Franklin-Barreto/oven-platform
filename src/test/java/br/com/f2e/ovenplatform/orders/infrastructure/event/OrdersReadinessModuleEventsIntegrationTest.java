@@ -27,6 +27,8 @@ import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
@@ -42,6 +44,7 @@ import org.springframework.transaction.support.TransactionTemplate;
       "oven.events.publication.maintenance.enabled=false"
     })
 @Import(PostgresTestContainerConfiguration.class)
+@Execution(ExecutionMode.SAME_THREAD)
 class OrdersReadinessModuleEventsIntegrationTest {
 
   private static final Duration ASYNC_TIMEOUT = Duration.ofSeconds(10);
