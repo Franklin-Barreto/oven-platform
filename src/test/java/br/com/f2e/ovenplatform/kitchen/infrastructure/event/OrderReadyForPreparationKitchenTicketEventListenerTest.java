@@ -8,11 +8,9 @@ import static org.mockito.Mockito.verify;
 
 import br.com.f2e.ovenplatform.kitchen.application.CreateTicketCommand;
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
-import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
-import java.math.BigDecimal;
+import br.com.f2e.ovenplatform.orders.application.event.OrderReadyForPreparationEvent;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -24,7 +22,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
-class OrderCreatedKitchenTicketEventListenerTest {
+class OrderReadyForPreparationKitchenTicketEventListenerTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
@@ -35,12 +33,11 @@ class OrderCreatedKitchenTicketEventListenerTest {
 
   @Mock private KitchenService kitchenService;
 
-  @InjectMocks
-  private OrderCreatedKitchenTicketEventListener listener;
+  @InjectMocks private OrderReadyForPreparationKitchenTicketEventListener listener;
 
   @Test
-  void shouldCreateKitchenTicketFromCanonicalOrderCreatedEvent() {
-    listener.on(orderCreatedEvent());
+  void shouldCreateKitchenTicketWhenOrderIsReadyForPreparation() {
+    listener.on(orderReadyForPreparationEvent());
 
     var commandCaptor = ArgumentCaptor.forClass(CreateTicketCommand.class);
     verify(kitchenService).createTicketFromOrder(commandCaptor.capture());
@@ -74,19 +71,16 @@ class OrderCreatedKitchenTicketEventListenerTest {
         .when(kitchenService)
         .createTicketFromOrder(any());
 
-    assertThatCode(() -> listener.on(orderCreatedEvent())).doesNotThrowAnyException();
+    assertThatCode(() -> listener.on(orderReadyForPreparationEvent())).doesNotThrowAnyException();
   }
 
-  private OrderCreatedEvent orderCreatedEvent() {
-    return new OrderCreatedEvent(
+  private OrderReadyForPreparationEvent orderReadyForPreparationEvent() {
+    return new OrderReadyForPreparationEvent(
         TENANT_ID,
         ORDER_ID,
-        PaymentMethod.CASH,
-        PaymentStatus.PAID,
-        new BigDecimal("180.00"),
+        Instant.parse("2026-08-03T12:00:00Z"),
         List.of(
-            new OrderPlacedItem(
-                PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, new BigDecimal("60.00")),
-            new OrderPlacedItem(SECOND_PRODUCT_ID, "Pizza Calabresa", 1, new BigDecimal("60.00"))));
+            new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, null),
+            new OrderPlacedItem(SECOND_PRODUCT_ID, "Pizza Calabresa", 1, null)));
   }
 }

@@ -6,13 +6,11 @@ import static org.awaitility.Awaitility.await;
 
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
 import br.com.f2e.ovenplatform.kitchen.domain.TicketStatus;
-import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
-import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
-import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
+import br.com.f2e.ovenplatform.orders.application.event.OrderReadyForPreparationEvent;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
-import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -55,17 +53,17 @@ class KitchenModuleEventsIntegrationTest {
   }
 
   @Test
-  void shouldConsumeCanonicalOrderCreatedEventIdempotently() {
-    var event = orderCreatedEvent();
+  void shouldConsumeOrderReadyForPreparationEventIdempotently() {
+    var event = orderReadyForPreparationEvent();
 
     publishInTransaction(event);
 
     await().atMost(ASYNC_TIMEOUT).untilAsserted(() -> assertThat(ticketCount(ORDER_ID)).isOne());
-    awaitCompletedPublication("kitchen-order-created-listener", ORDER_ID, 1);
+    awaitCompletedPublication("kitchen-order-ready-for-preparation-listener", ORDER_ID, 1);
 
     publishInTransaction(event);
 
-    awaitCompletedPublication("kitchen-order-created-listener", ORDER_ID, 2);
+    awaitCompletedPublication("kitchen-order-ready-for-preparation-listener", ORDER_ID, 2);
 
     var ticket = kitchenService.findByOrderIdWithItems(TENANT_ID, ORDER_ID);
 
@@ -84,21 +82,18 @@ class KitchenModuleEventsIntegrationTest {
             });
   }
 
-  private void publishInTransaction(OrderCreatedEvent event) {
+  private void publishInTransaction(OrderReadyForPreparationEvent event) {
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(_ -> eventPublisher.publishEvent(event));
   }
 
-  private OrderCreatedEvent orderCreatedEvent() {
-    return new OrderCreatedEvent(
+  private OrderReadyForPreparationEvent orderReadyForPreparationEvent() {
+    return new OrderReadyForPreparationEvent(
         TENANT_ID,
         ORDER_ID,
-        PaymentMethod.CASH,
-        PaymentStatus.PAID,
-        new BigDecimal("120.00"),
+        Instant.parse("2026-08-03T12:00:00Z"),
         List.of(
-            new OrderPlacedItem(
-                PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, new BigDecimal("60.00"))));
+            new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", VARIANT_ID, "Grande", 2, null)));
   }
 
   private int ticketCount(UUID orderId) {
