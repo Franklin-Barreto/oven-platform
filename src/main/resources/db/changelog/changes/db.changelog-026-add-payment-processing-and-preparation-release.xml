@@ -11,10 +11,18 @@
             <column name="processing_mode" type="varchar(20)" defaultValue="MANUAL">
                 <constraints nullable="false"/>
             </column>
+            <column name="version" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
         </addColumn>
         <addColumn tableName="orders">
             <column name="released_for_preparation_at" type="timestamp with time zone"/>
+            <column name="version" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
         </addColumn>
         <dropDefaultValue tableName="payments" columnName="processing_mode"/>
+        <dropDefaultValue tableName="payments" columnName="version"/>
+        <dropDefaultValue tableName="orders" columnName="version"/>
     </changeSet>
 </databaseChangeLog>

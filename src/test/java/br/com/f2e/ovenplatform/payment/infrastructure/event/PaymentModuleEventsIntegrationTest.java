@@ -15,14 +15,25 @@ import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
+import br.com.f2e.ovenplatform.payment.application.PaymentRepository;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
+import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentConfirmedEvent;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.OptimisticLockException;
 import java.math.BigDecimal;
 import java.time.Duration;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -31,6 +42,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -55,6 +67,8 @@ class PaymentModuleEventsIntegrationTest {
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private OrderService orderService;
   @Autowired private PaymentService paymentService;
+  @Autowired private PaymentRepository paymentRepository;
+  @Autowired private EntityManager entityManager;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private PlatformTransactionManager transactionManager;
 
@@ -103,6 +117,34 @@ class PaymentModuleEventsIntegrationTest {
         .isEqualTo(PaymentStatus.PAID);
   }
 
+  @Test
+  void shouldPersistOneConfirmationPublicationForConcurrentConfirmations() throws Exception {
+    inTransaction(
+        () ->
+            paymentRepository.save(
+                Payment.pending(
+                    TENANT_ID,
+                    ORDER_ID,
+                    TOTAL_AMOUNT,
+                    PaymentMethod.CARD,
+                    PaymentProcessingMode.GATEWAY)));
+    var barrier = new CyclicBarrier(2);
+    var paidAt = Instant.parse("2026-08-03T12:00:00Z");
+
+    var outcomes =
+        executeConcurrently(
+            () -> {
+              var payment =
+                  paymentRepository.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID).orElseThrow();
+              awaitBothTransactions(barrier);
+              payment.markAsPaid(paidAt);
+              eventPublisher.publishEvent(new PaymentConfirmedEvent(TENANT_ID, ORDER_ID, paidAt));
+            });
+
+    assertThat(outcomes).containsExactlyInAnyOrder(true, false);
+    awaitPublicationCount("orders-payment-confirmed-listener", ORDER_ID, 1);
+  }
+
   private CreateOrderCommand createOrderCommand() {
     return new CreateOrderCommand(
         List.of(new CreateOrderItemCommand(PRODUCT_ID, 2)),
@@ -127,6 +169,59 @@ class PaymentModuleEventsIntegrationTest {
   private void publishInTransaction(OrderCreatedEvent event) {
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(_ -> eventPublisher.publishEvent(event));
+  }
+
+  private List<Boolean> executeConcurrently(Runnable transition) throws Exception {
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      Future<Boolean> first = executor.submit(() -> executeTransition(transition));
+      Future<Boolean> second = executor.submit(() -> executeTransition(transition));
+      return List.of(first.get(), second.get());
+    }
+  }
+
+  private boolean executeTransition(Runnable transition) {
+    try {
+      inTransaction(
+          () -> {
+            transition.run();
+            entityManager.flush();
+            return null;
+          });
+      return true;
+    } catch (OptimisticLockException | OptimisticLockingFailureException _) {
+      return false;
+    }
+  }
+
+  private <T> T inTransaction(Supplier<T> operation) {
+    return new TransactionTemplate(transactionManager).execute(_ -> operation.get());
+  }
+
+  private void awaitBothTransactions(CyclicBarrier barrier) {
+    try {
+      barrier.await();
+    } catch (Exception exception) {
+      throw new IllegalStateException("Could not synchronize concurrent transactions", exception);
+    }
+  }
+
+  private void awaitPublicationCount(String listenerId, UUID orderId, int expectedCount) {
+    await()
+        .atMost(ASYNC_TIMEOUT)
+        .untilAsserted(
+            () ->
+                assertThat(
+                        jdbc.queryForObject(
+                            """
+                            select count(*)
+                            from event_publication
+                            where listener_id = ?
+                              and serialized_event like ?
+                            """,
+                            Integer.class,
+                            listenerId,
+                            serializedEventPattern(orderId)))
+                    .isEqualTo(expectedCount));
   }
 
   private void awaitPaymentRegistration(UUID orderId, int expectedPublicationCount) {

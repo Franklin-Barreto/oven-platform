@@ -22,6 +22,7 @@ import br.com.f2e.ovenplatform.tenant.domain.Tenant;
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -43,6 +44,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final Instant ORDER_CREATION_INSTANT = Instant.parse("2026-08-03T12:00:00Z");
 
   @Autowired private OrderService orderService;
   @Autowired private CustomerService customerService;
@@ -52,9 +54,7 @@ class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
   @MockitoBean
   private OrderableProductProvider orderableProductProvider;
 
-  @SuppressWarnings("unused")
-  @MockitoBean
-  private Clock clock;
+  @MockitoBean private Clock clock;
 
   @Test
   void shouldKeepDeliveryCustomerSnapshotAfterCustomerAndAddressChange() {
@@ -66,6 +66,7 @@ class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
         customerService.addAddress(tenant.getId(), customer.getId(), originalAddressCommand());
     var addressId = customerWithAddress.getAddresses().getFirst().getId();
 
+    when(clock.instant()).thenReturn(ORDER_CREATION_INSTANT);
     when(orderableProductProvider.findOrderableProducts(
             tenant.getId(), List.of(new OrderableProductSelection(PRODUCT_ID, null))))
         .thenReturn(
