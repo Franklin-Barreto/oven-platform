@@ -1,7 +1,6 @@
 package br.com.f2e.ovenplatform.catalog.application.optiongroup;
 
 import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;

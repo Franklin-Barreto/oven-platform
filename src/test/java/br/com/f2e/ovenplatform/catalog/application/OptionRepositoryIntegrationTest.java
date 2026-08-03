@@ -12,10 +12,8 @@ import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaInt
 import jakarta.persistence.PersistenceException;
 import java.math.BigDecimal;
 import java.util.Comparator;
-import java.util.List;
 import java.util.UUID;
 import java.util.stream.Stream;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -64,7 +62,9 @@ class OptionRepositoryIntegrationTest extends DataJpaIntegrationTest {
     var cheese = option(optionGroup.getId(), fixture.tenant().getId(), "Queijo", "4.00", 0);
     var meat = option(optionGroup.getId(), fixture.tenant().getId(), "Carne", "10.00", 1);
 
-    repository.saveAll(List.of(bacon, cheese, meat));
+    repository.save(bacon);
+    repository.save(cheese);
+    repository.save(meat);
     flushAndClear();
 
     var expectedIds =
