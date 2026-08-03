@@ -11,6 +11,8 @@ import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTe
 import br.com.f2e.ovenplatform.tenant.infrastructure.persistence.SpringDataTenantRepository;
 import java.util.Base64;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
@@ -28,6 +30,7 @@ import org.springframework.test.context.DynamicPropertySource;
       "oven.bootstrap.owner.password=OwnerPass123!",
       "jwt.expiration-minutes=30"
     })
+@Execution(ExecutionMode.SAME_THREAD)
 class OwnerProvisioningApplicationIntegrationTest {
 
   @Autowired private SpringDataTenantRepository tenantRepository;
