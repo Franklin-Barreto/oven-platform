@@ -8,6 +8,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -45,7 +46,12 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
 
     paymentService.registerPaymentFromOrder(
         new RegisterPaymentCommand(
-            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentStatus.PAID));
+            TENANT_ID,
+            ORDER_ID,
+            PAYMENT_AMOUNT,
+            PaymentMethod.CASH,
+            PaymentStatus.PAID,
+            PaymentProcessingMode.MANUAL));
 
     flushAndClear();
 
@@ -66,7 +72,12 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
 
     paymentService.registerPaymentFromOrder(
         new RegisterPaymentCommand(
-            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentStatus.PENDING));
+            TENANT_ID,
+            ORDER_ID,
+            PAYMENT_AMOUNT,
+            PaymentMethod.CASH,
+            PaymentStatus.PENDING,
+            PaymentProcessingMode.MANUAL));
 
     flushAndClear();
 
@@ -93,7 +104,9 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
   void shouldMarkPendingPaymentAsPaidByOrderId() {
     when(clock.instant()).thenReturn(PAID_AT);
 
-    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+    var payment =
+        Payment.pending(
+            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentProcessingMode.MANUAL);
     paymentRepository.save(payment);
 
     paymentService.markManualPaymentAsPaid(TENANT_ID, ORDER_ID);
@@ -158,7 +171,12 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
     for (int i = 1; i <= quantity; i++) {
       Payment saved =
           paymentRepository.save(
-              Payment.pending(tenantId, UUID.randomUUID(), PAYMENT_AMOUNT, PaymentMethod.CASH));
+              Payment.pending(
+                  tenantId,
+                  UUID.randomUUID(),
+                  PAYMENT_AMOUNT,
+                  PaymentMethod.CASH,
+                  PaymentProcessingMode.MANUAL));
       orderIds.add(saved.getOrderId());
     }
     return orderIds;

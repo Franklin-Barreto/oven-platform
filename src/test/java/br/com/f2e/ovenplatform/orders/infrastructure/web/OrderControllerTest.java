@@ -37,6 +37,7 @@ import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
@@ -84,7 +85,7 @@ class OrderControllerTest extends AbstractControllerTest {
         new CreateOrderRequest(
             OrderServiceType.COUNTER,
             List.of(new OrderItemRequest(PRODUCT_ID, VARIANT_ID, 3)),
-            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL));
 
     var order = createVariantOrder(ORDER_ID, 3, new BigDecimal("35.40"));
 
@@ -592,7 +593,7 @@ class OrderControllerTest extends AbstractControllerTest {
         CUSTOMER_ID,
         CUSTOMER_ADDRESS_ID,
         List.of(new OrderItemRequest(PRODUCT_ID, 3)),
-        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING));
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING, PaymentProcessingMode.MANUAL));
   }
 
   private static CreateOrderRequest createOrderRequest(
@@ -600,11 +601,13 @@ class OrderControllerTest extends AbstractControllerTest {
     return new CreateOrderRequest(
         serviceType,
         List.of(new OrderItemRequest(productId, quantity)),
-        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL));
   }
 
   private static CreateOrderRequest createOrderRequest(List<OrderItemRequest> items) {
     return new CreateOrderRequest(
-        OrderServiceType.COUNTER, items, new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
+        OrderServiceType.COUNTER,
+        items,
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL));
   }
 }

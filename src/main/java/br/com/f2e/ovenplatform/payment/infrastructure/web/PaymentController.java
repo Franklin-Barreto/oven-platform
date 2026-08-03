@@ -30,8 +30,7 @@ public class PaymentController {
   public ResponseEntity<List<OrderPaymentResult>> findByOrderIds(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody OrderPaymentsLookupRequest request) {
 
-    var responses =
-        paymentService.findByTenantIdAndOrderIdIn(tenantId, request.orderIds());
+    var responses = paymentService.findByTenantIdAndOrderIdIn(tenantId, request.orderIds());
 
     return ResponseEntity.ok(responses);
   }

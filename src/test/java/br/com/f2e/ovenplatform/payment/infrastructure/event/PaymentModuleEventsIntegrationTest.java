@@ -108,7 +108,8 @@ class PaymentModuleEventsIntegrationTest {
         List.of(new CreateOrderItemCommand(PRODUCT_ID, 2)),
         new PaymentInfo(
             br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod.CASH,
-            br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus.PAID),
+            br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus.PAID,
+            br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode.MANUAL),
         OrderServiceType.COUNTER);
   }
 
@@ -118,6 +119,7 @@ class PaymentModuleEventsIntegrationTest {
         ORDER_ID,
         br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod.CASH,
         br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus.PAID,
+        br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode.MANUAL,
         TOTAL_AMOUNT,
         List.of(new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", 2, UNIT_PRICE)));
   }

@@ -33,7 +33,13 @@ class PaymentServiceTest {
 
   @Test
   void shouldPublishConfirmationWhenPendingPaymentBecomesPaid() {
-    var payment = Payment.pending(TENANT_ID, ORDER_ID, new BigDecimal("20.00"), PaymentMethod.CARD);
+    var payment =
+        Payment.pending(
+            TENANT_ID,
+            ORDER_ID,
+            new BigDecimal("20.00"),
+            PaymentMethod.CARD,
+            PaymentProcessingMode.MANUAL);
     when(paymentRepository.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID))
         .thenReturn(Optional.of(payment));
     var service =
@@ -47,7 +53,13 @@ class PaymentServiceTest {
   @Test
   void shouldNotPublishDuplicateConfirmationForPaidPayment() {
     var payment =
-        Payment.paid(TENANT_ID, ORDER_ID, new BigDecimal("20.00"), PaymentMethod.CARD, PAID_AT);
+        Payment.paid(
+            TENANT_ID,
+            ORDER_ID,
+            new BigDecimal("20.00"),
+            PaymentMethod.CARD,
+            PaymentProcessingMode.MANUAL,
+            PAID_AT);
     when(paymentRepository.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID))
         .thenReturn(Optional.of(payment));
     var service =

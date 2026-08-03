@@ -104,42 +104,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     verify(orderableProductProvider).findOrderableProducts(TENANT_ID, selections);
     verifyNoInteractions(customerDeliveryInfoProvider);
 
-    var orderCreatedEvents = applicationEvents.stream(OrderCreatedEvent.class).toList();
-
-    assertThat(orderCreatedEvents).hasSize(1);
-
-    var orderCreatedEvent = orderCreatedEvents.getFirst();
-
-    assertThat(orderCreatedEvent.orderId()).isEqualTo(order.getId());
-    assertThat(orderCreatedEvent.paymentMethod()).isEqualTo(PaymentMethod.CASH);
-    assertThat(orderCreatedEvent.paymentStatus()).isEqualTo(PaymentStatus.PAID);
-    assertThat(orderCreatedEvent.paymentProcessingMode()).isEqualTo(PaymentProcessingMode.MANUAL);
-    assertThat(orderCreatedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
-    assertThat(orderCreatedEvent.items()).hasSize(fixtures.size());
-    assertThat(orderCreatedEvent.items())
-        .allSatisfy(
-            item -> {
-              var fixture =
-                  fixtures.stream()
-                      .filter(candidate -> candidate.command().productId().equals(item.productId()))
-                      .findFirst()
-                      .orElseThrow();
-
-              assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
-              assertThat(item.variantId()).isEqualTo(fixture.orderableProduct().variantId());
-              assertThat(item.variantName()).isEqualTo(fixture.orderableProduct().variantName());
-              assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
-              assertThat(item.unitPrice())
-                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
-            });
-
-    assertThat(applicationEvents.stream(OrderReadyForPreparationEvent.class))
-        .singleElement()
-        .satisfies(
-            event -> {
-              assertThat(event.orderId()).isEqualTo(order.getId());
-              assertThat(event.releasedAt()).isEqualTo(DEFAULT_INSTANT);
-            });
+    assertOrderCreatedEvent(order, fixtures);
+    assertOrderReadyForPreparationEvent(order);
   }
 
   @Test
@@ -178,7 +144,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
             List.of(
                 new CreateOrderItemCommand(productId, largeVariantId, 1),
                 new CreateOrderItemCommand(productId, mediumVariantId, 2)),
-            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL),
             OrderServiceType.COUNTER);
     var selections = extractSelections(command);
 
@@ -314,7 +280,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var updatedProductName = "Pizza Calabresa Especial";
     var originalPrice = new BigDecimal("42.00");
     var updatedPrice = new BigDecimal("55.00");
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
+    var paymentInfo =
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL);
     var command =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(productId, 2)),
@@ -352,7 +319,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var command =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(productId, variantId, 2)),
-            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL),
             OrderServiceType.COUNTER);
     var selection = new OrderableProductSelection(productId, variantId);
 
@@ -446,7 +413,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   @Test
   void shouldThrowExceptionWhenCatalogReturnNullProduct() {
     var productId = UUID.randomUUID();
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
+    var paymentInfo =
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL);
     CreateOrderCommand orderCommand =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(productId, 1)),
@@ -698,7 +666,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   }
 
   private CreateOrderCommand createOrderCommand(List<OrderItemFixture> fixtures) {
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID);
+    var paymentInfo =
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL);
     return new CreateOrderCommand(
         fixtures.stream().map(OrderItemFixture::command).toList(),
         paymentInfo,
@@ -707,7 +676,8 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private CreateOrderCommand createDeliveryOrderCommand(
       List<OrderItemFixture> fixtures, UUID customerId, UUID customerAddressId) {
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING);
+    var paymentInfo =
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING, PaymentProcessingMode.MANUAL);
     return new CreateOrderCommand(
         fixtures.stream().map(OrderItemFixture::command).toList(),
         paymentInfo,
@@ -743,6 +713,52 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     var savedOrder = orderService.save(createOrderWithItems(TENANT_ID, 1));
     orderService.markAsReady(TENANT_ID, savedOrder.getId());
     return savedOrder;
+  }
+
+  private void assertOrderCreatedEvent(Order order, List<OrderItemFixture> fixtures) {
+    assertThat(applicationEvents.stream(OrderCreatedEvent.class))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.orderId()).isEqualTo(order.getId());
+              assertThat(event.paymentMethod()).isEqualTo(PaymentMethod.CASH);
+              assertThat(event.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+              assertThat(event.paymentProcessingMode()).isEqualTo(PaymentProcessingMode.MANUAL);
+              assertThat(event.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
+              assertThat(event.items()).hasSize(fixtures.size());
+              assertOrderCreatedEventItems(event, fixtures);
+            });
+  }
+
+  private void assertOrderCreatedEventItems(
+      OrderCreatedEvent event, List<OrderItemFixture> fixtures) {
+    assertThat(event.items())
+        .isNotEmpty()
+        .allSatisfy(
+            item -> {
+              var fixture =
+                  fixtures.stream()
+                      .filter(candidate -> candidate.command().productId().equals(item.productId()))
+                      .findFirst()
+                      .orElseThrow();
+
+              assertThat(item.productName()).isEqualTo(fixture.orderableProduct().productName());
+              assertThat(item.variantId()).isEqualTo(fixture.orderableProduct().variantId());
+              assertThat(item.variantName()).isEqualTo(fixture.orderableProduct().variantName());
+              assertThat(item.quantity()).isEqualTo(fixture.command().quantity());
+              assertThat(item.unitPrice())
+                  .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
+            });
+  }
+
+  private void assertOrderReadyForPreparationEvent(Order order) {
+    assertThat(applicationEvents.stream(OrderReadyForPreparationEvent.class))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.orderId()).isEqualTo(order.getId());
+              assertThat(event.releasedAt()).isEqualTo(DEFAULT_INSTANT);
+            });
   }
 
   private void assertOrderItemsMatchFixtures(Order order, List<OrderItemFixture> fixtures) {

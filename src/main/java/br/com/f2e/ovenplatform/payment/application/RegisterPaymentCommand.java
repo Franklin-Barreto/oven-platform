@@ -17,15 +17,6 @@ public record RegisterPaymentCommand(
     PaymentStatus paymentStatus,
     PaymentProcessingMode processingMode) {
 
-  public RegisterPaymentCommand(
-      UUID tenantId,
-      UUID orderId,
-      BigDecimal amount,
-      PaymentMethod paymentMethod,
-      PaymentStatus paymentStatus) {
-    this(tenantId, orderId, amount, paymentMethod, paymentStatus, PaymentProcessingMode.MANUAL);
-  }
-
   public RegisterPaymentCommand {
     requireNotNull(tenantId, "tenantId");
     requireNotNull(orderId, "orderId");
