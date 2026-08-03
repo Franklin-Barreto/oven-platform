@@ -9,6 +9,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -16,6 +17,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "payments")
 public class Payment extends BaseEntity {
+
+  @Version
+  @Column(nullable = false)
+  private long version;
 
   @Column(nullable = false)
   private UUID tenantId;
@@ -84,6 +89,10 @@ public class Payment extends BaseEntity {
 
   public UUID getTenantId() {
     return tenantId;
+  }
+
+  public long getVersion() {
+    return version;
   }
 
   public UUID getOrderId() {

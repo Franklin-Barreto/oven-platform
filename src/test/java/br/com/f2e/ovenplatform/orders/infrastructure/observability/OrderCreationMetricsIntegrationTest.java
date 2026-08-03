@@ -22,8 +22,10 @@ import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaInt
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.math.BigDecimal;
 import java.time.Clock;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -54,6 +56,7 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aedc");
 
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final Instant ORDER_CREATION_INSTANT = Instant.parse("2026-08-03T12:00:00Z");
 
   @Autowired private OrderService orderService;
   @Autowired private SimpleMeterRegistry meterRegistry;
@@ -61,6 +64,11 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
   @MockitoBean private OrderableProductProvider orderableProductProvider;
   @MockitoBean private CustomerDeliveryInfoProvider customerDeliveryInfoProvider;
   @MockitoBean private Clock clock;
+
+  @BeforeEach
+  void configureClock() {
+    when(clock.instant()).thenReturn(ORDER_CREATION_INSTANT);
+  }
 
   @Test
   void shouldRecordSuccessfulOrderCreationThroughSpringProxy() {

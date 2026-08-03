@@ -9,11 +9,14 @@ import br.com.f2e.ovenplatform.fulfillment.application.event.FulfillmentOrderMar
 import br.com.f2e.ovenplatform.kitchen.application.KitchenService;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderCommand;
 import br.com.f2e.ovenplatform.orders.application.CreateOrderItemCommand;
+import br.com.f2e.ovenplatform.orders.application.OrderRepository;
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.application.OrderableProduct;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductProvider;
 import br.com.f2e.ovenplatform.orders.application.OrderableProductSelection;
 import br.com.f2e.ovenplatform.orders.application.PaymentInfo;
+import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
+import br.com.f2e.ovenplatform.orders.application.event.OrderReadyForPreparationEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
@@ -21,11 +24,17 @@ import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.OptimisticLockException;
 import java.math.BigDecimal;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -34,6 +43,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.context.annotation.Import;
+import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -56,6 +66,8 @@ class OrdersReadinessModuleEventsIntegrationTest {
   @Autowired private ApplicationEventPublisher eventPublisher;
   @Autowired private KitchenService kitchenService;
   @Autowired private OrderService orderService;
+  @Autowired private OrderRepository orderRepository;
+  @Autowired private EntityManager entityManager;
   @Autowired private JdbcTemplate jdbc;
   @Autowired private PlatformTransactionManager transactionManager;
 
@@ -119,6 +131,36 @@ class OrdersReadinessModuleEventsIntegrationTest {
     assertThat(readyOrder.getReadyAt()).isEqualTo(readyAt);
   }
 
+  @Test
+  void shouldPersistOneReadinessPublicationForConcurrentReleases() throws Exception {
+    var orderId =
+        inTransaction(
+            () -> {
+              var order = new Order(TENANT_ID, OrderServiceType.COUNTER);
+              order.addSimpleItem(PRODUCT_ID, "Pizza Portuguesa", 1, UNIT_PRICE);
+              return orderRepository.save(order).getId();
+            });
+    var barrier = new CyclicBarrier(2);
+
+    var outcomes =
+        executeConcurrently(
+            () -> {
+              var order =
+                  orderRepository.findByIdAndTenantIdWithItems(orderId, TENANT_ID).orElseThrow();
+              awaitBothTransactions(barrier);
+              order.releaseForPreparation(Instant.parse("2026-08-03T12:00:00Z"));
+              eventPublisher.publishEvent(
+                  new OrderReadyForPreparationEvent(
+                      TENANT_ID,
+                      orderId,
+                      Instant.parse("2026-08-03T12:00:00Z"),
+                      order.getItems().stream().map(OrderPlacedItem::from).toList()));
+            });
+
+    assertThat(outcomes).containsExactlyInAnyOrder(true, false);
+    awaitCompletedPublication("kitchen-order-ready-for-preparation-listener", orderId, 1);
+  }
+
   private CreateOrderCommand createOrderCommand() {
     return new CreateOrderCommand(
         List.of(new CreateOrderItemCommand(PRODUCT_ID, 2)),
@@ -129,6 +171,40 @@ class OrdersReadinessModuleEventsIntegrationTest {
   private void publishInTransaction(FulfillmentOrderMarkedAsReadyEvent event) {
     new TransactionTemplate(transactionManager)
         .executeWithoutResult(_ -> eventPublisher.publishEvent(event));
+  }
+
+  private List<Boolean> executeConcurrently(Runnable transition) throws Exception {
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      Future<Boolean> first = executor.submit(() -> executeTransition(transition));
+      Future<Boolean> second = executor.submit(() -> executeTransition(transition));
+      return List.of(first.get(), second.get());
+    }
+  }
+
+  private boolean executeTransition(Runnable transition) {
+    try {
+      inTransaction(
+          () -> {
+            transition.run();
+            entityManager.flush();
+            return null;
+          });
+      return true;
+    } catch (OptimisticLockException | OptimisticLockingFailureException _) {
+      return false;
+    }
+  }
+
+  private <T> T inTransaction(Supplier<T> operation) {
+    return new TransactionTemplate(transactionManager).execute(_ -> operation.get());
+  }
+
+  private void awaitBothTransactions(CyclicBarrier barrier) {
+    try {
+      barrier.await();
+    } catch (Exception exception) {
+      throw new IllegalStateException("Could not synchronize concurrent transactions", exception);
+    }
   }
 
   private Instant ticketReadyAt(UUID ticketId) {

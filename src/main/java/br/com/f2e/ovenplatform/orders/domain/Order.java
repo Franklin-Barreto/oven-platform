@@ -12,6 +12,7 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.OneToMany;
 import jakarta.persistence.Table;
+import jakarta.persistence.Version;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
@@ -21,6 +22,10 @@ import java.util.UUID;
 @Entity
 @Table(name = "orders")
 public class Order extends BaseEntity {
+
+  @Version
+  @Column(nullable = false)
+  private long version;
 
   @Column(nullable = false)
   private UUID tenantId;
@@ -65,6 +70,10 @@ public class Order extends BaseEntity {
 
   public UUID getTenantId() {
     return tenantId;
+  }
+
+  public long getVersion() {
+    return version;
   }
 
   public BigDecimal getTotalAmount() {
