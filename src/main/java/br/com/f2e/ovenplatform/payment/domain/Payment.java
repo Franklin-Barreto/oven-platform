@@ -34,6 +34,10 @@ public class Payment extends BaseEntity {
   @Column(name = "status", nullable = false)
   private PaymentStatus status;
 
+  @Enumerated(EnumType.STRING)
+  @Column(name = "processing_mode", nullable = false)
+  private PaymentProcessingMode processingMode;
+
   @Column(name = "paid_at")
   private Instant paidAt;
 
@@ -45,24 +49,47 @@ public class Payment extends BaseEntity {
       BigDecimal amount,
       PaymentMethod method,
       PaymentStatus status,
+      PaymentProcessingMode processingMode,
       Instant paidAt) {
     this.tenantId = requireNotNull(tenantId, "tenantId");
     this.orderId = requireNotNull(orderId, "orderId");
     this.amount = requirePositive(amount, "amount");
     this.method = requireNotNull(method, "paymentMethod");
     this.status = requireNotNull(status, "paymentStatus");
+    this.processingMode = requireNotNull(processingMode, "processingMode");
     this.paidAt = paidAt;
   }
 
   public static Payment paid(
       UUID tenantId, UUID orderId, BigDecimal amount, PaymentMethod paymentMethod, Instant paidAt) {
+    return paid(tenantId, orderId, amount, paymentMethod, PaymentProcessingMode.MANUAL, paidAt);
+  }
+
+  public static Payment paid(
+      UUID tenantId,
+      UUID orderId,
+      BigDecimal amount,
+      PaymentMethod paymentMethod,
+      PaymentProcessingMode processingMode,
+      Instant paidAt) {
     requireNotNull(paidAt, "paidAt");
-    return new Payment(tenantId, orderId, amount, paymentMethod, PaymentStatus.PAID, paidAt);
+    return new Payment(
+        tenantId, orderId, amount, paymentMethod, PaymentStatus.PAID, processingMode, paidAt);
   }
 
   public static Payment pending(
       UUID tenantId, UUID orderId, BigDecimal amount, PaymentMethod paymentMethod) {
-    return new Payment(tenantId, orderId, amount, paymentMethod, PaymentStatus.PENDING, null);
+    return pending(tenantId, orderId, amount, paymentMethod, PaymentProcessingMode.MANUAL);
+  }
+
+  public static Payment pending(
+      UUID tenantId,
+      UUID orderId,
+      BigDecimal amount,
+      PaymentMethod paymentMethod,
+      PaymentProcessingMode processingMode) {
+    return new Payment(
+        tenantId, orderId, amount, paymentMethod, PaymentStatus.PENDING, processingMode, null);
   }
 
   public UUID getTenantId() {
@@ -85,15 +112,20 @@ public class Payment extends BaseEntity {
     return status;
   }
 
+  public PaymentProcessingMode getProcessingMode() {
+    return processingMode;
+  }
+
   public Instant getPaidAt() {
     return paidAt;
   }
 
-  public void markAsPaid(Instant paidAt) {
+  public boolean markAsPaid(Instant paidAt) {
     if (status == PaymentStatus.PAID) {
-      return;
+      return false;
     }
     status = PaymentStatus.PAID;
     this.paidAt = requireNotNull(paidAt, "paidAt");
+    return true;
   }
 }

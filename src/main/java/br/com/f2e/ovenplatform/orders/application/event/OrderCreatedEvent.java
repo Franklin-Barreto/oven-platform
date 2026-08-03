@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.orders.application.event;
 
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import java.math.BigDecimal;
 import java.util.List;
@@ -11,8 +12,26 @@ public record OrderCreatedEvent(
     UUID orderId,
     PaymentMethod paymentMethod,
     PaymentStatus paymentStatus,
+    PaymentProcessingMode paymentProcessingMode,
     BigDecimal totalAmount,
     List<OrderPlacedItem> items) {
+
+  public OrderCreatedEvent(
+      UUID tenantId,
+      UUID orderId,
+      PaymentMethod paymentMethod,
+      PaymentStatus paymentStatus,
+      BigDecimal totalAmount,
+      List<OrderPlacedItem> items) {
+    this(
+        tenantId,
+        orderId,
+        paymentMethod,
+        paymentStatus,
+        PaymentProcessingMode.MANUAL,
+        totalAmount,
+        items);
+  }
 
   public OrderCreatedEvent {
     items = List.copyOf(items);

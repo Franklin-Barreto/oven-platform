@@ -4,6 +4,7 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.application.RegisterPaymentCommand;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -31,7 +32,8 @@ public class OrderCreatedPaymentEventListener {
             event.orderId(),
             event.totalAmount(),
             PaymentMethod.valueOf(event.paymentMethod().name()),
-            PaymentStatus.valueOf(event.paymentStatus().name()));
+            PaymentStatus.valueOf(event.paymentStatus().name()),
+            PaymentProcessingMode.valueOf(event.paymentProcessingMode().name()));
 
     try {
       paymentService.registerPaymentFromOrder(command);

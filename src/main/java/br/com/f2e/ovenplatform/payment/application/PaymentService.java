@@ -35,13 +35,15 @@ public class PaymentService {
                   paymentCommand.orderId(),
                   paymentCommand.amount(),
                   paymentCommand.paymentMethod(),
+                  paymentCommand.processingMode(),
                   clock.instant());
           case PENDING ->
               Payment.pending(
                   paymentCommand.tenantId(),
                   paymentCommand.orderId(),
                   paymentCommand.amount(),
-                  paymentCommand.paymentMethod());
+                  paymentCommand.paymentMethod(),
+                  paymentCommand.processingMode());
         };
     paymentRepository.save(payment);
   }
