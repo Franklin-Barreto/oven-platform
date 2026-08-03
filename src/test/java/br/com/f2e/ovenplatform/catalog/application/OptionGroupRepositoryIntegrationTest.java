@@ -134,8 +134,11 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
-  void shouldRejectNonexistentProduct() {
-    repository.save(optionGroup(UUID.randomUUID(), UUID.randomUUID(), "Molhos", 0));
+  void shouldRejectProductOwnedByAnotherTenant() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Genova");
+    var anotherFixture = catalogFixture.createProductFixture("Pizzeria Verona");
+    repository.save(
+        optionGroup(fixture.product().getId(), anotherFixture.tenant().getId(), "Molhos", 0));
 
     assertThatThrownBy(entityManager::flush)
         .isInstanceOf(PersistenceException.class)
