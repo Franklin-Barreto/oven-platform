@@ -1,5 +1,25 @@
+spring:
+  datasource:
+    hikari:
+      maximum-pool-size: 2
+      minimum-idle: 0
+      connection-timeout: 1000
+  modulith:
+    events:
+      republish-outstanding-events-on-restart: false
+      staleness:
+        published: 0
+        processing: 0
+        resubmission: 0
 management:
   tracing:
     export:
       otlp:
+        enabled: false
+oven:
+  events:
+    publication:
+      maintenance:
+        enabled: false
+      monitoring:
         enabled: false
