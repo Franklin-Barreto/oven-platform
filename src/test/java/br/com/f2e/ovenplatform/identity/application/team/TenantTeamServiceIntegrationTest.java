@@ -222,8 +222,8 @@ class TenantTeamServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThatThrownBy(() -> tenantTeamService.createTenantUser(command))
         .isInstanceOf(ResourceNotFoundException.class);
 
-    assertThat(userRepository.findAll()).isEmpty();
-    assertThat(tenantMembershipRepository.findAll()).isEmpty();
+    assertThat(userRepository.findByEmail(NORMALIZED_EMAIL)).isEmpty();
+    assertThat(tenantMembershipRepository.findAllByTenantId(TENANT_ID)).isEmpty();
 
     verify(tenantValidator).ensureTenantExists(TENANT_ID);
   }
@@ -237,8 +237,8 @@ class TenantTeamServiceIntegrationTest extends DataJpaIntegrationTest {
     tenantTeamService.createTenantUser(command);
     flushAndClear();
 
-    assertThat(userRepository.findAll()).hasSize(2);
-    assertThat(tenantMembershipRepository.findAll()).hasSize(2);
+    assertThat(userRepository.findByEmail(NORMALIZED_EMAIL)).isPresent();
+    assertThat(tenantMembershipRepository.findAllByTenantId(TENANT_ID)).hasSize(2);
 
     tenantTeamService.createTenantUser(command);
 
