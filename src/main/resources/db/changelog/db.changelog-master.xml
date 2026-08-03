@@ -31,4 +31,5 @@
     <include file="db/changelog/changes/db.changelog-023-create-option-groups-and-options.xml"/>
     <include file="db/changelog/changes/db.changelog-024-add-order-item-variant-snapshot.xml"/>
     <include file="db/changelog/changes/db.changelog-025-add-kitchen-item-variant-snapshot.xml"/>
+    <include file="db/changelog/changes/db.changelog-026-add-payment-processing-and-preparation-release.xml"/>
 </databaseChangeLog>

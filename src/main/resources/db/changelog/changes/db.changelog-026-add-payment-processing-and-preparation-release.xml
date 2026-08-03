@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="026-add-payment-processing-and-preparation-release" author="franklin">
+        <addColumn tableName="payments">
+            <column name="processing_mode" type="varchar(20)" defaultValue="MANUAL">
+                <constraints nullable="false"/>
+            </column>
+        </addColumn>
+        <addColumn tableName="orders">
+            <column name="released_for_preparation_at" type="timestamp with time zone"/>
+        </addColumn>
+        <dropDefaultValue tableName="payments" columnName="processing_mode"/>
+    </changeSet>
+</databaseChangeLog>

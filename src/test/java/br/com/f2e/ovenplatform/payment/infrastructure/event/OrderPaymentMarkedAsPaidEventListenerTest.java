@@ -25,6 +25,6 @@ class OrderPaymentMarkedAsPaidEventListenerTest {
   void shouldMarkPaymentAsPaidWhenReceivingEvent() {
     listener.on(new OrderPaymentMarkedAsPaidEvent(TENANT_ID, ORDER_ID));
 
-    verify(paymentService).markAsPaid(TENANT_ID, ORDER_ID);
+    verify(paymentService).markManualPaymentAsPaid(TENANT_ID, ORDER_ID);
   }
 }

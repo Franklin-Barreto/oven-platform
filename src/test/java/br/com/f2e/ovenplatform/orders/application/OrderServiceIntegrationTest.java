@@ -9,6 +9,7 @@ import static org.mockito.Mockito.when;
 
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
+import br.com.f2e.ovenplatform.orders.application.event.OrderReadyForPreparationEvent;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderItem;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
@@ -16,6 +17,7 @@ import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import java.math.BigDecimal;
@@ -25,6 +27,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.autoconfigure.ImportAutoConfiguration;
@@ -38,6 +41,8 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 @Import({OrderService.class, JpaOrderRepositoryAdapter.class})
 @RecordApplicationEvents
 class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
+
+  private static final Instant DEFAULT_INSTANT = Instant.parse("2026-08-03T12:00:00Z");
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518bbcd");
 
@@ -68,6 +73,11 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
   @SuppressWarnings("unused")
   @MockitoBean
   private Clock clock;
+
+  @BeforeEach
+  void configureClock() {
+    when(clock.instant()).thenReturn(DEFAULT_INSTANT);
+  }
 
   @Test
   void shouldCreateOrderWithItemsUsingOrderableProductPrices() {
@@ -103,6 +113,7 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
     assertThat(orderCreatedEvent.orderId()).isEqualTo(order.getId());
     assertThat(orderCreatedEvent.paymentMethod()).isEqualTo(PaymentMethod.CASH);
     assertThat(orderCreatedEvent.paymentStatus()).isEqualTo(PaymentStatus.PAID);
+    assertThat(orderCreatedEvent.paymentProcessingMode()).isEqualTo(PaymentProcessingMode.MANUAL);
     assertThat(orderCreatedEvent.totalAmount()).isEqualByComparingTo(order.getTotalAmount());
     assertThat(orderCreatedEvent.items()).hasSize(fixtures.size());
     assertThat(orderCreatedEvent.items())
@@ -121,6 +132,40 @@ class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
               assertThat(item.unitPrice())
                   .isEqualByComparingTo(fixture.orderableProduct().unitPrice());
             });
+
+    assertThat(applicationEvents.stream(OrderReadyForPreparationEvent.class))
+        .singleElement()
+        .satisfies(
+            event -> {
+              assertThat(event.orderId()).isEqualTo(order.getId());
+              assertThat(event.releasedAt()).isEqualTo(DEFAULT_INSTANT);
+            });
+  }
+
+  @Test
+  void shouldKeepGatewayOrderBlockedUntilPaymentConfirmation() {
+    var fixtures = createOrderItemFixtures();
+    var command =
+        new CreateOrderCommand(
+            fixtures.stream().map(OrderItemFixture::command).toList(),
+            new PaymentInfo(
+                PaymentMethod.CARD, PaymentStatus.PENDING, PaymentProcessingMode.GATEWAY),
+            OrderServiceType.COUNTER);
+    when(orderableProductProvider.findOrderableProducts(TENANT_ID, extractSelections(command)))
+        .thenReturn(createOrderableProducts(fixtures));
+
+    var order = orderService.createOrder(TENANT_ID, command);
+
+    assertThat(order.getReleasedForPreparationAt()).isNull();
+    assertThat(applicationEvents.stream(OrderReadyForPreparationEvent.class)).isEmpty();
+
+    var paidAt = DEFAULT_INSTANT.plusSeconds(60);
+    orderService.releaseForPreparation(TENANT_ID, order.getId(), paidAt);
+    orderService.releaseForPreparation(TENANT_ID, order.getId(), paidAt.plusSeconds(60));
+
+    assertThat(applicationEvents.stream(OrderReadyForPreparationEvent.class))
+        .singleElement()
+        .satisfies(event -> assertThat(event.releasedAt()).isEqualTo(paidAt));
   }
 
   @Test

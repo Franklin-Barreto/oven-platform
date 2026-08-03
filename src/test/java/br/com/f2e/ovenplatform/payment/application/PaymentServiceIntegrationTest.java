@@ -96,7 +96,7 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
     var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
     paymentRepository.save(payment);
 
-    paymentService.markAsPaid(TENANT_ID, ORDER_ID);
+    paymentService.markManualPaymentAsPaid(TENANT_ID, ORDER_ID);
 
     flushAndClear();
 
