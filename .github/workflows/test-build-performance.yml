@@ -1,0 +1,148 @@
+name: Test build performance
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: '0 9 * * 1'
+
+permissions:
+  contents: read
+
+jobs:
+  benchmark:
+    name: Benchmark test build
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+
+      - name: Set up JDK 25
+        uses: actions/setup-java@c1e323688fd81a25caa38c78aa6df2d33d3e20d9 # v4
+        with:
+          java-version: 25
+          distribution: zulu
+          cache: maven
+
+      - name: Generate test JWT secret
+        shell: bash
+        run: |
+          jwt_secret="$(openssl rand -base64 48)"
+          echo "::add-mask::$jwt_secret"
+          echo "JWT_SECRET=$jwt_secret" >> "$GITHUB_ENV"
+
+      - name: Warm Maven dependencies
+        run: ./mvnw -B -q -DskipTests compile
+
+      - name: Benchmark canonical build
+        shell: bash
+        run: |
+          benchmark_dir="${RUNNER_TEMP}/test-build-performance"
+          mkdir -p "$benchmark_dir"
+          echo "BENCHMARK_DIR=$benchmark_dir" >> "$GITHUB_ENV"
+          metrics_file="${benchmark_dir}/metrics.tsv"
+          printf 'run\tduration_ms\ttests\tpostgres_starts\n' > "$metrics_file"
+
+          for run in 1 2 3; do
+            log_file="${benchmark_dir}/verify-${run}.log"
+            start_ms="$(date +%s%3N)"
+
+            ./mvnw -B clean verify > "$log_file" 2>&1
+
+            end_ms="$(date +%s%3N)"
+            duration_ms="$((end_ms - start_ms))"
+            tests="$(sed -n 's/.*Tests run: \([0-9][0-9]*\), Failures:.*$/\1/p' "$log_file" | tail -1)"
+            postgres_starts="$(grep -c 'Container postgres:17-alpine started in PT' "$log_file" || true)"
+
+            printf '%s\t%s\t%s\t%s\n' \
+              "$run" "$duration_ms" "$tests" "$postgres_starts" >> "$metrics_file"
+          done
+
+      - name: Check random-order and context stability
+        shell: bash
+        run: |
+          log_file="${BENCHMARK_DIR}/random-order-contexts.log"
+          seed=8509227378854500
+
+          ./mvnw -B \
+            -Dsurefire.runOrder=random \
+            -Dsurefire.runOrder.random.seed="$seed" \
+            -Dlogging.level.org.springframework.test.context.cache=TRACE \
+            test > "$log_file" 2>&1
+
+          contexts="$(grep -c 'Storing ApplicationContext' "$log_file" || true)"
+          postgres_starts="$(grep -c 'Container postgres:17-alpine started in PT' "$log_file" || true)"
+
+          printf 'seed\tcontexts\tpostgres_starts\n%s\t%s\t%s\n' \
+            "$seed" "$contexts" "$postgres_starts" \
+            > "${BENCHMARK_DIR}/random-order-contexts.tsv"
+
+          if (( contexts != 29 )); then
+            echo "::error::Random-order run created ${contexts} Spring contexts; expected 29."
+            exit 1
+          fi
+
+          if (( postgres_starts != 3 )); then
+            echo "::error::Random-order run started PostgreSQL ${postgres_starts} times; expected 3."
+            exit 1
+          fi
+
+      - name: Validate build health
+        shell: bash
+        run: |
+          metrics_file="${BENCHMARK_DIR}/metrics.tsv"
+          minimum_tests=752
+          expected_postgres_starts=3
+
+          while IFS=$'\t' read -r run duration_ms tests postgres_starts; do
+            if [[ "$run" == "run" ]]; then
+              continue
+            fi
+
+            if (( tests < minimum_tests )); then
+              echo "::error::Run ${run} executed ${tests} tests; expected at least ${minimum_tests}."
+              exit 1
+            fi
+
+            if (( postgres_starts != expected_postgres_starts )); then
+              echo "::error::Run ${run} started PostgreSQL ${postgres_starts} times; expected ${expected_postgres_starts}."
+              exit 1
+            fi
+          done < "$metrics_file"
+
+          if grep -Eiq \
+            'BUILD FAILURE|Failures: [1-9]|Errors: [1-9]|Failed to validate connection|kill self fork JVM|Failed to export spans' \
+            "${BENCHMARK_DIR}"/*.log; then
+            echo "::error::A known build-health failure or warning was found."
+            exit 1
+          fi
+
+      - name: Publish benchmark summary
+        if: always()
+        shell: bash
+        run: |
+          metrics_file="${BENCHMARK_DIR}/metrics.tsv"
+
+          if [[ ! -f "$metrics_file" ]]; then
+            exit 0
+          fi
+
+          mean_ms="$(awk -F '\t' 'NR > 1 {total += $2; count++} END {printf "%.0f", total / count}' "$metrics_file")"
+
+          {
+            echo '## Test build performance'
+            echo
+            echo '| Run | Duration (ms) | Tests | PostgreSQL starts |'
+            echo '|---:|---:|---:|---:|'
+            awk -F '\t' 'NR > 1 {printf "| %s | %s | %s | %s |\n", $1, $2, $3, $4}' "$metrics_file"
+            echo
+            echo "Mean duration: **${mean_ms} ms**"
+          } >> "$GITHUB_STEP_SUMMARY"
+
+      - name: Upload benchmark evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: test-build-performance-${{ github.run_attempt }}
+          if-no-files-found: error
+          retention-days: 30
+          path: ${{ runner.temp }}/test-build-performance/
