@@ -50,7 +50,7 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
   private static final String CREATION_FAILURES_METRIC = "oven.orders.creation.failures";
   private static final String CREATION_TIMER = "oven.orders.creation";
 
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aedc");
 
   private static final UUID PRODUCT_ID = UUID.fromString("b6210129-f1d5-4942-8d0a-b144e518aecc");
 

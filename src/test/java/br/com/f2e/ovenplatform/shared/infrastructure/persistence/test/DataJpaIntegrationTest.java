@@ -9,7 +9,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(PostgresTestContainerConfiguration.class)
+@Import(DataJpaPostgresTestContainerConfiguration.class)
 @EnableJpaAuditing
 public abstract class DataJpaIntegrationTest {
 
