@@ -10,6 +10,7 @@ import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaOptionGroup
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.PersistenceException;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -72,6 +73,27 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
         .extracting(OptionGroup::getName, OptionGroup::getDisplayPosition)
         .containsExactly(
             tuple("Escolha o pão", 0), tuple("Remover itens", 1), tuple("Adicionais", 2));
+  }
+
+  @Test
+  void shouldUseIdAsTieBreakerForOptionGroupsWithTheSameDisplayPosition() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Torino");
+    var sauces = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Molhos", 1);
+    var extras = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Extras", 1);
+
+    repository.saveAll(List.of(sauces, extras));
+    flushAndClear();
+
+    var expectedIds =
+        List.of(sauces.getId(), extras.getId()).stream()
+            .sorted(Comparator.comparing(UUID::toString))
+            .toList();
+
+    assertThat(
+            repository.findByTenantIdAndProductId(
+                fixture.tenant().getId(), fixture.product().getId()))
+        .extracting(OptionGroup::getId)
+        .containsExactlyElementsOf(expectedIds);
   }
 
   @Test
