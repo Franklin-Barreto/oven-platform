@@ -61,11 +61,6 @@ public class Payment extends BaseEntity {
   }
 
   public static Payment paid(
-      UUID tenantId, UUID orderId, BigDecimal amount, PaymentMethod paymentMethod, Instant paidAt) {
-    return paid(tenantId, orderId, amount, paymentMethod, PaymentProcessingMode.MANUAL, paidAt);
-  }
-
-  public static Payment paid(
       UUID tenantId,
       UUID orderId,
       BigDecimal amount,
@@ -75,11 +70,6 @@ public class Payment extends BaseEntity {
     requireNotNull(paidAt, "paidAt");
     return new Payment(
         tenantId, orderId, amount, paymentMethod, PaymentStatus.PAID, processingMode, paidAt);
-  }
-
-  public static Payment pending(
-      UUID tenantId, UUID orderId, BigDecimal amount, PaymentMethod paymentMethod) {
-    return pending(tenantId, orderId, amount, paymentMethod, PaymentProcessingMode.MANUAL);
   }
 
   public static Payment pending(

@@ -12,6 +12,7 @@ import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderItemResponse;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderResponse;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
@@ -41,7 +42,7 @@ public class OrderSteps {
         new CreateOrderRequest(
             OrderServiceType.COUNTER,
             List.of(new OrderItemRequest(productResponse.id(), quantity)),
-            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID));
+            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL));
 
     var response =
         api.authenticated()

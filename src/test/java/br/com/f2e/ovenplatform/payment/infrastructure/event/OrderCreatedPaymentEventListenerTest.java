@@ -11,14 +11,15 @@ import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.application.RegisterPaymentCommand;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -33,12 +34,7 @@ class OrderCreatedPaymentEventListenerTest {
 
   @Mock private PaymentService paymentService;
 
-  private OrderCreatedPaymentEventListener listener;
-
-  @BeforeEach
-  void setUp() {
-    listener = new OrderCreatedPaymentEventListener(paymentService);
-  }
+  @InjectMocks private OrderCreatedPaymentEventListener listener;
 
   @Test
   void shouldRegisterPaymentFromCanonicalOrderCreatedEvent() {
@@ -50,7 +46,12 @@ class OrderCreatedPaymentEventListenerTest {
     assertThat(commandCaptor.getValue())
         .isEqualTo(
             new RegisterPaymentCommand(
-                TENANT_ID, ORDER_ID, TOTAL_AMOUNT, PaymentMethod.CASH, PaymentStatus.PAID));
+                TENANT_ID,
+                ORDER_ID,
+                TOTAL_AMOUNT,
+                PaymentMethod.CASH,
+                PaymentStatus.PAID,
+                PaymentProcessingMode.MANUAL));
   }
 
   @Test
@@ -68,6 +69,7 @@ class OrderCreatedPaymentEventListenerTest {
         ORDER_ID,
         br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod.CASH,
         br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus.PAID,
+        br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode.MANUAL,
         TOTAL_AMOUNT,
         List.of(new OrderPlacedItem(PRODUCT_ID, "Pizza Portuguesa", 2, new BigDecimal("60.00"))));
   }

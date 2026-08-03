@@ -23,7 +23,13 @@ class PaymentTest {
   void shouldCreatePaidPaymentWithPaidAt() {
 
     var paymentPaid =
-        Payment.paid(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PAID_AT);
+        Payment.paid(
+            TENANT_ID,
+            ORDER_ID,
+            PAYMENT_AMOUNT,
+            PaymentMethod.CASH,
+            PaymentProcessingMode.MANUAL,
+            PAID_AT);
 
     assertThat(paymentPaid.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(paymentPaid.getOrderId()).isEqualTo(ORDER_ID);
@@ -36,7 +42,14 @@ class PaymentTest {
   @Test
   void shouldRejectPaidPaymentWithoutPaidAt() {
     assertThatThrownBy(
-            () -> Payment.paid(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, null))
+            () ->
+                Payment.paid(
+                    TENANT_ID,
+                    ORDER_ID,
+                    PAYMENT_AMOUNT,
+                    PaymentMethod.CASH,
+                    PaymentProcessingMode.MANUAL,
+                    null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("paidAt must not be null");
   }
@@ -44,7 +57,9 @@ class PaymentTest {
   @Test
   void shouldCreatePendingPaymentWithoutPaidAt() {
 
-    var pendingPayment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+    var pendingPayment =
+        Payment.pending(
+            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentProcessingMode.MANUAL);
 
     assertThat(pendingPayment.getTenantId()).isEqualTo(TENANT_ID);
     assertThat(pendingPayment.getOrderId()).isEqualTo(ORDER_ID);
@@ -63,7 +78,15 @@ class PaymentTest {
       PaymentMethod paymentMethod,
       Instant paidAt,
       String expectedMessage) {
-    assertThatThrownBy(() -> Payment.paid(tenantId, orderId, paymentAmount, paymentMethod, paidAt))
+    assertThatThrownBy(
+            () ->
+                Payment.paid(
+                    tenantId,
+                    orderId,
+                    paymentAmount,
+                    paymentMethod,
+                    PaymentProcessingMode.MANUAL,
+                    paidAt))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage(expectedMessage);
   }
@@ -71,7 +94,9 @@ class PaymentTest {
   @Test
   void shouldMarkPendingPaymentAsPaid() {
 
-    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+    var payment =
+        Payment.pending(
+            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentProcessingMode.MANUAL);
 
     payment.markAsPaid(PAID_AT);
 
@@ -82,7 +107,14 @@ class PaymentTest {
   @Test
   void shouldKeepAlreadyPaidPaymentUnchanged() {
 
-    var payment = Payment.paid(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PAID_AT);
+    var payment =
+        Payment.paid(
+            TENANT_ID,
+            ORDER_ID,
+            PAYMENT_AMOUNT,
+            PaymentMethod.CASH,
+            PaymentProcessingMode.MANUAL,
+            PAID_AT);
     var secondPaymentTime = Instant.parse("2026-05-12T21:00:00Z");
 
     payment.markAsPaid(secondPaymentTime);
@@ -93,7 +125,9 @@ class PaymentTest {
 
   @Test
   void shouldRejectMarkAsPaidWithoutPaidAt() {
-    var payment = Payment.pending(TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH);
+    var payment =
+        Payment.pending(
+            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CASH, PaymentProcessingMode.MANUAL);
 
     assertThatThrownBy(() -> payment.markAsPaid(null))
         .isInstanceOf(IllegalArgumentException.class)

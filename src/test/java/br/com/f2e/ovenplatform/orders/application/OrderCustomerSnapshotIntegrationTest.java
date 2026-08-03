@@ -14,6 +14,7 @@ import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.infrastructure.customer.CustomerDeliveryInfoLookupProvider;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import br.com.f2e.ovenplatform.tenant.domain.Plan;
@@ -73,7 +74,8 @@ class OrderCustomerSnapshotIntegrationTest extends DataJpaIntegrationTest {
     var command =
         new CreateOrderCommand(
             List.of(new CreateOrderItemCommand(PRODUCT_ID, 1)),
-            new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING),
+            new PaymentInfo(
+                PaymentMethod.CASH, PaymentStatus.PENDING, PaymentProcessingMode.MANUAL),
             OrderServiceType.DELIVERY,
             customer.getId(),
             addressId);

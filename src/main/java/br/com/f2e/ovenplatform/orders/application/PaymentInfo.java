@@ -9,10 +9,6 @@ import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 public record PaymentInfo(
     PaymentMethod method, PaymentStatus status, PaymentProcessingMode processingMode) {
 
-  public PaymentInfo(PaymentMethod method, PaymentStatus status) {
-    this(method, status, PaymentProcessingMode.MANUAL);
-  }
-
   public PaymentInfo {
     requireNotNull(method, "payment method");
     requireNotNull(status, "payment status");

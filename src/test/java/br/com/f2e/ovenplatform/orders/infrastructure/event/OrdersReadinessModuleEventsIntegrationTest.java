@@ -18,6 +18,7 @@ import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.domain.OrderStatus;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
 import java.math.BigDecimal;
@@ -121,7 +122,7 @@ class OrdersReadinessModuleEventsIntegrationTest {
   private CreateOrderCommand createOrderCommand() {
     return new CreateOrderCommand(
         List.of(new CreateOrderItemCommand(PRODUCT_ID, 2)),
-        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL),
         OrderServiceType.COUNTER);
   }
 

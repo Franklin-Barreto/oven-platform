@@ -16,23 +16,6 @@ public record OrderCreatedEvent(
     BigDecimal totalAmount,
     List<OrderPlacedItem> items) {
 
-  public OrderCreatedEvent(
-      UUID tenantId,
-      UUID orderId,
-      PaymentMethod paymentMethod,
-      PaymentStatus paymentStatus,
-      BigDecimal totalAmount,
-      List<OrderPlacedItem> items) {
-    this(
-        tenantId,
-        orderId,
-        paymentMethod,
-        paymentStatus,
-        PaymentProcessingMode.MANUAL,
-        totalAmount,
-        items);
-  }
-
   public OrderCreatedEvent {
     items = List.copyOf(items);
   }

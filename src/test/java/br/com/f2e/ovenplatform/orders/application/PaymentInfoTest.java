@@ -11,8 +11,9 @@ import org.junit.jupiter.api.Test;
 class PaymentInfoTest {
 
   @Test
-  void shouldDefaultExistingPaymentContractToManualProcessing() {
-    var paymentInfo = new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING);
+  void shouldAcceptExplicitManualProcessing() {
+    var paymentInfo =
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PENDING, PaymentProcessingMode.MANUAL);
 
     assertThat(paymentInfo.processingMode()).isEqualTo(PaymentProcessingMode.MANUAL);
   }

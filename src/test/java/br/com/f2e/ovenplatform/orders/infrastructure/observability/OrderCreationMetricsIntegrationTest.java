@@ -16,6 +16,7 @@ import br.com.f2e.ovenplatform.orders.application.ProductNotAvailableForOrdering
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.orders.infrastructure.persistence.JpaOrderRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentMethod;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
@@ -102,7 +103,7 @@ class OrderCreationMetricsIntegrationTest extends DataJpaIntegrationTest {
   private CreateOrderCommand createOrderCommand() {
     return new CreateOrderCommand(
         List.of(new CreateOrderItemCommand(PRODUCT_ID, 1)),
-        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID),
+        new PaymentInfo(PaymentMethod.CASH, PaymentStatus.PAID, PaymentProcessingMode.MANUAL),
         OrderServiceType.COUNTER);
   }
 
