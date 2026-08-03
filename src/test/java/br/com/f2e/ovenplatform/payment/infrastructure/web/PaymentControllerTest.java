@@ -16,6 +16,7 @@ import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
 import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
@@ -50,7 +51,11 @@ class PaymentControllerTest extends AbstractControllerTest {
         .thenReturn(
             List.of(
                 new OrderPaymentResult(
-                    orderId, PaymentMethod.CASH, PaymentStatus.PENDING, PAID_AT)));
+                    orderId,
+                    PaymentMethod.CASH,
+                    PaymentStatus.PENDING,
+                    PaymentProcessingMode.MANUAL,
+                    PAID_AT)));
 
     mockMvc
         .perform(
@@ -63,6 +68,7 @@ class PaymentControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$[0].orderId").value(orderId.toString()))
         .andExpect(jsonPath("$[0].method").value(PaymentMethod.CASH.name()))
         .andExpect(jsonPath("$[0].status").value(PaymentStatus.PENDING.name()))
+        .andExpect(jsonPath("$[0].processingMode").value(PaymentProcessingMode.MANUAL.name()))
         .andExpect(jsonPath("$[0].paidAt").value(PAID_AT.toString()))
         .andReturn();
 

@@ -1,9 +1,14 @@
 package br.com.f2e.ovenplatform.payment.application;
 
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
 import java.time.Instant;
 import java.util.UUID;
 
 public record OrderPaymentResult(
-    UUID orderId, PaymentMethod method, PaymentStatus status, Instant paidAt) {}
+    UUID orderId,
+    PaymentMethod method,
+    PaymentStatus status,
+    PaymentProcessingMode processingMode,
+    Instant paidAt) {}

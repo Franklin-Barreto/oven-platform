@@ -18,6 +18,7 @@ public interface SpringDataPaymentRepository extends JpaRepository<Payment, UUID
                 p.orderId,
                 p.method,
                 p.status,
+                p.processingMode,
                 p.paidAt
                 )
         FROM Payment p
