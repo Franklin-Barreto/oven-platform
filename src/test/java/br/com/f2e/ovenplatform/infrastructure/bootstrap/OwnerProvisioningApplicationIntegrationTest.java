@@ -18,7 +18,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
-@ActiveProfiles("bootstrap-owner")
+@ActiveProfiles({"bootstrap-owner", "test"})
 @Import(PostgresTestContainerConfiguration.class)
 @SpringBootTest(
     webEnvironment = SpringBootTest.WebEnvironment.NONE,
