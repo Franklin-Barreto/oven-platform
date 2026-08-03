@@ -2,7 +2,6 @@ package br.com.f2e.ovenplatform.catalog.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.assertj.core.api.Assertions.tuple;
 
 import br.com.f2e.ovenplatform.catalog.application.option.OptionRepository;
 import br.com.f2e.ovenplatform.catalog.domain.Option;
@@ -12,6 +11,7 @@ import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.PersistenceException;
 import java.math.BigDecimal;
+import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
@@ -58,18 +58,26 @@ class OptionRepositoryIntegrationTest extends DataJpaIntegrationTest {
   void shouldReturnOptionsInDisplayOrder() {
     var fixture = catalogFixture.createProductFixture("Pizzeria Milano");
     var optionGroup = persistOptionGroup(fixture, "Adicionais");
-    var bacon = option(optionGroup.getId(), fixture.tenant().getId(), "Bacon", "5.00", 2);
+    var bacon = option(optionGroup.getId(), fixture.tenant().getId(), "Bacon", "5.00", 1);
     var cheese = option(optionGroup.getId(), fixture.tenant().getId(), "Queijo", "4.00", 0);
     var meat = option(optionGroup.getId(), fixture.tenant().getId(), "Carne", "10.00", 1);
 
     repository.saveAll(List.of(bacon, cheese, meat));
     flushAndClear();
 
+    var expectedIds =
+        List.of(bacon, cheese, meat).stream()
+            .sorted(
+                Comparator.comparingInt(Option::getDisplayPosition)
+                    .thenComparing(option -> option.getId().toString()))
+            .map(Option::getId)
+            .toList();
+
     assertThat(
             repository.findByTenantIdAndOptionGroupId(
                 fixture.tenant().getId(), optionGroup.getId()))
-        .extracting(Option::getName, Option::getDisplayPosition)
-        .containsExactly(tuple("Queijo", 0), tuple("Carne", 1), tuple("Bacon", 2));
+        .extracting(Option::getId)
+        .containsExactlyElementsOf(expectedIds);
   }
 
   @Test
