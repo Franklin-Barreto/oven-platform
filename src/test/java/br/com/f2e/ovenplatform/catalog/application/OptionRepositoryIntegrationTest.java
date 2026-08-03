@@ -14,6 +14,8 @@ import java.math.BigDecimal;
 import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -66,7 +68,7 @@ class OptionRepositoryIntegrationTest extends DataJpaIntegrationTest {
     flushAndClear();
 
     var expectedIds =
-        List.of(bacon, cheese, meat).stream()
+        Stream.of(bacon, cheese, meat)
             .sorted(
                 Comparator.comparingInt(Option::getDisplayPosition)
                     .thenComparing(option -> option.getId().toString()))
@@ -117,8 +119,12 @@ class OptionRepositoryIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
-  void shouldRejectNonexistentOptionGroup() {
-    repository.save(option(UUID.randomUUID(), UUID.randomUUID(), "Ketchup", "0.00", 0));
+  void shouldRejectOptionGroupOwnedByAnotherTenant() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Genova");
+    var anotherFixture = catalogFixture.createProductFixture("Pizzeria Verona");
+    var optionGroup = persistOptionGroup(fixture, "Molhos");
+    repository.save(
+        option(optionGroup.getId(), anotherFixture.tenant().getId(), "Ketchup", "0.00", 0));
 
     assertThatThrownBy(entityManager::flush)
         .isInstanceOf(PersistenceException.class)
