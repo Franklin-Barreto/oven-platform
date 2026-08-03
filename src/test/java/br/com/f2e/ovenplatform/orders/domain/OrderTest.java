@@ -35,6 +35,7 @@ class OrderTest {
     assertThat(order.getReadyAt()).isNull();
     assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isNull();
+    assertThat(order.getReleasedForPreparationAt()).isNull();
     assertThat(order.getDeliveryCustomerSnapshot()).isNull();
     assertThat(order.getItems()).isEmpty();
   }
@@ -249,6 +250,26 @@ class OrderTest {
     assertThat(order.getCompletedAt()).isNull();
     assertThat(order.getCancelledAt()).isEqualTo(cancelledAt);
     assertThat(order.getCancelledAt()).isNotEqualTo(secondAttemptAt);
+  }
+
+  @Test
+  void shouldReleaseOrderForPreparationOnlyOnce() {
+    var releasedAt = Instant.parse("2026-08-03T12:00:00Z");
+
+    var order = order();
+
+    assertThat(order.releaseForPreparation(releasedAt)).isTrue();
+    assertThat(order.releaseForPreparation(releasedAt.plusSeconds(60))).isFalse();
+    assertThat(order.getReleasedForPreparationAt()).isEqualTo(releasedAt);
+  }
+
+  @Test
+  void shouldNotReleaseCancelledOrderForPreparation() {
+    var order = order();
+    order.cancel(Instant.parse("2026-08-03T11:00:00Z"));
+
+    assertThat(order.releaseForPreparation(Instant.parse("2026-08-03T12:00:00Z"))).isFalse();
+    assertThat(order.getReleasedForPreparationAt()).isNull();
   }
 
   private static Stream<Arguments> invalidItems() {

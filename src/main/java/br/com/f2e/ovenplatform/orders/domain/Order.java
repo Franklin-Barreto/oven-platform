@@ -48,6 +48,9 @@ public class Order extends BaseEntity {
   @Column(name = "cancelled_at")
   private Instant cancelledAt;
 
+  @Column(name = "released_for_preparation_at")
+  private Instant releasedForPreparationAt;
+
   @Embedded private DeliveryCustomerSnapshot deliveryCustomerSnapshot;
 
   @SuppressWarnings("unused")
@@ -149,6 +152,19 @@ public class Order extends BaseEntity {
 
   public Instant getCompletedAt() {
     return completedAt;
+  }
+
+  public Instant getReleasedForPreparationAt() {
+    return releasedForPreparationAt;
+  }
+
+  public boolean releaseForPreparation(Instant occurredAt) {
+    requireNotNull(occurredAt, "releasedForPreparationAt");
+    if (releasedForPreparationAt != null || status == OrderStatus.CANCELLED) {
+      return false;
+    }
+    releasedForPreparationAt = occurredAt;
+    return true;
   }
 
   private boolean transitionTo(OrderStatus targetStatus) {

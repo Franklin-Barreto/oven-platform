@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.orders.application;
 import br.com.f2e.ovenplatform.orders.application.event.OrderCreatedEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPaymentMarkedAsPaidEvent;
 import br.com.f2e.ovenplatform.orders.application.event.OrderPlacedItem;
+import br.com.f2e.ovenplatform.orders.application.event.OrderReadyForPreparationEvent;
 import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressDetails;
 import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLine;
 import br.com.f2e.ovenplatform.orders.domain.DeliveryAddressLocation;
@@ -11,6 +12,7 @@ import br.com.f2e.ovenplatform.orders.domain.DeliveryCustomerSnapshot;
 import br.com.f2e.ovenplatform.orders.domain.Order;
 import br.com.f2e.ovenplatform.orders.domain.OrderServiceType;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
+import br.com.f2e.ovenplatform.shared.application.payment.PaymentProcessingMode;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.List;
@@ -103,10 +105,15 @@ public class OrderService {
             savedOrder.getId(),
             orderCommand.paymentInfo().method(),
             orderCommand.paymentInfo().status(),
+            orderCommand.paymentInfo().processingMode(),
             savedOrder.getTotalAmount(),
             savedOrder.getItems().stream().map(OrderPlacedItem::from).toList());
 
     eventPublisher.publishEvent(orderCreatedEvent);
+
+    if (orderCommand.paymentInfo().processingMode() == PaymentProcessingMode.MANUAL) {
+      releaseForPreparation(savedOrder, clock.instant());
+    }
 
     return savedOrder;
   }
@@ -185,6 +192,28 @@ public class OrderService {
             .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, orderId));
     eventPublisher.publishEvent(
         new OrderPaymentMarkedAsPaidEvent(order.getTenantId(), order.getId()));
+  }
+
+  @Transactional
+  public void releaseForPreparation(UUID tenantId, UUID orderId, Instant releasedAt) {
+    var order =
+        orderRepository
+            .findByIdAndTenantIdWithItems(orderId, tenantId)
+            .orElseThrow(() -> new ResourceNotFoundException(RESOURCE, orderId));
+    releaseForPreparation(order, releasedAt);
+  }
+
+  private void releaseForPreparation(Order order, Instant releasedAt) {
+    if (!order.releaseForPreparation(releasedAt)) {
+      return;
+    }
+
+    eventPublisher.publishEvent(
+        new OrderReadyForPreparationEvent(
+            order.getTenantId(),
+            order.getId(),
+            releasedAt,
+            order.getItems().stream().map(OrderPlacedItem::from).toList()));
   }
 
   private void updateOrder(UUID tenantId, UUID orderId, Consumer<Order> operation) {

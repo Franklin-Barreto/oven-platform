@@ -16,6 +16,6 @@ public class OrderPaymentMarkedAsPaidEventListener {
 
   @ApplicationModuleListener
   public void on(OrderPaymentMarkedAsPaidEvent event) {
-    paymentService.markAsPaid(event.tenantId(), event.orderId());
+    paymentService.markManualPaymentAsPaid(event.tenantId(), event.orderId());
   }
 }
