@@ -10,6 +10,8 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
@@ -29,6 +31,7 @@ import org.springframework.test.context.TestPropertySource;
   EventPublicationMonitoringIntegrationTest.MetricsConfiguration.class
 })
 @TestPropertySource(properties = "oven.events.publication.monitoring.enabled=true")
+@Execution(ExecutionMode.SAME_THREAD)
 class EventPublicationMonitoringIntegrationTest {
 
   private static final Instant NOW = Instant.parse("2026-07-20T10:10:00Z");

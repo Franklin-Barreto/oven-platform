@@ -9,6 +9,8 @@ import java.time.ZoneOffset;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.jdbc.test.autoconfigure.AutoConfigureTestDatabase;
 import org.springframework.boot.jdbc.test.autoconfigure.JdbcTest;
@@ -18,6 +20,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 @JdbcTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
 @Import({PostgresTestContainerConfiguration.class, JdbcPublicationBacklogReader.class})
+@Execution(ExecutionMode.SAME_THREAD)
 class JdbcPublicationBacklogReaderTest {
 
   private final JdbcPublicationBacklogReader reader;
