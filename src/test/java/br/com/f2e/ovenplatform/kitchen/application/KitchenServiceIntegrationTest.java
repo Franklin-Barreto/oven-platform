@@ -28,7 +28,7 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 @RecordApplicationEvents
 class KitchenServiceIntegrationTest extends DataJpaIntegrationTest {
 
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aedc");
   private static final UUID OTHER_TENANT_ID =
       UUID.fromString("c7210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID ORDER_ID = UUID.fromString("bb210129-f1d5-4942-8d0a-b144e518aecd");
