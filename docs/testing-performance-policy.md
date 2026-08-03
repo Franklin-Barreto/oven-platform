@@ -84,8 +84,13 @@ The workflow fails when:
 - known OTLP, Hikari, Surefire shutdown, test, or build failures reappear.
 
 Wall-clock duration is monitored rather than used as a hard gate because shared GitHub-hosted
-runners have variable performance. Investigate a sustained increase of 15% or more across multiple
-workflow executions.
+runners have variable performance. The Actions baseline was established from nine canonical builds
+across three independent workflow executions. Their median was 105.600 seconds.
+
+The workflow emits a non-blocking GitHub Actions warning when the current three-run mean exceeds the
+baseline by 15% (121.440 seconds). It emits a critical non-blocking warning above 30% (137.280
+seconds). The fixed baseline prevents a gradual slowdown from becoming the new normal; update it
+only after repeated measurements demonstrate an intentional change in runner or build behavior.
 
 ## Updating the policy
 
