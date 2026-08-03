@@ -9,6 +9,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.parallel.Execution;
+import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -25,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
       "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
       "oven.events.publication.maintenance.enabled=false"
     })
+@Execution(ExecutionMode.SAME_THREAD)
 class ManagementEndpointsIntegrationTest {
 
   @Autowired private MockMvc mockMvc;
