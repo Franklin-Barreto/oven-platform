@@ -39,10 +39,10 @@ import org.springframework.test.context.event.RecordApplicationEvents;
 @RecordApplicationEvents
 class OrderServiceIntegrationTest extends DataJpaIntegrationTest {
 
-  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
+  private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518bbcd");
 
   private static final UUID ANOTHER_TENANT_ID =
-      UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecd");
+      UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518eeac");
   private static final UUID CUSTOMER_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
   private static final UUID CUSTOMER_ADDRESS_ID =
       UUID.fromString("d6210129-f1d5-4942-8d0a-b144e518aecc");
