@@ -64,7 +64,9 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
     var removals =
         optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Remover itens", 1);
 
-    repository.saveAll(List.of(additions, bread, removals));
+    repository.save(additions);
+    repository.save(bread);
+    repository.save(removals);
     flushAndClear();
 
     assertThat(
@@ -81,7 +83,8 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
     var sauces = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Molhos", 1);
     var extras = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Extras", 1);
 
-    repository.saveAll(List.of(sauces, extras));
+    repository.save(sauces);
+    repository.save(extras);
     flushAndClear();
 
     var expectedIds =

@@ -2,11 +2,10 @@ package br.com.f2e.ovenplatform.catalog.infrastructure.persistence;
 
 import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
 import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
-import org.springframework.stereotype.Repository;
-
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import org.springframework.stereotype.Repository;
 
 @Repository
 public class JpaOptionGroupRepositoryAdapter implements OptionGroupRepository {
