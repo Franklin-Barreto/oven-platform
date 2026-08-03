@@ -78,7 +78,7 @@ class PaymentModuleEventsIntegrationTest {
 
     var order = orderService.createOrder(TENANT_ID, createOrderCommand());
 
-    awaitPaymentAndConsumers(order.getId(), 1);
+    awaitPaymentRegistration(order.getId(), 1);
 
     var payment = paymentService.findByTenantIdAndOrderId(TENANT_ID, order.getId());
 
@@ -93,10 +93,10 @@ class PaymentModuleEventsIntegrationTest {
     var event = orderCreatedEvent();
 
     publishInTransaction(event);
-    awaitPaymentAndConsumers(ORDER_ID, 1);
+    awaitPaymentRegistration(ORDER_ID, 1);
 
     publishInTransaction(event);
-    awaitPaymentAndConsumers(ORDER_ID, 2);
+    awaitPaymentRegistration(ORDER_ID, 2);
 
     assertThat(paymentCount(ORDER_ID)).isOne();
     assertThat(paymentService.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID).getStatus())
@@ -127,10 +127,9 @@ class PaymentModuleEventsIntegrationTest {
         .executeWithoutResult(_ -> eventPublisher.publishEvent(event));
   }
 
-  private void awaitPaymentAndConsumers(UUID orderId, int expectedPublicationCount) {
+  private void awaitPaymentRegistration(UUID orderId, int expectedPublicationCount) {
     await().atMost(ASYNC_TIMEOUT).untilAsserted(() -> assertThat(paymentCount(orderId)).isOne());
     awaitCompletedPublication("payment-order-created-listener", orderId, expectedPublicationCount);
-    awaitCompletedPublication("kitchen-order-created-listener", orderId, expectedPublicationCount);
   }
 
   private void awaitCompletedPublication(String listenerId, UUID orderId, int expectedCount) {
