@@ -11,7 +11,7 @@ import org.springframework.data.jpa.repository.config.EnableJpaAuditing;
 
 @DataJpaTest
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@Import(DataJpaPostgresTestContainerConfiguration.class)
+@Import(PostgresTestContainerConfiguration.class)
 @EnableJpaAuditing
 @Execution(ExecutionMode.SAME_THREAD)
 public abstract class DataJpaIntegrationTest {
