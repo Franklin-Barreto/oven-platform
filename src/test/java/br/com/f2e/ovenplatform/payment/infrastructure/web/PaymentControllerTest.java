@@ -13,7 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
 import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
-import br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse;
+import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
@@ -49,7 +49,7 @@ class PaymentControllerTest extends AbstractControllerTest {
     when(paymentService.findByTenantIdAndOrderIdIn(TENANT_ID, request.orderIds()))
         .thenReturn(
             List.of(
-                new OrderPaymentResponse(
+                new OrderPaymentResult(
                     orderId, PaymentMethod.CASH, PaymentStatus.PENDING, PAID_AT)));
 
     mockMvc

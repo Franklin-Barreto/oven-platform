@@ -1,6 +1,6 @@
 package br.com.f2e.ovenplatform.payment.infrastructure.persistence;
 
-import br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse;
+import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import java.util.List;
 import java.util.Optional;
@@ -14,7 +14,7 @@ public interface SpringDataPaymentRepository extends JpaRepository<Payment, UUID
 
   @Query(
       """
-        SELECT new br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse(
+        SELECT new br.com.f2e.ovenplatform.payment.application.OrderPaymentResult(
                 p.orderId,
                 p.method,
                 p.status,
@@ -24,5 +24,5 @@ public interface SpringDataPaymentRepository extends JpaRepository<Payment, UUID
         WHERE p.tenantId = :tenantId
         AND p.orderId in :orderIds
         """)
-  List<OrderPaymentResponse> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds);
+  List<OrderPaymentResult> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds);
 }
