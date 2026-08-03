@@ -125,7 +125,7 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
             });
 
     assertThat(response)
-        .extracting(OrderPaymentResponse::orderId)
+        .extracting(OrderPaymentResult::orderId)
         .containsExactlyInAnyOrderElementsOf(orderIds);
   }
 
@@ -147,7 +147,7 @@ class PaymentServiceIntegrationTest extends DataJpaIntegrationTest {
             });
 
     assertThat(response)
-        .extracting(OrderPaymentResponse::orderId)
+        .extracting(OrderPaymentResult::orderId)
         .containsExactlyInAnyOrderElementsOf(orderIds);
   }
 

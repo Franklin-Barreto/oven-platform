@@ -3,7 +3,7 @@ package br.com.f2e.ovenplatform.payment.infrastructure.web;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.ApiHeaders.API_VERSION_VALUE;
 
 import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId;
-import br.com.f2e.ovenplatform.payment.application.OrderPaymentResponse;
+import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
 import br.com.f2e.ovenplatform.payment.application.PaymentService;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -27,10 +27,11 @@ public class PaymentController {
 
   @PreAuthorize("hasAuthority('PAYMENT_READ')")
   @PostMapping(version = API_VERSION_VALUE, path = "/orders/lookup")
-  public ResponseEntity<List<OrderPaymentResponse>> findByOrderIds(
+  public ResponseEntity<List<OrderPaymentResult>> findByOrderIds(
       @CurrentTenantId UUID tenantId, @Valid @RequestBody OrderPaymentsLookupRequest request) {
 
-    var responses = paymentService.findByTenantIdAndOrderIdIn(tenantId, request.orderIds());
+    var responses =
+        paymentService.findByTenantIdAndOrderIdIn(tenantId, request.orderIds());
 
     return ResponseEntity.ok(responses);
   }

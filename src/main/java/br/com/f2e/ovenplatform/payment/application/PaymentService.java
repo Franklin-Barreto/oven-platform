@@ -67,7 +67,7 @@ public class PaymentService {
   }
 
   @Transactional(readOnly = true)
-  public List<OrderPaymentResponse> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds) {
+  public List<OrderPaymentResult> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds) {
     return paymentRepository.findByTenantIdAndOrderIdIn(tenantId, orderIds);
   }
 }
