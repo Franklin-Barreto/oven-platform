@@ -13,6 +13,10 @@ jobs:
     name: Benchmark test build
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    env:
+      TEST_BUILD_BASELINE_MS: 105600
+      TEST_BUILD_WARNING_PERCENT: 15
+      TEST_BUILD_CRITICAL_PERCENT: 30
     steps:
       - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
@@ -116,6 +120,38 @@ jobs:
             exit 1
           fi
 
+      - name: Evaluate duration trend
+        shell: bash
+        run: |
+          metrics_file="${BENCHMARK_DIR}/metrics.tsv"
+          evaluation_file="${BENCHMARK_DIR}/performance-evaluation.tsv"
+          mean_ms="$(awk -F '\t' 'NR > 1 {total += $2; count++} END {printf "%.0f", total / count}' "$metrics_file")"
+          warning_ms="$((TEST_BUILD_BASELINE_MS * (100 + TEST_BUILD_WARNING_PERCENT) / 100))"
+          critical_ms="$((TEST_BUILD_BASELINE_MS * (100 + TEST_BUILD_CRITICAL_PERCENT) / 100))"
+          regression_percent="$(awk -v current="$mean_ms" -v baseline="$TEST_BUILD_BASELINE_MS" \
+            'BEGIN {printf "%.1f", ((current - baseline) / baseline) * 100}')"
+          status="within expected range"
+
+          if (( mean_ms > critical_ms )); then
+            status="critical regression warning"
+            echo "::warning title=Critical test build regression::Mean ${mean_ms} ms is ${regression_percent}% above the ${TEST_BUILD_BASELINE_MS} ms baseline."
+          elif (( mean_ms > warning_ms )); then
+            status="regression warning"
+            echo "::warning title=Test build regression::Mean ${mean_ms} ms is ${regression_percent}% above the ${TEST_BUILD_BASELINE_MS} ms baseline."
+          fi
+
+          printf 'baseline_ms\tmean_ms\twarning_ms\tcritical_ms\tregression_percent\tstatus\n' \
+            > "$evaluation_file"
+          printf '%s\t%s\t%s\t%s\t%s\t%s\n' \
+            "$TEST_BUILD_BASELINE_MS" "$mean_ms" "$warning_ms" "$critical_ms" \
+            "$regression_percent" "$status" >> "$evaluation_file"
+
+          echo "TEST_BUILD_MEAN_MS=$mean_ms" >> "$GITHUB_ENV"
+          echo "TEST_BUILD_WARNING_MS=$warning_ms" >> "$GITHUB_ENV"
+          echo "TEST_BUILD_CRITICAL_MS=$critical_ms" >> "$GITHUB_ENV"
+          echo "TEST_BUILD_REGRESSION_PERCENT=$regression_percent" >> "$GITHUB_ENV"
+          echo "TEST_BUILD_STATUS=$status" >> "$GITHUB_ENV"
+
       - name: Publish benchmark summary
         if: always()
         shell: bash
@@ -126,8 +162,6 @@ jobs:
             exit 0
           fi
 
-          mean_ms="$(awk -F '\t' 'NR > 1 {total += $2; count++} END {printf "%.0f", total / count}' "$metrics_file")"
-
           {
             echo '## Test build performance'
             echo
@@ -135,7 +169,17 @@ jobs:
             echo '|---:|---:|---:|---:|'
             awk -F '\t' 'NR > 1 {printf "| %s | %s | %s | %s |\n", $1, $2, $3, $4}' "$metrics_file"
             echo
-            echo "Mean duration: **${mean_ms} ms**"
+            echo "Mean duration: **${TEST_BUILD_MEAN_MS} ms**"
+            echo
+            echo "Actions baseline: **${TEST_BUILD_BASELINE_MS} ms**"
+            echo
+            echo "Regression: **${TEST_BUILD_REGRESSION_PERCENT}%**"
+            echo
+            echo "Warning threshold: **${TEST_BUILD_WARNING_MS} ms** (+${TEST_BUILD_WARNING_PERCENT}%)"
+            echo
+            echo "Critical threshold: **${TEST_BUILD_CRITICAL_MS} ms** (+${TEST_BUILD_CRITICAL_PERCENT}%)"
+            echo
+            echo "Status: **${TEST_BUILD_STATUS}**"
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Upload benchmark evidence
