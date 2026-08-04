@@ -96,6 +96,24 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
+  void shouldReturnOnlyActiveOptionGroupsInDisplayOrder() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Napoli");
+    var inactive = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Inactive", 0);
+    inactive.changeStatusTo(false);
+    var active = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Active", 1);
+
+    repository.save(inactive);
+    repository.save(active);
+    flushAndClear();
+
+    assertThat(
+            repository.findActiveByTenantIdAndProductId(
+                fixture.tenant().getId(), fixture.product().getId()))
+        .extracting(OptionGroup::getName, OptionGroup::getDisplayPosition)
+        .containsExactly(tuple("Active", 1));
+  }
+
+  @Test
   void shouldRejectDuplicateDisplayPositionForTheSameProduct() {
     var fixture = catalogFixture.createProductFixture("Pizzeria Torino");
     var sauces = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Molhos", 1);

@@ -79,10 +79,10 @@ class OptionGroupServiceTest {
   }
 
   @Test
-  void shouldListOptionGroups() {
+  void shouldListActiveOptionGroups() {
     var first = optionGroup("Sauces", 0, OPTION_GROUP_ID);
     var second = optionGroup("Extras", 1, UUID.randomUUID());
-    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
+    when(optionGroupRepository.findActiveByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
         .thenReturn(List.of(first, second));
 
     assertThat(service.list(TENANT_ID, PRODUCT_ID))
@@ -171,7 +171,8 @@ class OptionGroupServiceTest {
     assertThatThrownBy(() -> service.list(TENANT_ID, unknownProductId))
         .isInstanceOf(ResourceNotFoundException.class)
         .hasMessage("Product id: %s not found".formatted(unknownProductId));
-    verify(optionGroupRepository, never()).findByTenantIdAndProductId(TENANT_ID, unknownProductId);
+    verify(optionGroupRepository, never())
+        .findActiveByTenantIdAndProductId(TENANT_ID, unknownProductId);
   }
 
   @Test

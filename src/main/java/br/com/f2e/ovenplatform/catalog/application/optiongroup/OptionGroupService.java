@@ -49,7 +49,7 @@ public class OptionGroupService {
   public List<OptionGroupResult> list(UUID tenantId, UUID productId) {
     requireProduct(tenantId, productId);
 
-    return optionGroupRepository.findByTenantIdAndProductId(tenantId, productId).stream()
+    return optionGroupRepository.findActiveByTenantIdAndProductId(tenantId, productId).stream()
         .map(OptionGroupResult::from)
         .toList();
   }

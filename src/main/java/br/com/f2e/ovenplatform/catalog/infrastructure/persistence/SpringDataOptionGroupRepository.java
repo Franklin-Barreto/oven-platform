@@ -15,6 +15,9 @@ public interface SpringDataOptionGroupRepository extends JpaRepository<OptionGro
   List<OptionGroup> findByTenantIdAndProductIdOrderByDisplayPositionAscIdAsc(
       UUID tenantId, UUID productId);
 
+  List<OptionGroup> findByTenantIdAndProductIdAndActiveTrueOrderByDisplayPositionAscIdAsc(
+      UUID tenantId, UUID productId);
+
   @Query(
       """
       select max(og.displayPosition)
