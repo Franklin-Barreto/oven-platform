@@ -4,24 +4,42 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.Assertions.tuple;
 
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.CreateOptionGroupCommand;
 import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupRepository;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupResult;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.OptionGroupService;
+import br.com.f2e.ovenplatform.catalog.application.optiongroup.ReorderOptionGroupsCommand;
 import br.com.f2e.ovenplatform.catalog.domain.OptionGroup;
 import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaOptionGroupRepositoryAdapter;
+import br.com.f2e.ovenplatform.catalog.infrastructure.persistence.JpaProductRepositoryAdapter;
 import br.com.f2e.ovenplatform.catalog.support.CatalogTestFixture;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
 import jakarta.persistence.PersistenceException;
-import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
 
-@Import(JpaOptionGroupRepositoryAdapter.class)
+@Import({
+  OptionGroupService.class,
+  JpaOptionGroupRepositoryAdapter.class,
+  JpaProductRepositoryAdapter.class
+})
 class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
 
   @Autowired private OptionGroupRepository repository;
+  @Autowired private OptionGroupService service;
+  @Autowired private PlatformTransactionManager transactionManager;
 
   private CatalogTestFixture catalogFixture;
 
@@ -78,25 +96,89 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
   }
 
   @Test
-  void shouldUseIdAsTieBreakerForOptionGroupsWithTheSameDisplayPosition() {
+  void shouldRejectDuplicateDisplayPositionForTheSameProduct() {
     var fixture = catalogFixture.createProductFixture("Pizzeria Torino");
     var sauces = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Molhos", 1);
     var extras = optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Extras", 1);
 
     repository.save(sauces);
     repository.save(extras);
+    entityManager.flush();
+
+    assertThatThrownBy(this::enforceOptionGroupPositionConstraint)
+        .isInstanceOf(PersistenceException.class)
+        .rootCause()
+        .hasMessageContaining("uk_option_groups_tenant_product_position");
+  }
+
+  @Test
+  void shouldFindMaximumDisplayPosition() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Torino Max");
+    repository.save(optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Molhos", 2));
+    repository.save(optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Extras", 7));
     flushAndClear();
 
-    var expectedIds =
-        List.of(sauces.getId(), extras.getId()).stream()
-            .sorted(Comparator.comparing(UUID::toString))
-            .toList();
-
     assertThat(
-            repository.findByTenantIdAndProductId(
-                fixture.tenant().getId(), fixture.product().getId()))
-        .extracting(OptionGroup::getId)
-        .containsExactlyElementsOf(expectedIds);
+            repository.findMaxDisplayPosition(fixture.tenant().getId(), fixture.product().getId()))
+        .contains(7);
+  }
+
+  @Test
+  void shouldReorderWithDeferredUniqueConstraint() {
+    var fixture = catalogFixture.createProductFixture("Pizzeria Reorder");
+    var first =
+        repository.save(
+            optionGroup(fixture.product().getId(), fixture.tenant().getId(), "First", 0));
+    var second =
+        repository.save(
+            optionGroup(fixture.product().getId(), fixture.tenant().getId(), "Second", 1));
+    entityManager.flush();
+
+    service.reorder(
+        fixture.tenant().getId(),
+        fixture.product().getId(),
+        new ReorderOptionGroupsCommand(List.of(second.getId(), first.getId())));
+    entityManager.flush();
+
+    assertThat(first.getDisplayPosition()).isEqualTo(1);
+    assertThat(second.getDisplayPosition()).isZero();
+  }
+
+  @Test
+  @Transactional(propagation = Propagation.NOT_SUPPORTED)
+  void shouldAssignDistinctPositionsToConcurrentCreates() throws Exception {
+    var transaction = new TransactionTemplate(transactionManager);
+    var ids =
+        transaction.execute(
+            ignored -> {
+              var fixture = catalogFixture.createProductFixture("Pizzeria Concurrent");
+              entityManager.flush();
+              return new ProductIds(fixture.tenant().getId(), fixture.product().getId());
+            });
+    var start = new CountDownLatch(1);
+
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      Future<OptionGroupResult> first =
+          executor.submit(
+              () -> {
+                awaitStart(start);
+                return service.create(
+                    ids.tenantId(), ids.productId(), new CreateOptionGroupCommand("First", 0, 1));
+              });
+      Future<OptionGroupResult> second =
+          executor.submit(
+              () -> {
+                awaitStart(start);
+                return service.create(
+                    ids.tenantId(), ids.productId(), new CreateOptionGroupCommand("Second", 0, 1));
+              });
+
+      start.countDown();
+
+      assertThat(List.of(first.get(10, TimeUnit.SECONDS), second.get(10, TimeUnit.SECONDS)))
+          .extracting(OptionGroupResult::displayPosition)
+          .containsExactlyInAnyOrder(0, 1);
+    }
   }
 
   @Test
@@ -152,4 +234,18 @@ class OptionGroupRepositoryIntegrationTest extends DataJpaIntegrationTest {
   private static OptionGroup optionGroup(UUID productId, UUID tenantId, String name, int position) {
     return new OptionGroup(productId, tenantId, name, 0, 5, position);
   }
+
+  private static void awaitStart(CountDownLatch start) throws InterruptedException {
+    if (!start.await(5, TimeUnit.SECONDS)) {
+      throw new IllegalStateException("Timed out waiting for concurrent create start");
+    }
+  }
+
+  private void enforceOptionGroupPositionConstraint() {
+    entityManager
+        .createNativeQuery("SET CONSTRAINTS uk_option_groups_tenant_product_position IMMEDIATE")
+        .executeUpdate();
+  }
+
+  private record ProductIds(UUID tenantId, UUID productId) {}
 }

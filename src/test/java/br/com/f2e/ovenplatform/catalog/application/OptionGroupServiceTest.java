@@ -41,13 +41,16 @@ class OptionGroupServiceTest {
     lenient()
         .when(productRepository.findByIdAndTenantId(PRODUCT_ID, TENANT_ID))
         .thenReturn(Optional.of(mock(Product.class)));
+    lenient()
+        .when(productRepository.findByIdAndTenantIdForUpdate(PRODUCT_ID, TENANT_ID))
+        .thenReturn(Optional.of(mock(Product.class)));
   }
 
   @Test
   void shouldCreateOptionGroupAfterCurrentLastPosition() {
     var existing = optionGroup("Existing", 3, UUID.randomUUID());
-    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
-        .thenReturn(List.of(existing));
+    when(optionGroupRepository.findMaxDisplayPosition(TENANT_ID, PRODUCT_ID))
+        .thenReturn(Optional.of(existing.getDisplayPosition()));
     when(optionGroupRepository.save(any(OptionGroup.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_GROUP_ID));
 
@@ -60,12 +63,13 @@ class OptionGroupServiceTest {
     var saved = ArgumentCaptor.forClass(OptionGroup.class);
     verify(optionGroupRepository).save(saved.capture());
     assertThat(saved.getValue().getDisplayPosition()).isEqualTo(4);
+    verify(productRepository).findByIdAndTenantIdForUpdate(PRODUCT_ID, TENANT_ID);
   }
 
   @Test
   void shouldCreateFirstOptionGroupAtPositionZero() {
-    when(optionGroupRepository.findByTenantIdAndProductId(TENANT_ID, PRODUCT_ID))
-        .thenReturn(List.of());
+    when(optionGroupRepository.findMaxDisplayPosition(TENANT_ID, PRODUCT_ID))
+        .thenReturn(Optional.empty());
     when(optionGroupRepository.save(any(OptionGroup.class)))
         .thenAnswer(invocation -> withId(invocation.getArgument(0), OPTION_GROUP_ID));
 
@@ -134,6 +138,7 @@ class OptionGroupServiceTest {
 
     assertThat(first.getDisplayPosition()).isEqualTo(1);
     assertThat(second.getDisplayPosition()).isZero();
+    verify(productRepository).findByIdAndTenantIdForUpdate(PRODUCT_ID, TENANT_ID);
   }
 
   @Test

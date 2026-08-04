@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="026-add-option-groups-unique-constraint.xml" author="leandrocoutinho">
+        <sql dbms="postgresql">
+            ALTER TABLE option_groups
+                ADD CONSTRAINT uk_option_groups_tenant_product_position
+                UNIQUE (tenant_id, product_id, display_position)
+                DEFERRABLE INITIALLY DEFERRED
+        </sql>
+    </changeSet>
+</databaseChangeLog>

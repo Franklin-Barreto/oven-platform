@@ -35,8 +35,7 @@ class OrderCreatedKitchenTicketEventListenerTest {
 
   @Mock private KitchenService kitchenService;
 
-  @InjectMocks
-  private OrderCreatedKitchenTicketEventListener listener;
+  @InjectMocks private OrderCreatedKitchenTicketEventListener listener;
 
   @Test
   void shouldCreateKitchenTicketFromCanonicalOrderCreatedEvent() {

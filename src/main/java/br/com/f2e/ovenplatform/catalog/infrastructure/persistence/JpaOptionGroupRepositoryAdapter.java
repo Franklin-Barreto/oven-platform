@@ -31,4 +31,9 @@ public class JpaOptionGroupRepositoryAdapter implements OptionGroupRepository {
   public List<OptionGroup> findByTenantIdAndProductId(UUID tenantId, UUID productId) {
     return repository.findByTenantIdAndProductIdOrderByDisplayPositionAscIdAsc(tenantId, productId);
   }
+
+  @Override
+  public Optional<Integer> findMaxDisplayPosition(UUID tenantId, UUID productId) {
+    return repository.findMaxDisplayPosition(tenantId, productId);
+  }
 }

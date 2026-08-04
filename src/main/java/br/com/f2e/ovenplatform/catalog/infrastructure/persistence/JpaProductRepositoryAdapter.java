@@ -28,6 +28,11 @@ public class JpaProductRepositoryAdapter implements ProductRepository {
   }
 
   @Override
+  public Optional<Product> findByIdAndTenantIdForUpdate(UUID id, UUID tenantId) {
+    return repository.findByIdAndTenantIdForUpdate(id, tenantId);
+  }
+
+  @Override
   public List<Product> findActiveByTenantId(UUID tenantId) {
     return repository.findByTenantIdAndActiveTrue(tenantId);
   }

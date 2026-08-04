@@ -29,14 +29,10 @@ public class OptionGroupService {
 
   @Transactional
   public OptionGroupResult create(UUID tenantId, UUID productId, CreateOptionGroupCommand command) {
-    requireProduct(tenantId, productId);
+    requireProductForUpdate(tenantId, productId);
 
     int nextDisplayPosition =
-        optionGroupRepository.findByTenantIdAndProductId(tenantId, productId).stream()
-                .mapToInt(OptionGroup::getDisplayPosition)
-                .max()
-                .orElse(-1)
-            + 1;
+        optionGroupRepository.findMaxDisplayPosition(tenantId, productId).orElse(-1) + 1;
     OptionGroup optionGroup =
         new OptionGroup(
             productId,
@@ -78,7 +74,7 @@ public class OptionGroupService {
 
   @Transactional
   public void reorder(UUID tenantId, UUID productId, ReorderOptionGroupsCommand command) {
-    requireProduct(tenantId, productId);
+    requireProductForUpdate(tenantId, productId);
 
     List<OptionGroup> optionGroups =
         optionGroupRepository.findByTenantIdAndProductId(tenantId, productId);
@@ -105,6 +101,12 @@ public class OptionGroupService {
   private void requireProduct(UUID tenantId, UUID productId) {
     productRepository
         .findByIdAndTenantId(productId, tenantId)
+        .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
+  }
+
+  private void requireProductForUpdate(UUID tenantId, UUID productId) {
+    productRepository
+        .findByIdAndTenantIdForUpdate(productId, tenantId)
         .orElseThrow(() -> new ResourceNotFoundException(PRODUCT_RESOURCE, productId));
   }
 

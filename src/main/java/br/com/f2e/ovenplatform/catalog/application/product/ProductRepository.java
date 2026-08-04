@@ -11,6 +11,8 @@ public interface ProductRepository {
 
   Optional<Product> findByIdAndTenantId(UUID id, UUID tenantId);
 
+  Optional<Product> findByIdAndTenantIdForUpdate(UUID id, UUID tenantId);
+
   List<Product> findActiveByTenantId(UUID tenantId);
 
   List<Product> findActiveByTenantIdAndIdIn(UUID tenantId, Set<UUID> productIds);

@@ -12,4 +12,6 @@ public interface OptionGroupRepository {
   Optional<OptionGroup> findByIdAndTenantIdAndProductId(UUID id, UUID tenantId, UUID productId);
 
   List<OptionGroup> findByTenantIdAndProductId(UUID tenantId, UUID productId);
+
+  Optional<Integer> findMaxDisplayPosition(UUID tenantId, UUID productId);
 }
