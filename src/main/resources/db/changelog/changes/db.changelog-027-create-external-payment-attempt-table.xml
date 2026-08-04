@@ -1,0 +1,93 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="
+        http://www.liquibase.org/xml/ns/dbchangelog
+        https://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-latest.xsd">
+
+    <changeSet id="027-create-external-payment-attempt-table" author="franklin">
+        <createTable tableName="external_payment_attempts">
+            <column name="id" type="uuid">
+                <constraints
+                        primaryKey="true"
+                        primaryKeyName="pk_external_payment_attempts"
+                        nullable="false"/>
+            </column>
+            <column name="tenant_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="payment_id" type="uuid">
+                <constraints nullable="false"/>
+            </column>
+            <column name="provider" type="varchar(60)">
+                <constraints nullable="false" checkConstraint="btrim(provider) &lt;&gt; ''"/>
+            </column>
+            <column name="provider_reference" type="varchar(150)">
+                <constraints
+                        checkConstraint="provider_reference IS NULL OR btrim(provider_reference) &lt;&gt; ''"/>
+            </column>
+            <column name="amount" type="numeric(19,2)">
+                <constraints nullable="false" checkConstraint="amount &gt; 0"/>
+            </column>
+            <column name="currency" type="varchar(3)">
+                <constraints nullable="false" checkConstraint="currency = 'BRL'"/>
+            </column>
+            <column name="redirect_url" type="varchar(2048)"/>
+            <column name="expires_at" type="timestamp with time zone"/>
+            <column name="completed_at" type="timestamp with time zone"/>
+            <column name="status" type="varchar(50)">
+                <constraints
+                        nullable="false"
+                        checkConstraint="status IN ('CREATED', 'PENDING', 'SUCCEEDED', 'FAILED', 'EXPIRED')
+                            AND (
+                                (status IN ('CREATED', 'PENDING') AND completed_at IS NULL)
+                                OR
+                                (status IN ('SUCCEEDED', 'FAILED', 'EXPIRED') AND completed_at IS NOT NULL)
+                            )
+                            AND (
+                                status NOT IN ('PENDING', 'SUCCEEDED', 'EXPIRED')
+                                OR provider_reference IS NOT NULL
+                            )"/>
+            </column>
+            <column name="version" type="bigint" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+            <column name="updated_at" type="timestamp with time zone">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <dropDefaultValue tableName="external_payment_attempts" columnName="version"/>
+
+        <addUniqueConstraint
+                tableName="payments"
+                columnNames="tenant_id,id"
+                constraintName="uk_payments_tenant_id_id"/>
+
+        <addForeignKeyConstraint
+                baseTableName="external_payment_attempts"
+                baseColumnNames="tenant_id,payment_id"
+                referencedTableName="payments"
+                referencedColumnNames="tenant_id,id"
+                constraintName="fk_attempts_tenant_payment"
+                onDelete="RESTRICT"/>
+
+        <addUniqueConstraint
+                tableName="external_payment_attempts"
+                columnNames="provider,provider_reference"
+                constraintName="uk_attempts_provider_reference"/>
+
+        <createIndex
+                tableName="external_payment_attempts"
+                indexName="idx_attempts_tenant_payment_status">
+            <column name="tenant_id"/>
+            <column name="payment_id"/>
+            <column name="status"/>
+        </createIndex>
+
+    </changeSet>
+</databaseChangeLog>
