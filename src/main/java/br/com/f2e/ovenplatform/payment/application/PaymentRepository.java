@@ -12,4 +12,6 @@ public interface PaymentRepository {
   Optional<Payment> findByTenantIdAndOrderId(UUID tenantId, UUID orderId);
 
   List<OrderPaymentResult> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds);
+
+  Optional<Payment> findByIdAndTenantId(UUID paymentId, UUID tenantId);
 }

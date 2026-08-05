@@ -48,7 +48,7 @@ public class ExternalPaymentAttempt extends BaseEntity {
   private String currency;
 
   @Column(name = "redirect_url", length = 2048)
-  private URI redirectUrl;
+  private String redirectUrl;
 
   @Column(name = "expires_at")
   private Instant expiresAt;
@@ -107,7 +107,7 @@ public class ExternalPaymentAttempt extends BaseEntity {
   }
 
   public URI getRedirectUrl() {
-    return redirectUrl;
+    return redirectUrl == null ? null : URI.create(redirectUrl);
   }
 
   public Instant getExpiresAt() {
@@ -132,7 +132,7 @@ public class ExternalPaymentAttempt extends BaseEntity {
 
     if (changed) {
       this.providerReference = validatedProviderReference;
-      this.redirectUrl = validatedRedirectUrl;
+      this.redirectUrl = validatedRedirectUrl.toString();
       this.expiresAt = validatedExpiresAt;
     }
 
@@ -149,6 +149,22 @@ public class ExternalPaymentAttempt extends BaseEntity {
 
   public boolean markAsSucceeded(Instant completedAt) {
     return completeAs(SUCCEEDED, completedAt);
+  }
+
+  public boolean isReusableAt(Instant occurredAt) {
+    requireNotNull(occurredAt, "occurredAt");
+
+    return switch (status) {
+      case CREATED -> true;
+      case PENDING -> expiresAt != null && expiresAt.isAfter(occurredAt);
+      case SUCCEEDED, FAILED, EXPIRED -> false;
+    };
+  }
+
+  public boolean isExpiredAt(Instant occurredAt) {
+    requireNotNull(occurredAt, "occurredAt");
+
+    return status == PENDING && expiresAt != null && !expiresAt.isAfter(occurredAt);
   }
 
   private boolean completeAs(ExternalPaymentAttemptStatus target, Instant completedAt) {

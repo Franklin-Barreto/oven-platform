@@ -90,4 +90,18 @@
         </createIndex>
 
     </changeSet>
+
+    <changeSet id="027-create-active-attempt-unique-index" author="franklin">
+        <sql dbms="postgresql">
+            CREATE UNIQUE INDEX uk_attempts_active_payment
+            ON external_payment_attempts (tenant_id, payment_id)
+            WHERE status IN ('CREATED', 'PENDING')
+        </sql>
+
+        <rollback>
+            <dropIndex
+                    tableName="external_payment_attempts"
+                    indexName="uk_attempts_active_payment"/>
+        </rollback>
+    </changeSet>
 </databaseChangeLog>
