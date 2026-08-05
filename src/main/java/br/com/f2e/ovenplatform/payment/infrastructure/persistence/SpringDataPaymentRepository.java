@@ -26,4 +26,6 @@ public interface SpringDataPaymentRepository extends JpaRepository<Payment, UUID
         AND p.orderId in :orderIds
         """)
   List<OrderPaymentResult> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds);
+
+  Optional<Payment> findByIdAndTenantId(UUID id, UUID tenantId);
 }

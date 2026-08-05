@@ -31,4 +31,9 @@ public class JpaPaymentRepositoryAdapter implements PaymentRepository {
   public List<OrderPaymentResult> findByTenantIdAndOrderIdIn(UUID tenantId, List<UUID> orderIds) {
     return paymentRepository.findByTenantIdAndOrderIdIn(tenantId, orderIds);
   }
+
+  @Override
+  public Optional<Payment> findByIdAndTenantId(UUID paymentId, UUID tenantId) {
+    return paymentRepository.findByIdAndTenantId(paymentId, tenantId);
+  }
 }

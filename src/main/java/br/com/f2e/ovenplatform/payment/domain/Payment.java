@@ -127,4 +127,22 @@ public class Payment extends BaseEntity {
     this.paidAt = requireNotNull(paidAt, "paidAt");
     return true;
   }
+
+  public ExternalPaymentAttempt createExternalAttempt(PaymentProvider provider) {
+    requireEligibleForExternalAttempt();
+
+    return ExternalPaymentAttempt.createAttempt(tenantId, getId(), provider, amount);
+  }
+
+  private void requireEligibleForExternalAttempt() {
+    if (status != PaymentStatus.PENDING) {
+      throw new IllegalStateException(
+          "Only pending payments can create external payment attempts.");
+    }
+
+    if (processingMode != PaymentProcessingMode.GATEWAY) {
+      throw new IllegalStateException(
+          "Only gateway-processed payments can create external payment attempts.");
+    }
+  }
 }
