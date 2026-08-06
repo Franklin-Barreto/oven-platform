@@ -60,12 +60,7 @@ public class ExternalPaymentAttemptReservationService {
   public ExternalPaymentAttempt registerCheckoutInTransaction(
       RegisterExternalCheckoutCommand checkoutCommand) {
     var attempt =
-        attemptRepository
-            .findByIdAndTenantId(checkoutCommand.attemptId(), checkoutCommand.tenantId())
-            .orElseThrow(
-                () ->
-                    new ResourceNotFoundException(
-                        EXTERNAL_PAYMENT_ATTEMPT, checkoutCommand.attemptId()));
+        getExternalPaymentAttempt(checkoutCommand.tenantId(), checkoutCommand.attemptId());
     attempt.registerCheckout(
         checkoutCommand.providerReference(),
         checkoutCommand.checkoutUrl(),
@@ -75,6 +70,17 @@ public class ExternalPaymentAttemptReservationService {
 
   @Transactional(readOnly = true)
   public ExternalPaymentAttempt getAttempt(UUID tenantId, UUID attemptId) {
+    return getExternalPaymentAttempt(tenantId, attemptId);
+  }
+
+  @Transactional
+  public void markAsFailedInTransaction(UUID tenantId, UUID attemptId, Instant occurredAt) {
+    var attempt = getExternalPaymentAttempt(tenantId, attemptId);
+    attempt.markAsFailed(occurredAt);
+    attemptRepository.saveAndFlush(attempt);
+  }
+
+  private ExternalPaymentAttempt getExternalPaymentAttempt(UUID tenantId, UUID attemptId) {
     return attemptRepository
         .findByIdAndTenantId(attemptId, tenantId)
         .orElseThrow(() -> new ResourceNotFoundException(EXTERNAL_PAYMENT_ATTEMPT, attemptId));

@@ -23,3 +23,8 @@ oven:
         enabled: false
       monitoring:
         enabled: false
+  payment:
+    stripe:
+      secret-key: sk_test_fake
+      success-url: http://localhost/payment/success
+      cancel-url: http://localhost/payment/cancel

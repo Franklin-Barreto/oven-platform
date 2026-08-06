@@ -12,6 +12,8 @@ import br.com.f2e.ovenplatform.payment.application.CreateExternalPaymentAttemptC
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptResult;
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptService;
 import br.com.f2e.ovenplatform.payment.application.PaymentRepository;
+import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
+import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationOutcomeUnknownException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
 import br.com.f2e.ovenplatform.payment.application.gateway.CreatedCheckoutSession;
 import br.com.f2e.ovenplatform.payment.application.gateway.PaymentGateway;
@@ -48,6 +50,7 @@ class PaymentCheckoutSessionServiceTest {
   private static final Instant WINNING_EXPIRES_AT = Instant.parse("2026-08-04T17:55:00Z");
   private static final URI WINNING_REDIRECT_URL =
       URI.create("https://checkout.test/session/winner");
+  private static final BigDecimal AMOUNT = new BigDecimal("100.00");
 
   @Mock private PaymentRepository paymentRepository;
   @Mock private ExternalPaymentAttemptService attemptService;
@@ -59,10 +62,9 @@ class PaymentCheckoutSessionServiceTest {
 
   @BeforeEach
   void setUp() {
-    var amount = new BigDecimal("120.00");
     payment =
         Payment.pending(
-            TENANT_ID, ORDER_ID, amount, PaymentMethod.CARD, PaymentProcessingMode.GATEWAY);
+            TENANT_ID, ORDER_ID, AMOUNT, PaymentMethod.CARD, PaymentProcessingMode.GATEWAY);
     EntityIdTestUtils.withId(payment, PAYMENT_ID);
 
     when(paymentRepository.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID))
@@ -129,6 +131,43 @@ class PaymentCheckoutSessionServiceTest {
     assertThat(result.attemptId()).isEqualTo(registeredAttempt.attemptId());
     verify(paymentGateway).createCheckoutSession(spec);
     verify(attemptService).registerCheckout(registerCommand);
+  }
+
+  @Test
+  void shouldMarkAttemptAsFailedWhenCheckoutCreationDefinitelyFails() {
+
+    var command =
+        new CreateExternalPaymentAttemptCommand(TENANT_ID, PAYMENT_ID, PaymentProvider.STRIPE);
+    var attempt = createAttempt(payment, ExternalPaymentAttemptStatus.CREATED, null, null, null);
+
+    var exception = new CheckoutSessionCreationFailedException(ATTEMPT_ID, null);
+    when(paymentGateway.createCheckoutSession(any(CheckoutSessionSpec.class))).thenThrow(exception);
+
+    when(attemptService.createOrReuseAttempt(command)).thenReturn(attempt);
+
+    assertThatThrownBy(
+            () -> paymentCheckoutSessionService.createOrReuseCheckoutSession(TENANT_ID, ORDER_ID))
+        .isSameAs(exception);
+
+    verify(attemptService).markAsFailed(TENANT_ID, ATTEMPT_ID);
+  }
+
+  @Test
+  void shouldKeepAttemptCreatedWhenCheckoutCreationOutcomeIsUnknown() {
+    var command =
+        new CreateExternalPaymentAttemptCommand(TENANT_ID, PAYMENT_ID, PaymentProvider.STRIPE);
+    var attempt = createAttempt(payment, ExternalPaymentAttemptStatus.CREATED, null, null, null);
+
+    var exception = new CheckoutSessionCreationOutcomeUnknownException(ATTEMPT_ID, null);
+    when(paymentGateway.createCheckoutSession(any(CheckoutSessionSpec.class))).thenThrow(exception);
+
+    when(attemptService.createOrReuseAttempt(command)).thenReturn(attempt);
+
+    assertThatThrownBy(
+            () -> paymentCheckoutSessionService.createOrReuseCheckoutSession(TENANT_ID, ORDER_ID))
+        .isSameAs(exception);
+
+    verify(attemptService, never()).markAsFailed(TENANT_ID, ATTEMPT_ID);
   }
 
   @ParameterizedTest

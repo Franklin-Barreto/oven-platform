@@ -4,12 +4,16 @@ import br.com.f2e.ovenplatform.payment.application.CreateExternalPaymentAttemptC
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptResult;
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptService;
 import br.com.f2e.ovenplatform.payment.application.PaymentRepository;
+import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
+import br.com.f2e.ovenplatform.payment.application.gateway.CreatedCheckoutSession;
 import br.com.f2e.ovenplatform.payment.application.gateway.PaymentGateway;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
+@Service
 public class PaymentCheckoutSessionService {
 
   private final PaymentRepository paymentRepository;
@@ -49,12 +53,19 @@ public class PaymentCheckoutSessionService {
 
   private PaymentCheckoutSessionResult createAndRegisterCheckout(
       UUID tenantId, ExternalPaymentAttemptResult externalPaymentAttemptResult) {
-    var createdCheckoutSession =
-        paymentGateway.createCheckoutSession(
-            new CheckoutSessionSpec(
-                externalPaymentAttemptResult.attemptId(),
-                externalPaymentAttemptResult.amount(),
-                externalPaymentAttemptResult.currency()));
+    CreatedCheckoutSession createdCheckoutSession;
+    try {
+      createdCheckoutSession =
+          paymentGateway.createCheckoutSession(
+              new CheckoutSessionSpec(
+                  externalPaymentAttemptResult.attemptId(),
+                  externalPaymentAttemptResult.amount(),
+                  externalPaymentAttemptResult.currency()));
+
+    } catch (CheckoutSessionCreationFailedException exception) {
+      attemptService.markAsFailed(tenantId, externalPaymentAttemptResult.attemptId());
+      throw exception;
+    }
 
     var attemptResult =
         attemptService.registerCheckout(

@@ -62,6 +62,11 @@ oven:
         retry-max-in-flight: 10
         retry-max-attempts: 5
         completed-retention: 7d
+  payment:
+    stripe:
+      secret-key: ${STRIPE_SECRET_KEY}
+      success-url: ${STRIPE_SUCCESS_URL}
+      cancel-url: ${STRIPE_CANCEL_URL}
 management:
   otlp:
     metrics:
