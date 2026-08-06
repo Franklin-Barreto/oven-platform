@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.payment.domain;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requireNotNull;
 import static br.com.f2e.ovenplatform.shared.domain.validation.Preconditions.requirePositive;
 
+import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
 import br.com.f2e.ovenplatform.shared.domain.BaseEntity;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -136,12 +137,12 @@ public class Payment extends BaseEntity {
 
   private void requireEligibleForExternalAttempt() {
     if (status != PaymentStatus.PENDING) {
-      throw new IllegalStateException(
+      throw new ExternalPaymentAttemptNotAllowedException(
           "Only pending payments can create external payment attempts.");
     }
 
     if (processingMode != PaymentProcessingMode.GATEWAY) {
-      throw new IllegalStateException(
+      throw new ExternalPaymentAttemptNotAllowedException(
           "Only gateway-processed payments can create external payment attempts.");
     }
   }

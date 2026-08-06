@@ -14,6 +14,7 @@ import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttempt;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
+import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaExternalPaymentAttemptRepositoryAdapter;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -154,7 +155,7 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
     var attempt = command(payment.getId());
 
     assertThatThrownBy(() -> service.createOrReuseAttempt(attempt))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(ExternalPaymentAttemptNotAllowedException.class)
         .hasMessage("Only pending payments can create external payment attempts.");
   }
 

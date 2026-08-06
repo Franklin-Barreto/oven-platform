@@ -11,11 +11,12 @@ import com.stripe.exception.ApiException;
 import com.stripe.exception.StripeException;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.checkout.SessionCreateParams;
+import org.springframework.stereotype.Component;
+
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Instant;
 import java.util.Locale;
-import org.springframework.stereotype.Component;
 
 @Component
 public class StripePaymentGatewayAdapter implements PaymentGateway {
@@ -49,6 +50,8 @@ public class StripePaymentGatewayAdapter implements PaymentGateway {
                     .setQuantity(1L)
                     .build())
             .setMode(SessionCreateParams.Mode.PAYMENT)
+            .putMetadata("oven_attempt_id", spec.attemptId().toString())
+            .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
             .build();
 
     var options = RequestOptions.builder().setIdempotencyKey(spec.attemptId().toString()).build();
