@@ -77,6 +77,7 @@ class PaymentModuleEventsIntegrationTest {
   @BeforeEach
   void cleanPublicationsOrdersTicketsAndPayments() {
     jdbc.update("delete from event_publication");
+    jdbc.update("delete from external_payment_attempts");
     jdbc.update("delete from payments");
     jdbc.update("delete from kitchen_ticket_items");
     jdbc.update("delete from kitchen_tickets");
