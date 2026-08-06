@@ -1,22 +1,10 @@
 package br.com.f2e.ovenplatform.payment.application;
 
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
-
 import br.com.f2e.ovenplatform.payment.application.checkout.RegisterExternalCheckoutCommand;
 import br.com.f2e.ovenplatform.payment.application.exception.ActiveAttemptAlreadyExistsException;
 import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttempt;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils;
-import java.math.BigDecimal;
-import java.net.URI;
-import java.time.Clock;
-import java.time.Instant;
-import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,6 +12,19 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.dao.OptimisticLockingFailureException;
+
+import java.math.BigDecimal;
+import java.net.URI;
+import java.time.Clock;
+import java.time.Instant;
+import java.util.UUID;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class ExternalPaymentAttemptServiceTest {
@@ -123,5 +124,14 @@ class ExternalPaymentAttemptServiceTest {
     assertThatThrownBy(() -> service.registerCheckout(registerExternalCommand))
         .isInstanceOf(IllegalStateException.class)
         .hasMessage("Recovered external payment attempt must be PENDING, but was CREATED.");
+  }
+
+  @Test
+  void shouldMarkAttemptAsFailedAtCurrentTime() {
+
+    when(clock.instant()).thenReturn(EXPIRES_AT);
+    service.markAsFailed(TENANT_ID, ATTEMPT_ID);
+
+    verify(reservationService).markAsFailedInTransaction(TENANT_ID, ATTEMPT_ID, EXPIRES_AT);
   }
 }

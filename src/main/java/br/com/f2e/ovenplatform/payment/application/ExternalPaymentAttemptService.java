@@ -3,10 +3,10 @@ package br.com.f2e.ovenplatform.payment.application;
 import br.com.f2e.ovenplatform.payment.application.checkout.RegisterExternalCheckoutCommand;
 import br.com.f2e.ovenplatform.payment.application.exception.ActiveAttemptAlreadyExistsException;
 import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus;
+import java.time.Clock;
+import java.util.UUID;
 import org.springframework.dao.OptimisticLockingFailureException;
 import org.springframework.stereotype.Service;
-
-import java.time.Clock;
 
 @Service
 public class ExternalPaymentAttemptService {
@@ -52,5 +52,9 @@ public class ExternalPaymentAttemptService {
 
       return ExternalPaymentAttemptResult.from(attempt);
     }
+  }
+
+  public void markAsFailed(UUID tenantId, UUID attemptId) {
+    reservationService.markAsFailedInTransaction(tenantId, attemptId, clock.instant());
   }
 }

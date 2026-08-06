@@ -240,6 +240,11 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-opentelemetry</artifactId>
         </dependency>
+        <dependency>
+            <groupId>com.stripe</groupId>
+            <artifactId>stripe-java</artifactId>
+            <version>33.2.0</version>
+        </dependency>
     </dependencies>
     <dependencyManagement>
         <dependencies>
