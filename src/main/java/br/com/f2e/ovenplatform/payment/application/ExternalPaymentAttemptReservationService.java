@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.payment.application;
 
+import br.com.f2e.ovenplatform.payment.application.checkout.RegisterExternalCheckoutCommand;
 import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttempt;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
@@ -53,6 +54,30 @@ public class ExternalPaymentAttemptReservationService {
         .filter(attempt -> attempt.isReusableAt(occurredAt))
         .findFirst()
         .orElseThrow(() -> new ResourceNotFoundException(EXTERNAL_PAYMENT_ATTEMPT));
+  }
+
+  @Transactional
+  public ExternalPaymentAttempt registerCheckoutInTransaction(
+      RegisterExternalCheckoutCommand checkoutCommand) {
+    var attempt =
+        attemptRepository
+            .findByIdAndTenantId(checkoutCommand.attemptId(), checkoutCommand.tenantId())
+            .orElseThrow(
+                () ->
+                    new ResourceNotFoundException(
+                        EXTERNAL_PAYMENT_ATTEMPT, checkoutCommand.attemptId()));
+    attempt.registerCheckout(
+        checkoutCommand.providerReference(),
+        checkoutCommand.checkoutUrl(),
+        checkoutCommand.expiresAt());
+    return attemptRepository.saveAndFlush(attempt);
+  }
+
+  @Transactional(readOnly = true)
+  public ExternalPaymentAttempt getAttempt(UUID tenantId, UUID attemptId) {
+    return attemptRepository
+        .findByIdAndTenantId(attemptId, tenantId)
+        .orElseThrow(() -> new ResourceNotFoundException(EXTERNAL_PAYMENT_ATTEMPT, attemptId));
   }
 
   private void expirePendingAttempt(List<ExternalPaymentAttempt> attempts, Instant occurredAt) {
