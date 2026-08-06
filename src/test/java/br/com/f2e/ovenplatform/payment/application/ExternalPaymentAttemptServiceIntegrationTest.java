@@ -9,6 +9,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.when;
 
+import br.com.f2e.ovenplatform.payment.application.exception.ActiveAttemptAlreadyExistsException;
 import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttempt;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
@@ -22,18 +23,26 @@ import java.net.URI;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.UUID;
+import java.util.concurrent.CyclicBarrier;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Import;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Import({
   ExternalPaymentAttemptService.class,
+  ExternalPaymentAttemptReservationService.class,
   JpaExternalPaymentAttemptRepositoryAdapter.class,
   JpaPaymentRepositoryAdapter.class
 })
+@Transactional(propagation = Propagation.NOT_SUPPORTED)
 class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTest {
 
   private static final UUID TENANT_ID = UUID.fromString("a6210129-f1d5-4942-8d0a-b144e518aecc");
@@ -61,8 +70,6 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
 
     var result = service.createOrReuseAttempt(command(payment.getId()));
 
-    flushAndClear();
-
     var persistedAttempt =
         attemptRepository.findByIdAndTenantId(result.attemptId(), TENANT_ID).orElseThrow();
 
@@ -85,20 +92,19 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
     var first = service.createOrReuseAttempt(command(payment.getId()));
     var second = service.createOrReuseAttempt(command(payment.getId()));
 
-    flushAndClear();
-
     assertThat(second.attemptId()).isEqualTo(first.attemptId());
     assertThat(attemptRepository.findByTenantIdAndPaymentId(TENANT_ID, payment.getId())).hasSize(1);
   }
 
   @Test
   void shouldReusePendingAttemptThatHasNotExpired() {
+
     var payment = persistPendingGatewayPayment();
     var created = service.createOrReuseAttempt(command(payment.getId()));
     var attempt =
         attemptRepository.findByIdAndTenantId(created.attemptId(), TENANT_ID).orElseThrow();
     attempt.registerCheckout("checkout-reference", REDIRECT_URL, NOW.plusSeconds(300));
-    flushAndClear();
+    attemptRepository.save(attempt);
 
     var result = service.createOrReuseAttempt(command(payment.getId()));
 
@@ -113,12 +119,11 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
     var created = service.createOrReuseAttempt(command(payment.getId()));
     var attempt =
         attemptRepository.findByIdAndTenantId(created.attemptId(), TENANT_ID).orElseThrow();
+
     attempt.registerCheckout("expired-checkout-reference", REDIRECT_URL, NOW.minusSeconds(1));
-    flushAndClear();
+    attemptRepository.save(attempt);
 
     var result = service.createOrReuseAttempt(command(payment.getId()));
-
-    flushAndClear();
 
     var attempts = attemptRepository.findByTenantIdAndPaymentId(TENANT_ID, payment.getId());
 
@@ -141,7 +146,7 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
         paymentRepository.save(
             Payment.paid(
                 TENANT_ID,
-                ORDER_ID,
+                UUID.randomUUID(),
                 PAYMENT_AMOUNT,
                 PaymentMethod.CARD,
                 PaymentProcessingMode.GATEWAY,
@@ -180,7 +185,7 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
     var anotherActiveAttempt = payment.createExternalAttempt(STRIPE);
 
     assertThatThrownBy(() -> attemptRepository.saveAndFlush(anotherActiveAttempt))
-        .isInstanceOf(DataIntegrityViolationException.class);
+        .isInstanceOf(ActiveAttemptAlreadyExistsException.class);
   }
 
   @Test
@@ -192,8 +197,6 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
 
     var newAttempt = payment.createExternalAttempt(STRIPE);
     attemptRepository.saveAndFlush(newAttempt);
-
-    flushAndClear();
 
     assertThat(attemptRepository.findByTenantIdAndPaymentId(TENANT_ID, payment.getId()))
         .hasSize(2)
@@ -211,11 +214,44 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
         .hasMessage("Payment id: %s not found".formatted(payment.getId()));
   }
 
+  @Test
+  void shouldReturnExistingPaymentAttemptUnderConcurrency()
+      throws ExecutionException, InterruptedException, TimeoutException {
+    var payment = persistPendingGatewayPayment();
+
+    try (var executor = Executors.newFixedThreadPool(2)) {
+      var barrier = new CyclicBarrier(2);
+      var future1 =
+          executor.submit(
+              () -> {
+                barrier.await(5, TimeUnit.SECONDS);
+                return service.createOrReuseAttempt(command(payment.getId()));
+              });
+      var future2 =
+          executor.submit(
+              () -> {
+                barrier.await(5, TimeUnit.SECONDS);
+                return service.createOrReuseAttempt(command(payment.getId()));
+              });
+      var result1 = future1.get(10, TimeUnit.SECONDS);
+      var result2 = future2.get(10, TimeUnit.SECONDS);
+
+      assertThat(result1.attemptId()).isEqualTo(result2.attemptId());
+
+      var attempts = attemptRepository.findByTenantIdAndPaymentId(TENANT_ID, payment.getId());
+      assertThat(attempts).hasSize(1);
+
+      var attempt = attempts.getFirst();
+      assertThat(attempt.getId()).isEqualTo(result1.attemptId());
+      assertThat(attempt.getId()).isEqualTo(result2.attemptId());
+    }
+  }
+
   private Payment persistPendingGatewayPayment() {
     return paymentRepository.save(
         Payment.pending(
             TENANT_ID,
-            ORDER_ID,
+            UUID.randomUUID(),
             PAYMENT_AMOUNT,
             PaymentMethod.CARD,
             PaymentProcessingMode.GATEWAY));

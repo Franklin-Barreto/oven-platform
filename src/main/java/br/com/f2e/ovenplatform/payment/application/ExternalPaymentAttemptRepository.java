@@ -13,5 +13,5 @@ public interface ExternalPaymentAttemptRepository {
 
   List<ExternalPaymentAttempt> findByTenantIdAndPaymentId(UUID tenantId, UUID paymentId);
 
-  void saveAndFlush(ExternalPaymentAttempt attempt);
+  ExternalPaymentAttempt saveAndFlush(ExternalPaymentAttempt attempt);
 }
