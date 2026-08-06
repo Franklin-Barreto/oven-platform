@@ -3,6 +3,7 @@ package br.com.f2e.ovenplatform.payment.domain;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.UUID;
@@ -132,6 +133,33 @@ class PaymentTest {
     assertThatThrownBy(() -> payment.markAsPaid(null))
         .isInstanceOf(IllegalArgumentException.class)
         .hasMessage("paidAt must not be null");
+  }
+
+  @Test
+  void shouldRejectExternalAttemptForPaidPayment() {
+    var payment =
+        Payment.paid(
+            TENANT_ID,
+            ORDER_ID,
+            PAYMENT_AMOUNT,
+            PaymentMethod.CARD,
+            PaymentProcessingMode.GATEWAY,
+            PAID_AT);
+
+    assertThatThrownBy(() -> payment.createExternalAttempt(PaymentProvider.STRIPE))
+        .isInstanceOf(ExternalPaymentAttemptNotAllowedException.class)
+        .hasMessage("Only pending payments can create external payment attempts.");
+  }
+
+  @Test
+  void shouldRejectExternalAttemptForManuallyProcessedPayment() {
+    var payment =
+        Payment.pending(
+            TENANT_ID, ORDER_ID, PAYMENT_AMOUNT, PaymentMethod.CARD, PaymentProcessingMode.MANUAL);
+
+    assertThatThrownBy(() -> payment.createExternalAttempt(PaymentProvider.STRIPE))
+        .isInstanceOf(ExternalPaymentAttemptNotAllowedException.class)
+        .hasMessage("Only gateway-processed payments can create external payment attempts.");
   }
 
   private static Stream<Arguments> invalidPaidPayments() {

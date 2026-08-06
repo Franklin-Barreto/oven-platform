@@ -8,10 +8,12 @@ import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreati
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
 import br.com.f2e.ovenplatform.payment.application.gateway.CreatedCheckoutSession;
 import br.com.f2e.ovenplatform.payment.application.gateway.PaymentGateway;
+import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import java.util.UUID;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class PaymentCheckoutSessionService {
@@ -34,6 +36,10 @@ public class PaymentCheckoutSessionService {
         paymentRepository
             .findByTenantIdAndOrderId(tenantId, orderId)
             .orElseThrow(() -> new ResourceNotFoundException("Payment", "orderId", orderId));
+
+    if (payment.getMethod() != PaymentMethod.CARD) {
+      throw new UnsupportedCheckoutPaymentMethodException(payment.getMethod());
+    }
 
     var externalPaymentAttemptResult =
         attemptService.createOrReuseAttempt(

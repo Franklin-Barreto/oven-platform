@@ -22,6 +22,7 @@ import br.com.f2e.ovenplatform.payment.domain.Payment;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
+import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.EntityIdTestUtils;
 import java.math.BigDecimal;
 import java.net.URI;
@@ -92,6 +93,19 @@ class PaymentCheckoutSessionServiceTest {
     assertThat(result.expiresAt()).isEqualTo(attempt.expiresAt());
     assertThat(result.attemptId()).isEqualTo(attempt.attemptId());
     verifyNoInteractions(paymentGateway);
+  }
+
+  @Test
+  void shouldNotCreateCheckoutWhenPaymentIsNotFoundInTenantScope() {
+    when(paymentRepository.findByTenantIdAndOrderId(TENANT_ID, ORDER_ID))
+        .thenReturn(Optional.empty());
+
+    assertThatThrownBy(
+            () -> paymentCheckoutSessionService.createOrReuseCheckoutSession(TENANT_ID, ORDER_ID))
+        .isInstanceOf(ResourceNotFoundException.class)
+        .hasMessage("Payment orderId: %s not found".formatted(ORDER_ID));
+
+    verifyNoInteractions(attemptService, paymentGateway);
   }
 
   @Test
