@@ -1,8 +1,8 @@
 package br.com.f2e.ovenplatform.payment.infrastructure.web.exception;
 
+import br.com.f2e.ovenplatform.payment.application.checkout.UnsupportedCheckoutPaymentMethodException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationOutcomeUnknownException;
-import br.com.f2e.ovenplatform.payment.application.checkout.UnsupportedCheckoutPaymentMethodException;
 import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
 import br.com.f2e.ovenplatform.payment.domain.exception.InvalidExternalPaymentAttemptStatusTransitionException;
 import br.com.f2e.ovenplatform.payment.infrastructure.web.PaymentController;

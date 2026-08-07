@@ -1,4 +1,6 @@
 spring:
+  jpa:
+    open-in-view: false
   lifecycle:
     timeout-per-shutdown-phase: 20s
   application:

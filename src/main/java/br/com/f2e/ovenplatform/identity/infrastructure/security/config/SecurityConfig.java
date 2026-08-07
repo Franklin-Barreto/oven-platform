@@ -1,6 +1,7 @@
 package br.com.f2e.ovenplatform.identity.infrastructure.security.config;
 
 import br.com.f2e.ovenplatform.identity.infrastructure.security.filter.JwtAuthenticationFilter;
+import jakarta.servlet.DispatcherType;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -39,6 +40,8 @@ public class SecurityConfig {
         .authorizeHttpRequests(
             authorize ->
                 authorize
+                    .dispatcherTypeMatchers(DispatcherType.ERROR)
+                    .permitAll()
                     .requestMatchers(
                         "/auth/login",
                         "/actuator/health",

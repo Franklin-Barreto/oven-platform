@@ -218,7 +218,7 @@ class OrderControllerTest extends AbstractControllerTest {
 
     var order = createOrder(ORDER_ID, 3, unitPrice);
 
-    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
+    when(orderService.findOrderWithItems(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
 
     mockMvc
         .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
@@ -240,7 +240,7 @@ class OrderControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath("$.items[0].unitPrice").value(25.30))
         .andExpect(jsonPath("$.items[0].subtotal").value(75.90));
 
-    verify(orderService).findOrder(TENANT_ID, ORDER_ID);
+    verify(orderService).findOrderWithItems(TENANT_ID, ORDER_ID);
   }
 
   @Test
@@ -248,7 +248,7 @@ class OrderControllerTest extends AbstractControllerTest {
     var order = createDeliveryOrder(new BigDecimal("25.30"));
     order.attachDeliveryCustomerSnapshot(deliveryCustomerSnapshot());
 
-    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
+    when(orderService.findOrderWithItems(TENANT_ID, ORDER_ID)).thenReturn(Optional.of(order));
 
     mockMvc
         .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
@@ -275,13 +275,13 @@ class OrderControllerTest extends AbstractControllerTest {
   @Test
   void shouldReturn404WhenOrderIsNotFound() throws Exception {
 
-    when(orderService.findOrder(TENANT_ID, ORDER_ID)).thenReturn(Optional.empty());
+    when(orderService.findOrderWithItems(TENANT_ID, ORDER_ID)).thenReturn(Optional.empty());
 
     mockMvc
         .perform(get(BASE_URL + "/" + ORDER_ID).with(orderReadUser()))
         .andExpect(status().isNotFound());
 
-    verify(orderService).findOrder(TENANT_ID, ORDER_ID);
+    verify(orderService).findOrderWithItems(TENANT_ID, ORDER_ID);
   }
 
   @Test
@@ -419,13 +419,8 @@ class OrderControllerTest extends AbstractControllerTest {
         .andExpect(jsonPath(secondOrderJson + ".readyAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".completedAt").isEmpty())
         .andExpect(jsonPath(secondOrderJson + ".cancelledAt").isEmpty())
-        .andExpect(jsonPath(secondOrderJson + ".items").isArray())
-        .andExpect(jsonPath(secondOrderJson + ".items.length()").value(1))
-        .andExpect(jsonPath(secondOrderJson + ".items[0].productId").value(PRODUCT_ID.toString()))
-        .andExpect(jsonPath(secondOrderJson + ".items[0].productName").value(PRODUCT_NAME))
-        .andExpect(jsonPath(secondOrderJson + ".items[0].quantity").value(2))
-        .andExpect(jsonPath(secondOrderJson + ".items[0].unitPrice").value(25.30))
-        .andExpect(jsonPath(secondOrderJson + ".items[0].subtotal").value(50.60));
+        .andExpect(jsonPath(secondOrderJson + ".deliveryCustomerSnapshot").doesNotExist())
+        .andExpect(jsonPath(secondOrderJson + ".items").doesNotExist());
 
     verify(orderService).listOrders(TENANT_ID);
   }

@@ -1,5 +1,9 @@
 package br.com.f2e.ovenplatform.payment.application.checkout;
 
+import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.PENDING;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptReservationService;
 import br.com.f2e.ovenplatform.payment.application.ExternalPaymentAttemptService;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
@@ -11,15 +15,6 @@ import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaExternalPaymentAttemptRepositoryAdapter;
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Clock;
@@ -32,10 +27,14 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-
-import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.PENDING;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
 
 @Import({
   PaymentCheckoutSessionService.class,
