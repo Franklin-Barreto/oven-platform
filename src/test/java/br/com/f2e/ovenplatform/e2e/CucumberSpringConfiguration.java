@@ -1,5 +1,6 @@
 package br.com.f2e.ovenplatform.e2e;
 
+import br.com.f2e.ovenplatform.e2e.support.InternalFailureTestController;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.PostgresTestContainerConfiguration;
 import io.cucumber.spring.CucumberContextConfiguration;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -13,5 +14,5 @@ import org.springframework.context.annotation.Import;
       "jwt.secret=0123456789012345678901234567890123456789012345678901234567890123",
       "spring.jpa.open-in-view=false"
     })
-@Import(PostgresTestContainerConfiguration.class)
+@Import({PostgresTestContainerConfiguration.class, InternalFailureTestController.class})
 class CucumberSpringConfiguration {}
