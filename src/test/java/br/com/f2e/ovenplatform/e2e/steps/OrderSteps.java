@@ -112,7 +112,9 @@ public class OrderSteps {
   @And("the order summaries should not contain items")
   public void orderSummariesShouldNotContainItems() {
     var summaries = orderListResponse.jsonPath().<Map<String, Object>>getList("$");
-    assertThat(summaries).allSatisfy(summary -> assertThat(summary).doesNotContainKey("items"));
+    assertThat(summaries)
+        .isNotEmpty()
+        .allSatisfy(summary -> assertThat(summary).doesNotContainKey("items"));
   }
 
   @When("I request the created order details")
