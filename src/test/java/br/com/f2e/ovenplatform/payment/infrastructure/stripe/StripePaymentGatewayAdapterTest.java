@@ -6,6 +6,7 @@ import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.ApiException;
+import com.stripe.exception.IdempotencyException;
 import com.stripe.exception.InvalidRequestException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.checkout.Session;
@@ -108,6 +109,7 @@ class StripePaymentGatewayAdapterTest {
         .containsEntry("oven_attempt_id", ATTEMPT_ID.toString());
     assertThat(capturedSession.getPaymentMethodTypes())
         .contains(SessionCreateParams.PaymentMethodType.CARD);
+    assertThat(capturedOptions.getMaxNetworkRetries()).isEqualTo(2);
   }
 
   @ParameterizedTest
@@ -144,6 +146,24 @@ class StripePaymentGatewayAdapterTest {
                 "parameter_invalid",
                 400,
                 null),
+            CheckoutSessionCreationFailedException.class,
+            "Checkout session creation failed for attempt " + ATTEMPT_ID),
+        Arguments.of(
+            new IdempotencyException(
+                "Idempotency key is currently in use",
+                "req_test_123",
+                "idempotency_key_in_use",
+                409),
+            CheckoutSessionCreationOutcomeUnknownException.class,
+            "Checkout session creation outcome is unknown for attempt "
+                + ATTEMPT_ID
+                + ": the idempotency key is still in use by another request"),
+        Arguments.of(
+            new IdempotencyException(
+                "Parameters differ from the original request",
+                "req_test_456",
+                "idempotency_error",
+                400),
             CheckoutSessionCreationFailedException.class,
             "Checkout session creation failed for attempt " + ATTEMPT_ID));
   }

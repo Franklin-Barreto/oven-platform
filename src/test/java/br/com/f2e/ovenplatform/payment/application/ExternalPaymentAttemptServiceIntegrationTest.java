@@ -1,14 +1,5 @@
 package br.com.f2e.ovenplatform.payment.application;
 
-import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.CREATED;
-import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.EXPIRED;
-import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.FAILED;
-import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.PENDING;
-import static br.com.f2e.ovenplatform.payment.domain.PaymentProvider.STRIPE;
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.when;
-
 import br.com.f2e.ovenplatform.payment.application.exception.ActiveAttemptAlreadyExistsException;
 import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttempt;
 import br.com.f2e.ovenplatform.payment.domain.Payment;
@@ -19,6 +10,14 @@ import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaExternalPay
 import br.com.f2e.ovenplatform.payment.infrastructure.persistence.JpaPaymentRepositoryAdapter;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
 import br.com.f2e.ovenplatform.shared.infrastructure.persistence.test.DataJpaIntegrationTest;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Import;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
 import java.math.BigDecimal;
 import java.net.URI;
 import java.time.Clock;
@@ -29,13 +28,15 @@ import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.context.annotation.Import;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.transaction.annotation.Propagation;
-import org.springframework.transaction.annotation.Transactional;
+
+import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.CREATED;
+import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.EXPIRED;
+import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.FAILED;
+import static br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus.PENDING;
+import static br.com.f2e.ovenplatform.payment.domain.PaymentProvider.STRIPE;
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
 
 @Import({
   ExternalPaymentAttemptService.class,
@@ -173,7 +174,7 @@ class ExternalPaymentAttemptServiceIntegrationTest extends DataJpaIntegrationTes
     var attempt = command(payment.getId());
 
     assertThatThrownBy(() -> service.createOrReuseAttempt(attempt))
-        .isInstanceOf(IllegalStateException.class)
+        .isInstanceOf(ExternalPaymentAttemptNotAllowedException.class)
         .hasMessage("Only gateway-processed payments can create external payment attempts.");
   }
 

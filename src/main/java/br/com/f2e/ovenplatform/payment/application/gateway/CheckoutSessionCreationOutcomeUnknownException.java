@@ -8,4 +8,12 @@ public class CheckoutSessionCreationOutcomeUnknownException extends RuntimeExcep
     super(
         "Checkout session creation outcome is unknown for attempt %s".formatted(attemptId), cause);
   }
+
+  public CheckoutSessionCreationOutcomeUnknownException(
+      UUID attemptId, String reason, Throwable cause) {
+    super(
+        "Checkout session creation outcome is unknown for attempt %s: %s"
+            .formatted(attemptId, reason),
+        cause);
+  }
 }
