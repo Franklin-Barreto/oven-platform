@@ -17,14 +17,18 @@ import br.com.f2e.ovenplatform.shared.application.payment.PaymentStatus;
 import io.cucumber.java.en.And;
 import io.cucumber.java.en.Then;
 import io.cucumber.java.en.When;
+import io.restassured.response.Response;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import org.springframework.http.HttpStatus;
 
 public class OrderSteps {
 
   private final E2eScenarioContext context;
   private final E2eApiClient api;
+  private Response orderListResponse;
+  private OrderResponse orderDetailResponse;
 
   public OrderSteps(E2eScenarioContext context, E2eApiClient api) {
     this.context = context;
@@ -85,6 +89,56 @@ public class OrderSteps {
   @And("the order item unit price should be {bigdecimal}")
   public void theOrderItemUnitPriceShouldBe(BigDecimal expectedUnitPrice) {
     assertThat(singleOrderItem().unitPrice()).isEqualByComparingTo(expectedUnitPrice);
+  }
+
+  @When("I request the tenant order list")
+  public void requestTenantOrderList() {
+    orderListResponse = api.authenticated().when().get("/orders");
+  }
+
+  @Then("the order list request should succeed")
+  public void orderListRequestShouldSucceed() {
+    orderListResponse.then().statusCode(HttpStatus.OK.value());
+  }
+
+  @And("the order list should contain the created order")
+  public void orderListShouldContainCreatedOrder() {
+    var summaries = orderListResponse.jsonPath().<Map<String, Object>>getList("$");
+    assertThat(summaries)
+        .extracting(summary -> summary.get("id"))
+        .contains(lastOrder().id().toString());
+  }
+
+  @And("the order summaries should not contain items")
+  public void orderSummariesShouldNotContainItems() {
+    var summaries = orderListResponse.jsonPath().<Map<String, Object>>getList("$");
+    assertThat(summaries).allSatisfy(summary -> assertThat(summary).doesNotContainKey("items"));
+  }
+
+  @When("I request the created order details")
+  public void requestCreatedOrderDetails() {
+    orderDetailResponse =
+        api.authenticated()
+            .when()
+            .get("/orders/{id}", lastOrder().id())
+            .then()
+            .statusCode(HttpStatus.OK.value())
+            .extract()
+            .as(OrderResponse.class);
+  }
+
+  @Then("the order details should contain product {string}")
+  public void orderDetailsShouldContainProduct(String productName) {
+    assertThat(orderDetailResponse.items())
+        .extracting(OrderItemResponse::productName)
+        .contains(productName);
+  }
+
+  @And("the detailed order item quantity should be {int}")
+  public void detailedOrderItemQuantityShouldBe(int expectedQuantity) {
+    assertThat(orderDetailResponse.items())
+        .extracting(OrderItemResponse::quantity)
+        .contains(expectedQuantity);
   }
 
   private OrderResponse lastOrder() {

@@ -1,5 +1,11 @@
 package br.com.f2e.ovenplatform.payment.infrastructure.stripe;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationOutcomeUnknownException;
 import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionSpec;
@@ -15,6 +21,12 @@ import com.stripe.param.checkout.SessionCreateParams;
 import com.stripe.service.CheckoutService;
 import com.stripe.service.V1Services;
 import com.stripe.service.checkout.SessionService;
+import java.math.BigDecimal;
+import java.net.URI;
+import java.time.Instant;
+import java.util.Locale;
+import java.util.UUID;
+import java.util.stream.Stream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -24,19 +36,6 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.math.BigDecimal;
-import java.net.URI;
-import java.time.Instant;
-import java.util.Locale;
-import java.util.UUID;
-import java.util.stream.Stream;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StripePaymentGatewayAdapterTest {

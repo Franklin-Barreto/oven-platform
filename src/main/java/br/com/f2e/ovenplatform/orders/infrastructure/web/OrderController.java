@@ -6,6 +6,7 @@ import br.com.f2e.ovenplatform.identity.application.api.security.CurrentTenantId
 import br.com.f2e.ovenplatform.orders.application.OrderService;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.CreateOrderRequest;
 import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderResponse;
+import br.com.f2e.ovenplatform.orders.infrastructure.web.dto.OrderSummaryResponse;
 import br.com.f2e.ovenplatform.shared.infrastructure.web.ResourceUriBuilder;
 import jakarta.validation.Valid;
 import java.util.List;
@@ -46,7 +47,7 @@ public class OrderController {
   public ResponseEntity<OrderResponse> findById(
       @CurrentTenantId UUID tenantId, @PathVariable UUID id) {
     return orderService
-        .findOrder(tenantId, id)
+        .findOrderWithItems(tenantId, id)
         .map(OrderResponse::from)
         .map(ResponseEntity::ok)
         .orElseGet(() -> ResponseEntity.notFound().build());
@@ -75,8 +76,9 @@ public class OrderController {
 
   @PreAuthorize("hasAuthority('ORDER_READ')")
   @GetMapping(version = API_VERSION_VALUE)
-  public ResponseEntity<List<OrderResponse>> list(@CurrentTenantId UUID tenantId) {
-    var orders = orderService.listOrders(tenantId).stream().map(OrderResponse::from).toList();
+  public ResponseEntity<List<OrderSummaryResponse>> list(@CurrentTenantId UUID tenantId) {
+    var orders =
+        orderService.listOrders(tenantId).stream().map(OrderSummaryResponse::from).toList();
     return ResponseEntity.ok(orders);
   }
 

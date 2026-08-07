@@ -1,41 +1,5 @@
 package br.com.f2e.ovenplatform.payment.infrastructure.web;
 
-import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
-import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
-import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
-import br.com.f2e.ovenplatform.payment.application.PaymentService;
-import br.com.f2e.ovenplatform.payment.application.checkout.PaymentCheckoutSessionResult;
-import br.com.f2e.ovenplatform.payment.application.checkout.PaymentCheckoutSessionService;
-import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
-import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationOutcomeUnknownException;
-import br.com.f2e.ovenplatform.payment.application.checkout.UnsupportedCheckoutPaymentMethodException;
-import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus;
-import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
-import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
-import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
-import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
-import br.com.f2e.ovenplatform.payment.domain.exception.InvalidExternalPaymentAttemptStatusTransitionException;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
-import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
-import br.com.f2e.ovenplatform.shared.util.JsonUtils;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.Arguments;
-import org.junit.jupiter.params.provider.MethodSource;
-import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
-import org.springframework.http.HttpStatus;
-import org.springframework.http.MediaType;
-import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoBean;
-import org.springframework.test.web.servlet.request.RequestPostProcessor;
-
-import java.net.URI;
-import java.time.Instant;
-import java.util.Collections;
-import java.util.List;
-import java.util.UUID;
-import java.util.stream.Stream;
-
 import static br.com.f2e.ovenplatform.identity.infrastructure.security.test.SecurityTestRequestPostProcessors.authenticatedTenantUser;
 import static br.com.f2e.ovenplatform.shared.infrastructure.web.test.ApiErrorResponseMatchers.expectValidationErrors;
 import static org.mockito.ArgumentMatchers.any;
@@ -47,6 +11,41 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import br.com.f2e.ovenplatform.identity.application.api.security.TenantPermission;
+import br.com.f2e.ovenplatform.identity.domain.TenantMembershipRole;
+import br.com.f2e.ovenplatform.payment.application.OrderPaymentResult;
+import br.com.f2e.ovenplatform.payment.application.PaymentService;
+import br.com.f2e.ovenplatform.payment.application.checkout.PaymentCheckoutSessionResult;
+import br.com.f2e.ovenplatform.payment.application.checkout.PaymentCheckoutSessionService;
+import br.com.f2e.ovenplatform.payment.application.checkout.UnsupportedCheckoutPaymentMethodException;
+import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationFailedException;
+import br.com.f2e.ovenplatform.payment.application.gateway.CheckoutSessionCreationOutcomeUnknownException;
+import br.com.f2e.ovenplatform.payment.domain.ExternalPaymentAttemptStatus;
+import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
+import br.com.f2e.ovenplatform.payment.domain.PaymentProcessingMode;
+import br.com.f2e.ovenplatform.payment.domain.PaymentStatus;
+import br.com.f2e.ovenplatform.payment.domain.exception.ExternalPaymentAttemptNotAllowedException;
+import br.com.f2e.ovenplatform.payment.domain.exception.InvalidExternalPaymentAttemptStatusTransitionException;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.exception.ApiErrorCodes;
+import br.com.f2e.ovenplatform.shared.infrastructure.web.test.AbstractControllerTest;
+import br.com.f2e.ovenplatform.shared.util.JsonUtils;
+import java.net.URI;
+import java.time.Instant;
+import java.util.Collections;
+import java.util.List;
+import java.util.UUID;
+import java.util.stream.Stream;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
+import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
+
 @ActiveProfiles("test")
 @WebMvcTest(controllers = PaymentController.class)
 class PaymentControllerTest extends AbstractControllerTest {
@@ -56,7 +55,8 @@ class PaymentControllerTest extends AbstractControllerTest {
   private static final Instant PAID_AT = Instant.parse("2026-05-12T20:18:00Z");
   private static final Instant EXPIRES_AT = Instant.parse("2026-05-12T20:18:00Z");
   private static final UUID ORDER_ID = UUID.randomUUID();
-  private static final String CHECKOUT_URI = BASE_URL + "/orders/" + ORDER_ID + "/checkout-sessions";
+  private static final String CHECKOUT_URI =
+      BASE_URL + "/orders/" + ORDER_ID + "/checkout-sessions";
   private static final URI CHECKOUT_URL = URI.create("https://checkout.test/session");
   private static final UUID ATTEMPT_ID = UUID.fromString("c6210129-f1d5-4942-8d0a-b144e518aecc");
 

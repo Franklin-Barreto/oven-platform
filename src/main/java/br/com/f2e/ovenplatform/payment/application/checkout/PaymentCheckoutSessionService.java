@@ -11,9 +11,8 @@ import br.com.f2e.ovenplatform.payment.application.gateway.PaymentGateway;
 import br.com.f2e.ovenplatform.payment.domain.PaymentMethod;
 import br.com.f2e.ovenplatform.payment.domain.PaymentProvider;
 import br.com.f2e.ovenplatform.shared.application.exception.ResourceNotFoundException;
-import org.springframework.stereotype.Service;
-
 import java.util.UUID;
+import org.springframework.stereotype.Service;
 
 @Service
 public class PaymentCheckoutSessionService {
