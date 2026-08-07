@@ -8,6 +8,7 @@ import br.com.f2e.ovenplatform.payment.application.gateway.PaymentGateway;
 import com.stripe.StripeClient;
 import com.stripe.exception.ApiConnectionException;
 import com.stripe.exception.ApiException;
+import com.stripe.exception.IdempotencyException;
 import com.stripe.exception.StripeException;
 import com.stripe.net.RequestOptions;
 import com.stripe.param.checkout.SessionCreateParams;
@@ -20,6 +21,9 @@ import java.util.Locale;
 
 @Component
 public class StripePaymentGatewayAdapter implements PaymentGateway {
+
+  private static final String IDEMPOTENCY_KEY_IN_USE = "idempotency_key_in_use";
+  private static final int MAX_NETWORK_RETRIES = 2;
 
   private final StripeClient stripeClient;
   private final StripeProperties properties;
@@ -54,7 +58,11 @@ public class StripePaymentGatewayAdapter implements PaymentGateway {
             .addPaymentMethodType(SessionCreateParams.PaymentMethodType.CARD)
             .build();
 
-    var options = RequestOptions.builder().setIdempotencyKey(spec.attemptId().toString()).build();
+    var options =
+        RequestOptions.builder()
+            .setMaxNetworkRetries(MAX_NETWORK_RETRIES)
+            .setIdempotencyKey(spec.attemptId().toString())
+            .build();
 
     try {
       var session = stripeClient.v1().checkout().sessions().create(params, options);
@@ -63,6 +71,13 @@ public class StripePaymentGatewayAdapter implements PaymentGateway {
           session.getId(),
           URI.create(session.getUrl()),
           Instant.ofEpochSecond(session.getExpiresAt()));
+
+    } catch (IdempotencyException exception) {
+      if (IDEMPOTENCY_KEY_IN_USE.equals(exception.getCode())) {
+        throw new CheckoutSessionCreationOutcomeUnknownException(
+            spec.attemptId(), "the idempotency key is still in use by another request", exception);
+      }
+      throw new CheckoutSessionCreationFailedException(spec.attemptId(), exception);
 
     } catch (ApiConnectionException | ApiException exception) {
       throw new CheckoutSessionCreationOutcomeUnknownException(spec.attemptId(), exception);
