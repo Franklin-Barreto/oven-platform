@@ -1,5 +1,15 @@
 services:
 
+  frontend:
+    build:
+      context: ./frontend
+    environment:
+      API_UPSTREAM: http://host.docker.internal:8080
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    ports:
+      - "4200:80"
+
   postgres:
     image: 'postgres:17-alpine'
     environment:
